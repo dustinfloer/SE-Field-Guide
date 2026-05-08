@@ -1,0 +1,66 @@
+{
+  "$schema": "demo-prep-v1",
+  "merchantContext": {
+    "companyName": "string",
+    "industry": "string",
+    "website": "string",
+    "revenue": "string (e.g. $90M / $360M GMV)",
+    "opportunityStage": "string (Discovery|Envision|Deal Craft|Negotiate)",
+    "closeDate": "YYYY-MM-DD",
+    "techStack": {
+      "erp": "string",
+      "ecommerce": "string",
+      "pim": "string",
+      "payments": "string",
+      "shipping": "string",
+      "pos": "string"
+    },
+    "stakeholders": [
+      { "name": "string", "role": "string", "notes": "string" }
+    ],
+    "businessGoals": ["string - each goal as a separate item"],
+    "painPoints": ["string - each pain point as a separate item"]
+  },
+  "limbicOpening": {
+    "emotionalPain": "string - their biggest emotional frustration",
+    "aspiration": "string - their ideal future state",
+    "costOfInaction": "string - what happens if they don't change"
+  },
+  "tellShowTell": [
+    {
+      "sectionName": "string",
+      "tell1": "string - value statement customized to merchant",
+      "show": {
+        "screenName": "string",
+        "shortcutKey": "string (e.g. Opt+1)",
+        "actions": ["string - specific demo actions"]
+      },
+      "tell2": "string - tie back to merchant goal/pain point",
+      "questionToAsk": "string - interactive question for demo",
+      "timeEstimate": "number (minutes)",
+      "optional": "boolean"
+    }
+  ],
+  "discoveryGaps": [
+    {
+      "category": "Goals|Personas|Catalog|Pricing|Shipping|Payments|Tech Stack|Onboarding|Unique",
+      "question": "string",
+      "answered": "boolean",
+      "weaveIntoDemo": "boolean - true if unanswered and relevant to demo sections",
+      "custom": "boolean - true if merchant-specific question"
+    }
+  ],
+  "conclusion": {
+    "anchors": [
+      {
+        "name": "string - anchor theme name",
+        "linkedFeatures": "string - features demonstrated for this anchor",
+        "description": "string - talking point / tie-back"
+      }
+    ],
+    "nextSteps": "string"
+  },
+  "shortcuts": [
+    { "key": "string (e.g. Opt+1)", "action": "string" }
+  ]
+}
