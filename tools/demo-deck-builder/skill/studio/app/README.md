@@ -13,6 +13,9 @@ node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs init-manifest 
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/lt-apparel/index.html --port 7332 --api-port 7333
 ```
 
+Studio opens in your default browser automatically. Add `--no-open` if you want
+the server to start without launching a browser.
+
 Export the currently selected manifest deck as portable HTML:
 
 ```bash

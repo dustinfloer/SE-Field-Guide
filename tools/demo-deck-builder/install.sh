@@ -254,6 +254,6 @@ Run it from your SE Assistant workspace:
   cd "$se_assistant_dir"
   node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333
 
-Then open:
+Studio v2 opens automatically in your default browser:
   http://127.0.0.1:7332/
 EOF

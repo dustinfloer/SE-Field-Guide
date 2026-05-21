@@ -20,7 +20,7 @@ Usage:
   node demo-deck-studio.mjs fast-follow <deck.html> <notes-file> [--config deck.config.json] [--output deck.html]
   node demo-deck-studio.mjs studio <deck.html> [--host 127.0.0.1] [--port 7331]
   node demo-deck-studio.mjs studio-api <deck.html> [--host 127.0.0.1] [--port 7333]
-  node demo-deck-studio.mjs studio-v2 <deck.html> [--host 127.0.0.1] [--port 7332] [--api-port 7333]
+  node demo-deck-studio.mjs studio-v2 <deck.html> [--host 127.0.0.1] [--port 7332] [--api-port 7333] [--no-open]
   node demo-deck-studio.mjs render-html <deck.html> [output.html] [--manifest deck.manifest.json]
   node demo-deck-studio.mjs publish|publish-quick <deck.html> [output-dir-or-index.html] [--manifest deck.manifest.json]
   node demo-deck-studio.mjs export-pdf <deck.html> [output.pdf] [--chrome /path/to/chrome]
@@ -269,6 +269,7 @@ function studioV2Command(args) {
   const host = options.host || '127.0.0.1';
   const port = Number(options.port || process.env.DEMO_DECK_STUDIO_V2_PORT || 7332);
   const apiPort = Number(options.apiPort || process.env.DEMO_DECK_STUDIO_V2_API_PORT || port + 1);
+  const openStudio = options.open || !options.noOpen;
   if (!Number.isInteger(port) || port < 1 || port > 65535) fail(`Invalid port: ${options.port}`);
   if (!Number.isInteger(apiPort) || apiPort < 1 || apiPort > 65535) fail(`Invalid API port: ${options.apiPort}`);
   if (apiPort === port) fail('studio-v2 requires --port and --api-port to be different.');
@@ -300,7 +301,10 @@ function studioV2Command(args) {
     const apiUrl = `http://${host}:${apiPort}`;
     const studioUrl = `http://${host}:${port}/`;
     const runner = resolveStudioAppRunner(appDir);
-    const child = spawn(runner.command, runner.args.concat(['--host', host, '--port', String(port)]), {
+    const viteArgs = runner.args.concat(['--host', host, '--port', String(port)]);
+    if (openStudio) viteArgs.push('--open');
+
+    const child = spawn(runner.command, viteArgs, {
       stdio: 'inherit',
       env: {
         ...process.env,
@@ -309,7 +313,7 @@ function studioV2Command(args) {
     });
 
     console.log(`Demo Deck Studio v2 API running at ${apiUrl}/`);
-    console.log(`Demo Deck Studio v2 app starting at ${studioUrl}`);
+    console.log(`Demo Deck Studio v2 app starting at ${studioUrl}${openStudio ? ' (opening browser)' : ''}`);
     console.log(`Deck: ${htmlPath}`);
     console.log('Press Ctrl+C to stop.');
 
@@ -2078,6 +2082,8 @@ function parseOptions(args) {
     else if (arg === '--host') options.host = args[++i];
     else if (arg === '--port') options.port = args[++i];
     else if (arg === '--api-port') options.apiPort = args[++i];
+    else if (arg === '--open') options.open = true;
+    else if (arg === '--no-open') options.noOpen = true;
     else if (arg === '--alt') options.alt = args[++i];
     else if (arg === '--source-url') options.sourceUrl = args[++i];
     else if (arg === '--output') options.output = args[++i];

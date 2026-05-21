@@ -126,6 +126,9 @@ Run Studio v2 against a local deck:
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333
 ```
 
+Studio v2 opens the React app in your default browser automatically. Add
+`--no-open` only when you want to keep the browser closed.
+
 ### For SEs (Claude Code users)
 
 1. Run the installer:
@@ -142,7 +145,7 @@ node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merc
    curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash
    ```
 2. Open the SE Assistant repo locally
-3. Run `studio-v2` against the merchant deck
+3. Run `studio-v2` against the merchant deck; the React app opens in your browser automatically
 4. Choose slides, preview the selected deck, and open the static HTML deck for rehearsal or live demo
 5. Click **Publish** or run `publish` to create `exports/quick/index.html` for internal Quick upload
 6. Export PDF before sending anything externally to a merchant

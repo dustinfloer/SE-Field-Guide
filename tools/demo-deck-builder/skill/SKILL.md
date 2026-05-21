@@ -254,11 +254,13 @@ For a fast content pass, generate the slide outline:
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs outline merchants/[merchant]/index.html
 ```
 
-To review in the local browser Studio app:
+To review in the local browser Studio v2 app:
 
 ```bash
-node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio merchants/[merchant]/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333
 ```
+
+Studio v2 opens the React app in the user's default browser by default. Use `--no-open` only when a browser should not launch automatically.
 
 ### Step 8: Fast Follow Addendum (After the Demo)
 
