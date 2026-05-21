@@ -1,9 +1,9 @@
 ---
-name: "Demo Deck Builder"
-description: "Claude Code skill for building Shopify × Merchant demo decks. Dark UI with teal accents, animated chat mockups (Gemini/Sidekick), a drop-in agentic commerce simulation, and a library of 12+ pre-built sims covering NetSuite, SAP, Oracle, payments, and ERP integrations. Quick-site ready."
+name: "Demo Deck Studio"
+description: "Local AE/SE Studio and Claude Code skill for building Shopify × Merchant demo decks. Includes a React/Vite Studio v2 app, 21 addable slide patterns, animated AI/storefront modules, linting, static HTML output, and merchant-safe PDF export."
 url: "https://demo-deck-builder.quick.shopify.io/"
 category: "Tools"
-built_with: "Claude Code Skill + HTML/CSS/JS Scaffold"
+built_with: "Claude Code Skill + Node CLI + React/Vite Studio + HTML/CSS/JS Scaffold"
 audience: "Both"
 author: "Dustin Floer & Matt Ward"
 author_slack: "@dustin.floer"
@@ -12,41 +12,43 @@ status: "active"
 access_level: "internal"
 source_of_truth: "repo"
 reviewed_by: "@dustin.floer"
-last_reviewed: "2026-05-20"
+last_reviewed: "2026-05-21"
 review_cycle_days: "90"
 screenshot: ""
 slack_channel: "global-b2b-sales-team"
-repo_url: "https://github.com/dustinfloer/b2b-ai-catalog/tree/main/tools/demo-deck-builder"
+repo_url: "https://github.com/dustinfloer/SE-Field-Guide/tree/main/tools/demo-deck-builder"
 ---
 
-# Demo Deck Builder
+# Demo Deck Studio
 
-A reusable, turnkey skill for building polished Shopify × Merchant demo decks — the same visual style Jordan/Terry/Matt pioneered with the transferflow deck. No starting from scratch, no copy/paste from old decks, no redesign work each time.
+A reusable, local Studio workflow for building polished Shopify × Merchant demo decks — the same visual style Jordan/Terry/Matt pioneered with the transferflow deck, now moving toward collaborative AE/SE creative control. The final artifact remains a static HTML deck and merchant-safe PDF, while Studio v2 gives the team a real local app for module selection, preview, checks, and future editing controls.
 
 ## What It Does
 
-Gives you two ways to build a deck:
+Gives you three ways to work:
 
-- **For SEs (Claude Code users):** Drop the skill into `~/.claude/skills/`, then run `/demo-deck-builder [merchant]` in any Claude Code session. Claude reads the merchant's briefing/config/discovery notes, asks 3 clarifying questions, and generates a fully customized deck.
-- **For AEs (no Claude Code needed):** Download `template.html`, open in VS Code or any text editor, and follow the [customization guide](./skill/references/customization-guide.md). Each slide type has a copy-paste HTML snippet in the [slide patterns reference](./skill/references/slide-patterns.md).
+- **Natural-language generation:** Use the skill in Claude Code or Cursor to build a merchant deck from local context, Salesforce notes, meeting artifacts, and known deal signals.
+- **Local Studio v2:** Run the React/Vite Studio app from the SE Assistant repo to pick modules, preview the selected deck, inspect checks, and open the static deck locally.
+- **Manual HTML fallback:** Edit the generated `index.html` directly when needed. The static deck stays portable and can still be opened in Chrome without Studio.
 
 ## Why It's Different from AI HTML Decks
 
 [AI HTML Decks](../ai-html-decks/) (Terry/Matt/Brandon's workflow) is the general approach — prompt Claude, get HTML. **This tool removes the "where do I start" friction** by providing:
 
 - A pre-built scaffold with all CSS/JS (1,700+ lines, tuned over dozens of iterations)
-- 13 slide pattern types documented with copy-paste HTML
+- 21 registered slide patterns available as Studio modules
 - Animated Gemini + Sidekick chat mockups with timed message reveals
 - Visual effects baked in (mesh gradient backgrounds, floating particles, pulse rings on section headers, gradient text accents)
 - A Claude Code skill that fully automates the build for SEs
+- A Studio v2 foundation with `deck.config.json`, `deck.manifest.json`, a pattern registry, a local Node API, a React/Vite frontend, linting, and PDF export
 
-Think: **AI HTML Decks = prompt → result. Demo Deck Builder = skill → result + patterns library for iteration.**
+Think: **AI HTML Decks = prompt → result. Demo Deck Studio = skill → local app → selected static deck → PDF.**
 
 ## When to Use It
 
 - Pre-sales demo decks for any B2B / DTC / hybrid Shopify deal
 - Executive presentations where the merchant expects polish
-- Decks that will be hosted on a quick site and shared externally
+- Decks that will be presented as HTML but shared with merchants as PDF
 - Decks that need animated "wow" moments (Gemini simulations, Sidekick mockups)
 
 ## What You Get
@@ -69,8 +71,9 @@ Every generated deck includes:
 | **Three Anchors** | Outcomes summary with 3 cards |
 | **Pricing Tiers** | 3-column with featured middle tier + math callout |
 | **Closing** | Next-steps cards with staged reveal |
+| **Studio v2 checks** | Local module picker, selected deck preview, missing module checks, placeholders, assets, and print/PDF readiness |
 
-Navigation built in: keyboard arrows, space, click zones, swipe, bottom nav dots, progress bar, speaker tag (Zach/Dustin toggle per slide).
+Navigation built in: keyboard arrows, space, click zones, swipe, bottom nav dots, progress bar, speaker tag (AE/SE toggle per slide).
 
 ## Live Example
 
@@ -78,23 +81,71 @@ The [PDI demo deck](./examples/pdi-demo-deck.html) (152KB, 25 slides) is the ref
 
 ## How to Get Started
 
+### Fast install / update path
+
+No Field Guide folder required:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash
+```
+
+That command downloads the latest released skill from GitHub, copies it into
+`SE-Assistant/.claude/skills/demo-deck-builder`, refreshes Codex/Cursor/Pi
+symlinks when those folders exist, and installs the Studio app dependencies.
+If your SE Assistant folder is somewhere custom, pass the path:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash -s -- --se-assistant /path/to/SE-Assistant
+```
+
+If you already have the Field Guide repo locally:
+
+```bash
+cd /path/to/SE-Field-Guide
+git pull origin main
+bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant
+```
+
+If the Field Guide repo is already nested inside your local SE Assistant
+workspace, the script can usually auto-detect the workspace:
+
+```bash
+bash tools/demo-deck-builder/install.sh
+```
+
+### Local Studio v2 prerequisites
+
+- SE Assistant repo access
+- Node.js
+- pnpm
+- Chrome or Chromium for PDF export
+
+Run Studio v2 against a local deck:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333
+```
+
 ### For SEs (Claude Code users)
 
-1. Clone this repo or download the `skill/` folder from GitHub
-2. Copy the skill into your Claude Code setup:
+1. Run the installer:
    ```bash
-   cp -r tools/demo-deck-builder/skill ~/.claude/skills/demo-deck-builder
+   curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash
    ```
-3. Restart Claude Code (or the VS Code extension) so it picks up the new skill
-4. In any session, type `/demo-deck-builder [merchant name]` — Claude handles the rest
+2. Restart Claude Code (or the VS Code extension) so it picks up the updated skill
+3. In any session, type `/demo-deck-builder [merchant name]` — Claude builds the deck and can launch Studio for review
 
-### For AEs (no Claude Code needed)
+### For AEs / SEs editing locally
 
-1. Download `template.html` from this folder
-2. Open in VS Code, Cursor, or any text editor
-3. Read [`skill/references/customization-guide.md`](./skill/references/customization-guide.md) — it's written for humans
-4. Copy slide HTML from [`skill/references/slide-patterns.md`](./skill/references/slide-patterns.md) for whichever slides you need
-5. Edit content, save, open in Chrome to present
+1. Run the installer against your SE Assistant workspace
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash
+   ```
+2. Open the SE Assistant repo locally
+3. Run `studio-v2` against the merchant deck
+4. Choose slides, preview the selected deck, and open the static HTML deck for rehearsal or live demo
+5. Click **Publish** or run `publish` to create `exports/quick/index.html` for internal Quick upload
+6. Export PDF before sending anything externally to a merchant
 
 ## Reference Docs (Inside This Folder)
 
@@ -103,17 +154,31 @@ The [PDI demo deck](./examples/pdi-demo-deck.html) (152KB, 25 slides) is the ref
 - [`skill/references/visual-effects.md`](./skill/references/visual-effects.md) — Mesh bg, particles, pulse rings, gradient accents
 - [`skill/references/chat-animation.md`](./skill/references/chat-animation.md) — Gemini/Sidekick animated chat pattern
 - [`skill/references/customization-guide.md`](./skill/references/customization-guide.md) — 9-step adaptation workflow
+- [`skill/studio/STUDIO.md`](./skill/studio/STUDIO.md) — Studio v2 architecture, MVP scope, and share precedence
+- [`skill/studio/app/README.md`](./skill/studio/app/README.md) — React/Vite local app commands
 
-## Deploying to a Quick Site
+## Sharing / Exporting
 
-The skill outputs `merchants/[merchant]/index.html` so the file is ready to upload as the root of a quick site.
+The skill outputs `merchants/[merchant]/index.html` for live local presentation and internal review. Use this precedence:
 
-1. Go to [quick.shopify.io](https://quick.shopify.io)
-2. Create a new site (pick a short, memorable subdomain — e.g. `acme-demo`)
-3. Upload the `index.html` file from your merchant folder
-4. Share the link: `https://[subdomain].quick.shopify.io/`
+1. **Local Studio / Open Deck:** working review, rehearsal, and live demo control.
+2. **Quick site:** internal Shopify collaboration and demo sharing. Quick sites are internal and IAP-gated.
+3. **PDF export:** merchant-safe external follow-up, including approved post-demo fast-follow updates.
 
-If your deck references additional assets (embedded images beyond the logo, extra HTML files), upload those too. The default deck is self-contained so usually just the one file is needed.
+Useful commands:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs lint merchants/[merchant]/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs outline merchants/[merchant]/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs init-manifest merchants/[merchant]/index.html --force
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio merchants/[merchant]/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs render-html merchants/[merchant]/index.html merchants/[merchant]/exports/[merchant]-selected-deck.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/[merchant]/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant]/index.html merchants/[merchant]/exports/[merchant]-demo-deck.pdf
+```
+
+Quick sites are useful for internal Shopify review, but they are not the default merchant-share artifact. Password-protected GitHub Pages is now a legacy exception path, not the default.
 
 ## Tips
 
@@ -122,7 +187,9 @@ If your deck references additional assets (embedded images beyond the logo, extr
 - **Only include Sales Rep slide if they have sales reps** — otherwise it's a hallucination from other templates
 - **Max 3 section headers per deck** — pulse rings lose impact if overused
 - **Default palette is healthcare teal** — swap in the `:root` CSS variables for different industries (recipes in the customization guide)
-- **File stays under 300KB** — safe for quick-site upload even with embedded logo
+- **Run the linter before sharing** — catches placeholders, missing speakers, external assets, and PDF-readiness gaps
+- **Use Fast Follow after the call** — review notes, propose deck updates, approve the addendum, then export a merchant-safe PDF
+- **Share PDF with merchants** — keep HTML and quick sites as working, presenter, and internal collaboration artifacts
 
 ## Credits
 

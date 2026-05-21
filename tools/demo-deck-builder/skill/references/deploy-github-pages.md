@@ -1,4 +1,9 @@
-# Deploy Deck to Password-Protected GitHub Pages
+# Legacy: Deploy Deck to Password-Protected GitHub Pages
+
+> **Deprecated default:** Do not use this as the standard merchant share path.
+> Demo Deck Studio now defaults to exporting a merchant-safe PDF. Use this
+> GitHub Pages protocol only when the user explicitly asks for it and confirms
+> the account has approved hosted HTML/source distribution.
 
 A merchant-safe share path: encrypted HTML behind a password, hosted on GitHub Pages, reachable via a public URL.
 
@@ -6,7 +11,7 @@ A merchant-safe share path: encrypted HTML behind a password, hosted on GitHub P
 - Quick sites at `*.quick.shopify.io` are IAP-gated — Shopify employees only. Merchants can't open them.
 - Emailing a raw HTML file feels amateur and some email filters strip it.
 - Public GitHub exposes merchant-specific content in search results.
-- Encrypted GitHub Pages solves all three: clean URL, private content, no Shopify-auth dependency.
+- Encrypted GitHub Pages solves all three technically, but it still creates governance questions because the browser eventually receives the deck HTML after unlock.
 
 **How it works:**
 1. `staticrypt` encrypts the deck's HTML with AES-256 using a user-chosen password.
@@ -14,7 +19,7 @@ A merchant-safe share path: encrypted HTML behind a password, hosted on GitHub P
 3. GitHub Pages serves it at `https://[user].github.io/[repo]/`.
 4. Merchant loads the URL → sees password prompt → enters password → content decrypts in the browser.
 
-The content is cryptographically unreadable in source until the password is entered. Password + URL must both leak for the content to be exposed.
+The content is cryptographically unreadable in source until the password is entered. After unlock, the browser receives the HTML. Treat this as an approved exception path, not the default.
 
 ---
 

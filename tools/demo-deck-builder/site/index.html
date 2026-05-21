@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Demo Deck Builder — Shopify SE Tooling</title>
+<title>Demo Deck Studio — Shopify AE/SE Tooling</title>
 <style>
   :root {
     --bg: #0a1420;
@@ -126,21 +126,22 @@
     font-size: 0.95rem;
   }
   .nav-brand-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-bright));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--bg);
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+  }
+  .brand-logo-mark {
+    display: block;
+    height: 100%;
+    width: 100%;
   }
   .nav-links {
     display: flex;
     gap: 1.5rem;
     font-size: 0.85rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 0.5rem;
   }
   .nav-links a {
     color: var(--text-dim);
@@ -148,6 +149,17 @@
     transition: color 0.2s;
   }
   .nav-links a:hover { color: var(--accent-bright); }
+  @media (max-width: 760px) {
+    nav { padding: 0.9rem 1.25rem; }
+    .nav-inner {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .nav-links {
+      gap: 1rem;
+      justify-content: flex-start;
+    }
+  }
 
   /* === HERO === */
   .hero {
@@ -157,6 +169,37 @@
     justify-content: center;
     padding: 3.5rem 0 2.5rem;
     position: relative;
+  }
+
+  .hero-logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.35rem;
+    animation: fade-up 0.75s ease-out both;
+  }
+  .hero-logo-lockup .brand-logo-mark {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 auto;
+    filter: drop-shadow(0 16px 34px rgba(20, 160, 152, 0.22));
+  }
+  .hero-logo-copy {
+    display: grid;
+    gap: 0.12rem;
+  }
+  .hero-logo-copy span {
+    color: var(--text);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .hero-logo-copy strong {
+    color: var(--text-faint);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .hero-eyebrow {
@@ -343,6 +386,9 @@
     min-width: 0;
   }
   .install-card:hover { border-color: var(--accent-border); }
+  .install-card-wide {
+    grid-column: 1 / -1;
+  }
 
   .install-card-header {
     display: flex;
@@ -353,15 +399,33 @@
     border-bottom: 1px solid var(--border);
   }
   .install-card-icon {
-    width: 38px; height: 38px;
-    border-radius: 9px;
+    width: 44px; height: 44px;
+    border-radius: 11px;
     background: var(--accent-dim);
     border: 1px solid var(--accent-border);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
     flex-shrink: 0;
+    color: var(--text);
+    overflow: hidden;
+  }
+  .install-card-icon svg {
+    width: 28px;
+    height: 28px;
+    display: block;
+  }
+  .install-card-icon.claude-logo {
+    background: rgba(217, 119, 87, 0.12);
+    border-color: rgba(217, 119, 87, 0.38);
+    color: #f2d6c5;
+  }
+  .install-card-icon.cursor-logo {
+    background:
+      radial-gradient(circle at 70% 30%, rgba(255,255,255,0.16), transparent 38%),
+      #101820;
+    border-color: rgba(230, 237, 243, 0.22);
+    color: #f5f7fa;
   }
   .install-card-title {
     font-size: 1.05rem;
@@ -417,12 +481,18 @@
     flex: 1;
     min-width: 0;
     color: var(--accent-bright);
-    white-space: nowrap;
+    white-space: pre;
     overflow-x: auto;
     display: block;
   }
   .code-block code::-webkit-scrollbar { height: 4px; }
   .code-block code::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .install-note {
+    color: var(--text-faint);
+    font-size: 0.74rem;
+    line-height: 1.45;
+    margin-top: 0.45rem;
+  }
   .copy-btn {
     background: transparent;
     border: 1px solid var(--border);
@@ -502,6 +572,310 @@
     font-size: 0.8rem;
     color: var(--text-dim);
     line-height: 1.5;
+  }
+
+  .studio-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .studio-grid { grid-template-columns: 1fr; } }
+
+  .studio-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.4rem;
+  }
+  .studio-panel-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .studio-panel-desc {
+    color: var(--text-dim);
+    font-size: 0.86rem;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+  .status-list {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .status-row {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.7rem 0.8rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.82rem;
+  }
+  .status-pill {
+    width: fit-content;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-pill.live {
+    color: var(--accent-bright);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+  }
+  .status-pill.next {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+  }
+  .status-text strong {
+    display: block;
+    color: var(--text);
+    margin-bottom: 0.12rem;
+  }
+  .status-text span { color: var(--text-dim); }
+
+  .workflow-steps {
+    counter-reset: workflow;
+    display: grid;
+    gap: 0.7rem;
+  }
+  .workflow-step {
+    counter-increment: workflow;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .workflow-step::before {
+    content: counter(workflow, decimal-leading-zero);
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--accent-dim);
+    color: var(--accent-bright);
+    border: 1px solid var(--accent-border);
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .workflow-step-title {
+    font-weight: 650;
+    font-size: 0.92rem;
+    margin-bottom: 0.15rem;
+  }
+  .workflow-step-desc {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .prompt-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+  }
+  @media (max-width: 760px) { .prompt-grid { grid-template-columns: 1fr; } }
+  .prompt-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  .prompt-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.45rem;
+  }
+  .prompt-card code {
+    display: block;
+    color: var(--accent-bright);
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  .studio-preview-shell {
+    margin-top: 1.25rem;
+    background: #08111d;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+  }
+  .studio-preview-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(15, 26, 40, 0.9);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .studio-preview-title {
+    color: var(--text);
+    font-weight: 700;
+  }
+  .studio-preview-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: flex-end;
+  }
+  .studio-preview-badge {
+    border: 1px solid var(--accent-border);
+    border-radius: 999px;
+    color: var(--accent-bright);
+    background: var(--accent-dim);
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.18rem 0.5rem;
+    text-transform: uppercase;
+  }
+  .studio-preview-layout {
+    display: grid;
+    grid-template-columns: 265px minmax(0, 1fr);
+    min-height: 360px;
+  }
+  @media (max-width: 980px) {
+    .studio-preview-layout { grid-template-columns: 1fr; }
+  }
+  .studio-preview-rail,
+  .studio-preview-main,
+  .studio-preview-side {
+    min-width: 0;
+    padding: 1rem;
+  }
+  .studio-preview-rail,
+  .studio-preview-side {
+    background: rgba(15, 26, 40, 0.55);
+  }
+  .studio-preview-rail { border-right: 1px solid var(--border); }
+  @media (max-width: 980px) {
+    .studio-preview-rail,
+    .studio-preview-side {
+      border-left: 0;
+      border-right: 0;
+      border-top: 1px solid var(--border);
+    }
+  }
+  .studio-preview-heading {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    margin-bottom: 0.7rem;
+  }
+  .studio-preview-checks {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .studio-preview-check {
+    display: grid;
+    grid-template-columns: 8px 1fr;
+    gap: 0.6rem;
+    align-items: start;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+  .studio-preview-check::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    margin-top: 0.35rem;
+    border-radius: 50%;
+    background: var(--accent-bright);
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .studio-preview-canvas {
+    aspect-ratio: 16 / 9;
+    min-height: 230px;
+    border-radius: 10px;
+    border: 1px solid var(--accent-border);
+    background:
+      radial-gradient(circle at 25% 25%, rgba(28, 199, 189, 0.22), transparent 35%),
+      linear-gradient(135deg, #0f1a28, #14202e 52%, #08111d);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .studio-preview-slide-kicker {
+    color: var(--accent-bright);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .studio-preview-slide-title {
+    max-width: 520px;
+    color: var(--text);
+    font-size: clamp(1.3rem, 2.8vw, 2.4rem);
+    font-weight: 750;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .studio-preview-slide-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+  .studio-preview-slide-meta span {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    background: rgba(8, 17, 29, 0.68);
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    padding: 0.55rem;
+  }
+  .studio-preview-outline {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.85rem;
+  }
+  .studio-preview-outline span {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: rgba(20, 32, 46, 0.72);
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    padding: 0.48rem 0.55rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .studio-preview-outline span:first-child {
+    color: var(--accent-bright);
+    border-color: var(--accent-border);
+  }
+  .studio-preview-module-status {
+    float: right;
+    color: var(--accent-bright);
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.62rem;
+    font-style: normal;
   }
 
   /* === EXAMPLE CTA === */
@@ -731,6 +1105,11 @@
     display: block;
   }
   .footer-col a:hover { color: var(--accent-bright); }
+  .footer-note {
+    margin-top: 0.8rem;
+    font-size: 0.8rem;
+    color: var(--text-faint);
+  }
 
   .footer-credits {
     grid-column: 1 / -1;
@@ -754,15 +1133,33 @@
 <nav>
   <div class="nav-inner">
     <div class="nav-brand">
-      <div class="nav-brand-icon">D</div>
-      Demo Deck Builder
+      <div class="nav-brand-icon" aria-hidden="true">
+        <svg class="brand-logo-mark" viewBox="0 0 64 64" role="img">
+          <defs>
+            <linearGradient id="dds-nav-gradient" x1="8" x2="56" y1="8" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#1cc7bd"/>
+              <stop offset="0.62" stop-color="#18a99e"/>
+              <stop offset="1" stop-color="#f2b84b"/>
+            </linearGradient>
+          </defs>
+          <rect x="17" y="8" width="34" height="42" rx="8" fill="#12202a" stroke="#2c3946" stroke-width="2"/>
+          <rect x="10" y="14" width="38" height="42" rx="9" fill="#0b1117" stroke="url(#dds-nav-gradient)" stroke-width="2.5"/>
+          <path d="M23 25h9.5c6.6 0 11.5 4.8 11.5 10.8S39.1 46 32.5 46H23V25Z" fill="none" stroke="#eef4f5" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+          <path d="M30 32v7h3.1c2.3 0 4-1.4 4-3.5s-1.7-3.5-4-3.5H30Z" fill="#1cc7bd"/>
+          <circle cx="49" cy="18" r="4.2" fill="#f2b84b"/>
+          <circle cx="49" cy="18" r="8.5" fill="none" stroke="#f2b84b" stroke-opacity="0.26" stroke-width="2"/>
+        </svg>
+      </div>
+      Demo Deck Studio
     </div>
     <div class="nav-links">
+      <a href="#workflow">Workflow</a>
+      <a href="#studio">Studio</a>
       <a href="#install">Install</a>
+      <a href="#share">Share</a>
       <a href="#showcase">Showcase</a>
-      <a href="#whats-inside">What's Inside</a>
-      <a href="#example">Example</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/tree/main/tools/demo-deck-builder" target="_blank">GitHub</a>
+      <a href="#whats-inside">Inside</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/tree/main/tools/demo-deck-builder" target="_blank">GitHub</a>
     </div>
   </div>
 </nav>
@@ -771,32 +1168,194 @@
 
   <!-- HERO -->
   <section class="hero">
-    <div class="hero-eyebrow">Claude Code Skill · B2B AI Catalog</div>
-    <h1>Ship polished demo decks in <span class="accent">minutes</span>, not hours.</h1>
+    <div class="hero-logo-lockup">
+      <svg class="brand-logo-mark" viewBox="0 0 64 64" role="img" aria-label="Demo Deck Studio logo">
+        <defs>
+          <linearGradient id="dds-hero-gradient" x1="8" x2="56" y1="8" y2="56" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#1cc7bd"/>
+            <stop offset="0.62" stop-color="#18a99e"/>
+            <stop offset="1" stop-color="#f2b84b"/>
+          </linearGradient>
+        </defs>
+        <rect x="17" y="8" width="34" height="42" rx="8" fill="#12202a" stroke="#2c3946" stroke-width="2"/>
+        <rect x="10" y="14" width="38" height="42" rx="9" fill="#0b1117" stroke="url(#dds-hero-gradient)" stroke-width="2.5"/>
+        <path d="M23 25h9.5c6.6 0 11.5 4.8 11.5 10.8S39.1 46 32.5 46H23V25Z" fill="none" stroke="#eef4f5" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+        <path d="M30 32v7h3.1c2.3 0 4-1.4 4-3.5s-1.7-3.5-4-3.5H30Z" fill="#1cc7bd"/>
+        <circle cx="49" cy="18" r="4.2" fill="#f2b84b"/>
+        <circle cx="49" cy="18" r="8.5" fill="none" stroke="#f2b84b" stroke-opacity="0.26" stroke-width="2"/>
+      </svg>
+      <div class="hero-logo-copy">
+        <span>Demo Deck Studio</span>
+        <strong>Manifest-backed deck customizer</strong>
+      </div>
+    </div>
+    <div class="hero-eyebrow">Studio v2 local app · manifest-backed deck customizer</div>
+    <h1>Demo decks now have a <span class="accent">local Studio workflow</span>.</h1>
     <p class="hero-lede">
-      A turnkey skill + HTML scaffold for building <strong>Shopify × Merchant</strong> demo decks in the transferflow style.
-      Dark UI. Animated Gemini and Sidekick mockups. 13 slide patterns. Works with or without Claude Code.
+      Demo Deck Studio keeps the natural-language flow sellers already use, then adds a real local app layer:
+      manifest-backed slide selection, slide text autosave, live deck preview, reusable slide options, merchant brand palettes, Quick-ready publishing, and static HTML/PDF output as the portable artifact.
     </p>
     <div class="hero-ctas">
-      <a href="#install" class="btn btn-primary">Get started →</a>
-      <a href="https://dustinfloer.github.io/b2b-ai-catalog/slide-decks/" target="_blank" class="btn btn-secondary">See example decks</a>
+      <a href="#workflow" class="btn btn-primary">See the workflow →</a>
+      <a href="#install" class="btn btn-secondary">Run Studio v2</a>
     </div>
     <div class="hero-meta">
       <div class="hero-meta-item">
-        <div class="hero-meta-value">14</div>
-        <div class="hero-meta-label">Slide patterns</div>
+        <div class="hero-meta-value">Natural</div>
+        <div class="hero-meta-label">Language front door</div>
       </div>
       <div class="hero-meta-item">
-        <div class="hero-meta-value">1,700+</div>
-        <div class="hero-meta-label">Lines of tuned CSS/JS</div>
+        <div class="hero-meta-value">Manifest</div>
+        <div class="hero-meta-label">Source of truth</div>
       </div>
       <div class="hero-meta-item">
-        <div class="hero-meta-value">2 paths</div>
-        <div class="hero-meta-label">Claude Code or plain HTML</div>
+        <div class="hero-meta-value">Autosave</div>
+        <div class="hero-meta-label">Cover editing live</div>
       </div>
       <div class="hero-meta-item">
-        <div class="hero-meta-value">&lt;300KB</div>
-        <div class="hero-meta-label">Quick-site ready</div>
+        <div class="hero-meta-value">PDF</div>
+        <div class="hero-meta-label">Merchant-safe export</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORKFLOW -->
+  <section class="block" id="workflow">
+    <div class="section-label">Workflow</div>
+    <h2 class="section-title">Keep the prompt. Add the <span class="accent">control surface.</span></h2>
+    <p class="section-lede">
+      The seller experience stays simple: ask for a deck, review the plan, tune the story, preview locally, and export safely. Studio is the local workspace that makes the choices visible.
+    </p>
+
+    <div class="studio-grid">
+      <div class="studio-panel">
+        <div class="studio-panel-title">From first prompt to merchant follow-up</div>
+        <div class="workflow-steps">
+          <div class="workflow-step">
+            <div>
+              <div class="workflow-step-title">Start in natural language</div>
+              <div class="workflow-step-desc">Ask for a deck by merchant name. The skill finds local context, Salesforce notes, meeting artifacts, and known deal signals.</div>
+            </div>
+          </div>
+          <div class="workflow-step">
+            <div>
+              <div class="workflow-step-title">Plan the deck before polish</div>
+              <div class="workflow-step-desc">Studio classifies the deal, reads the deck manifest, and turns the plan into stable slide choices with in-deck, hidden, and addable states.</div>
+            </div>
+          </div>
+          <div class="workflow-step">
+            <div>
+              <div class="workflow-step-title">Choose slides, edit copy, and preview live</div>
+              <div class="workflow-step-desc">SEs and AEs can add registered slide options, remove slides that do not fit, edit supported fields, and preview the deck without touching raw HTML.</div>
+            </div>
+          </div>
+          <div class="workflow-step">
+            <div>
+              <div class="workflow-step-title">Share with the right artifact</div>
+              <div class="workflow-step-desc">Preview locally, publish a Quick-ready folder for internal/demo collaboration, and export PDF for merchant-safe follow-up.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="studio-panel">
+        <div class="studio-panel-title">Natural-language commands</div>
+        <p class="studio-panel-desc">The CLI exists underneath, but AE/SE users should not need to remember command syntax for normal work.</p>
+        <div class="prompt-grid">
+          <div class="prompt-card">
+            <div class="prompt-label">Build</div>
+            <code>Build me a deck for LT Apparel.</code>
+          </div>
+          <div class="prompt-card">
+            <div class="prompt-label">Review</div>
+            <code>Open the Studio view and show me what is missing.</code>
+          </div>
+          <div class="prompt-card">
+            <div class="prompt-label">Brand</div>
+            <code>Grab the company logo and add it to the deck.</code>
+          </div>
+          <div class="prompt-card">
+            <div class="prompt-label">Fast follow</div>
+            <code>Just finished the demo. Review notes and update the deck to send.</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STUDIO STATE -->
+  <section class="block" id="studio">
+    <div class="section-label">Studio</div>
+    <h2 class="section-title">Studio v2 is live locally, <span class="accent">with the first edit controls in place.</span></h2>
+    <p class="section-lede">
+      Studio v2 is now a React/Vite local app served by the skill. The Node backend owns deck files, prompts, rendering, publish, and export paths; the client is the AE/SE control surface.
+    </p>
+
+    <div class="studio-grid">
+      <div class="studio-panel">
+        <div class="studio-panel-title">Live today</div>
+        <div class="status-list">
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>React/Vite Studio v2</strong><span>Runs locally with a Node API that reads and updates <code>deck.manifest.json</code>.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Deck customizer layout</strong><span>Slide order, slide library, preview, and inspector live in one focused workspace.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Slide library</strong><span>Registered slide options appear as in-deck, hidden, addable, or post-demo moments.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Slide text autosave</strong><span>Edit supported text fields and see the deck preview refresh from manifest state after a short pause.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Palette library</strong><span>Use the current merchant brand palette or approved reusable color pairs.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Deck preview</strong><span>Preview the rendered deck while preserving the static HTML output path.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Checks and linting</strong><span>Strategy coverage, missing slide options, placeholders, assets, and PDF readiness remain visible.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Preview / Publish / PDF path</strong><span>The final artifact is still static HTML locally, Quick-ready HTML internally, and merchant-safe PDF externally.</span></div></div>
+        </div>
+      </div>
+
+      <div class="studio-panel">
+        <div class="studio-panel-title">MVP backlog</div>
+        <div class="status-list">
+          <div class="status-row"><span class="status-pill next">Next</span><div class="status-text"><strong>More content editors</strong><span>Expand typed fields across the remaining advanced slide patterns.</span></div></div>
+          <div class="status-row"><span class="status-pill next">Next</span><div class="status-text"><strong>Design libraries</strong><span>Choose approved color, font, logo, density, and animation presets.</span></div></div>
+          <div class="status-row"><span class="status-pill next">Next</span><div class="status-text"><strong>PDF automation</strong><span>Bring merchant-safe PDF export into the app UI alongside the current publish action.</span></div></div>
+          <div class="status-row"><span class="status-pill next">Next</span><div class="status-text"><strong>Post-demo fast follow</strong><span>Use call notes to propose updates after the demo, then approve before export.</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="studio-preview-shell" aria-label="Demo Deck Studio v2 local app preview">
+      <div class="studio-preview-topbar">
+        <div><span class="studio-preview-title">Demo Deck Studio v2</span> · merchants/lt-apparel/index.html</div>
+        <div class="studio-preview-badges">
+          <span class="studio-preview-badge">Manifest</span>
+          <span class="studio-preview-badge">Autosave</span>
+          <span class="studio-preview-badge">Quick-ready HTML</span>
+          <span class="studio-preview-badge">PDF path</span>
+        </div>
+      </div>
+      <div class="studio-preview-layout">
+        <div class="studio-preview-rail">
+          <div class="studio-preview-heading">Checks</div>
+          <div class="studio-preview-checks">
+            <div class="studio-preview-check">Deck preview rendering</div>
+            <div class="studio-preview-check">Hidden slides tracked in manifest</div>
+            <div class="studio-preview-check">Missing recommended slide options visible</div>
+            <div class="studio-preview-check">Static HTML/PDF path preserved</div>
+          </div>
+          <div class="studio-preview-heading" style="margin-top: 1.1rem;">Slide library</div>
+          <div class="studio-preview-outline">
+            <span>Agentic Commerce <em class="studio-preview-module-status">IN</em></span>
+            <span>ChatGPT x Claude <em class="studio-preview-module-status">IN</em></span>
+            <span>Interactive Storefront <em class="studio-preview-module-status">HIDE</em></span>
+            <span>Fast Follow <em class="studio-preview-module-status">POST</em></span>
+          </div>
+        </div>
+        <div class="studio-preview-main">
+          <div class="studio-preview-heading">Deck preview</div>
+          <div class="studio-preview-canvas">
+            <div class="studio-preview-slide-kicker">ChatGPT x Claude management</div>
+            <div class="studio-preview-slide-title">Two AI workspaces writing back to the same Shopify admin.</div>
+            <div class="studio-preview-slide-meta">
+              <span>Stable slide ID</span>
+              <span>Preview target</span>
+              <span>Add/remove ready</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -804,69 +1363,134 @@
   <!-- INSTALL -->
   <section class="block" id="install">
     <div class="section-label">Install</div>
-    <h2 class="section-title">Drop the skill into your IDE, <span class="accent">start building.</span></h2>
+    <h2 class="section-title">Run one installer, then launch <span class="accent">Studio locally.</span></h2>
     <p class="section-lede">
-      Works for anyone on the SE or AE team using Claude Code or Cursor. Clone once, copy the skill, invoke by name — the AI reads your merchant context and builds the deck.
+      Demo Deck Studio runs on your machine from the SE Assistant repo. You do not need a local Field Guide folder; the installer can pull the latest released skill from GitHub, copy it into your SE Assistant workspace, and install the Studio app.
     </p>
 
     <div class="install-grid">
-
-      <!-- CLAUDE CODE -->
-      <div class="install-card">
+      <div class="install-card install-card-wide">
         <div class="install-card-header">
-          <div class="install-card-icon">🤖</div>
+          <div class="install-card-icon">S</div>
           <div>
-            <div class="install-card-title">Claude Code</div>
-            <div class="install-card-sub">SEs + AEs · ~60 seconds</div>
+          <div class="install-card-title">Local Studio v2</div>
+          <div class="install-card-sub">React/Vite frontend + local Node API</div>
           </div>
         </div>
 
         <div class="install-step">
-          <div class="install-step-label"><span class="install-step-num">1</span>Download the skill (one command, ~30 KB)</div>
+          <div class="install-step-label"><span class="install-step-num">1</span>Install or update the skill</div>
           <div class="code-block">
-            <code id="cmd-1">mkdir -p ~/.claude/skills/demo-deck-builder &amp;&amp; curl -sL https://github.com/dustinfloer/b2b-ai-catalog/archive/main.tar.gz | tar -xz --strip-components=4 -C ~/.claude/skills/demo-deck-builder b2b-ai-catalog-main/tools/demo-deck-builder/skill</code>
+            <code id="cmd-local-1">curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash</code>
+            <button class="copy-btn" data-target="cmd-local-1">Copy</button>
+          </div>
+          <div class="install-note">Use this if you do not have the Field Guide repo, or if you just want the simplest update path. If your SE Assistant folder is somewhere custom, the installer will tell you how to pass the path.</div>
+          <div class="code-block" style="margin-top: 0.65rem;">
+            <code id="cmd-local-1b">cd /path/to/SE-Field-Guide
+git pull origin main
+bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</code>
+            <button class="copy-btn" data-target="cmd-local-1b">Copy</button>
+          </div>
+          <div class="install-note">If you already have the Field Guide repo locally, this path keeps your local clone current before installing.</div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-label"><span class="install-step-num">2</span>Run Studio v2 from the SE Assistant repo</div>
+          <div class="code-block">
+            <code id="cmd-local-2">node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333</code>
+            <button class="copy-btn" data-target="cmd-local-2">Copy</button>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-label"><span class="install-step-num">3</span>Publish or export when the deck is ready</div>
+          <div class="code-block">
+            <code id="cmd-local-3">node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/[merchant]/index.html</code>
+            <button class="copy-btn" data-target="cmd-local-3">Copy</button>
+          </div>
+          <div class="code-block" style="margin-top: 0.65rem;">
+            <code id="cmd-local-4">node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant]/index.html</code>
+            <button class="copy-btn" data-target="cmd-local-4">Copy</button>
+          </div>
+        </div>
+
+        <div class="install-final">Keep the terminal running, then open http://127.0.0.1:7332/ to choose slides, edit supported fields, Preview Deck locally, publish a Quick-ready folder, or export PDF. If the browser says 127.0.0.1 refused to connect, restart the Studio command.</div>
+      </div>
+
+      <!-- CLAUDE CODE -->
+      <div class="install-card">
+        <div class="install-card-header">
+          <div class="install-card-icon claude-logo" aria-hidden="true">
+            <svg viewBox="-50 -50 100 100" focusable="false">
+              <g fill="currentColor">
+                <polygon points="0,-46 10,0 0,4 -10,0"/>
+                <polygon points="0,-46 10,0 0,4 -10,0" transform="rotate(90)"/>
+                <polygon points="0,-46 10,0 0,4 -10,0" transform="rotate(180)"/>
+                <polygon points="0,-46 10,0 0,4 -10,0" transform="rotate(270)"/>
+                <polygon points="0,-30 7,0 0,3 -7,0" transform="rotate(45)"/>
+                <polygon points="0,-30 7,0 0,3 -7,0" transform="rotate(135)"/>
+                <polygon points="0,-30 7,0 0,3 -7,0" transform="rotate(225)"/>
+                <polygon points="0,-30 7,0 0,3 -7,0" transform="rotate(315)"/>
+              </g>
+            </svg>
+          </div>
+          <div>
+          <div class="install-card-title">Claude Code</div>
+          <div class="install-card-sub">Natural-language deck generation</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-label"><span class="install-step-num">1</span>Install or update the skill</div>
+          <div class="code-block">
+            <code id="cmd-1">curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash</code>
             <button class="copy-btn" data-target="cmd-1">Copy</button>
           </div>
         </div>
 
         <div class="install-step">
-          <div class="install-step-label"><span class="install-step-num">2</span>Restart Claude Code, then run</div>
+          <div class="install-step-label"><span class="install-step-num">2</span>Restart Claude Code, then ask naturally</div>
           <div class="code-block">
-            <code id="cmd-3">/demo-deck-builder [merchant-name]</code>
+            <code id="cmd-3">Build me a deck for [merchant-name]</code>
             <button class="copy-btn" data-target="cmd-3">Copy</button>
           </div>
         </div>
 
-        <div class="install-final">Claude reads your merchant folder, asks 3 questions, builds the full deck.</div>
+        <div class="install-final">The installer copies the skill into your SE Assistant workspace. Restart Claude Code so it picks up the updated skill.</div>
       </div>
 
       <!-- CURSOR -->
       <div class="install-card">
         <div class="install-card-header">
-          <div class="install-card-icon">🖱️</div>
+          <div class="install-card-icon cursor-logo" aria-hidden="true">
+            <svg viewBox="0 0 64 64" focusable="false">
+              <path fill="currentColor" d="M12 7 51 30.2l-16.6 4.2L47 52.8l-8.9 5.9-12.7-18.8L14.2 52 12 7Z"/>
+              <path fill="#101820" d="M18.4 17.2 19.7 40l5.9-6.3 13 19.2 2.9-1.9-12.8-18.8 10.4-2.6-20.7-12.4Z"/>
+            </svg>
+          </div>
           <div>
-            <div class="install-card-title">Cursor</div>
-            <div class="install-card-sub">SEs + AEs · ~60 seconds</div>
+          <div class="install-card-title">Cursor</div>
+          <div class="install-card-sub">Same skill files, same local app path</div>
           </div>
         </div>
 
         <div class="install-step">
-          <div class="install-step-label"><span class="install-step-num">1</span>Download the skill (one command, ~30 KB)</div>
+          <div class="install-step-label"><span class="install-step-num">1</span>Install or update the skill</div>
           <div class="code-block">
-            <code id="cmd-c1">mkdir -p ~/.cursor/rules/demo-deck-builder &amp;&amp; curl -sL https://github.com/dustinfloer/b2b-ai-catalog/archive/main.tar.gz | tar -xz --strip-components=4 -C ~/.cursor/rules/demo-deck-builder b2b-ai-catalog-main/tools/demo-deck-builder/skill</code>
+            <code id="cmd-c1">curl -fsSL https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh | bash</code>
             <button class="copy-btn" data-target="cmd-c1">Copy</button>
           </div>
         </div>
 
         <div class="install-step">
-          <div class="install-step-label"><span class="install-step-num">2</span>In Cursor chat, invoke it</div>
+          <div class="install-step-label"><span class="install-step-num">2</span>In Cursor chat, ask naturally</div>
           <div class="code-block">
             <code id="cmd-c3">@demo-deck-builder build a deck for [merchant]</code>
             <button class="copy-btn" data-target="cmd-c3">Copy</button>
           </div>
         </div>
 
-        <div class="install-final">Cursor reads the skill, follows the same 7-step workflow as Claude Code.</div>
+        <div class="install-final">The installer refreshes the Cursor skill symlink when your SE Assistant workspace has a .cursor/skills folder.</div>
       </div>
 
     </div>
@@ -874,10 +1498,36 @@
     <!-- PROMPTING TIP -->
     <div class="example-card" style="margin-top: 2.5rem;">
       <div>
-        <div class="example-title">💡 New to prompting AI for slide decks?</div>
-        <div class="example-desc">Matt Ward's <strong>Slide Deck Exploration</strong> walks through the techniques the team has used to get great results from Claude and Cursor — worth 10 minutes before your first deck.</div>
+        <div class="example-title">Natural language is the front door</div>
+        <div class="example-desc">You can still use slash commands, but the intended workflow is conversational: build the deck, open Studio, choose slides, tune branding, export the PDF, and create a fast follow after the call.</div>
       </div>
-      <a href="https://slide-deck-exploration.quick.shopify.io/" target="_blank" class="btn btn-primary">Read Matt's deck →</a>
+      <a href="#workflow" class="btn btn-primary">Review the flow →</a>
+    </div>
+  </section>
+
+  <!-- SHARE / EXPORT -->
+  <section class="block" id="share">
+    <div class="section-label">Share / export</div>
+    <h2 class="section-title">Use the right artifact for the <span class="accent">right audience.</span></h2>
+    <p class="section-lede">
+      Studio does not replace the static deck. It gives SEs and AEs a safer way to shape it before sharing.
+    </p>
+    <div class="feature-grid" style="margin-bottom: 1rem;">
+      <div class="feature-tile">
+        <div class="feature-tile-icon">01</div>
+        <div class="feature-tile-title">Preview Deck</div>
+        <div class="feature-tile-desc">Best for working review, rehearsal, and live demo control. This is the fastest way to iterate with the SE/AE team before publishing.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">02</div>
+        <div class="feature-tile-title">Quick-ready publish</div>
+        <div class="feature-tile-desc">Publishes the selected Studio deck to <code>exports/quick/index.html</code> for internal Shopify collaboration and demo sharing.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">03</div>
+        <div class="feature-tile-title">PDF export</div>
+        <div class="feature-tile-desc">Best for merchant-safe external follow-up, including approved post-demo updates from call notes.</div>
+      </div>
     </div>
   </section>
 
@@ -886,12 +1536,12 @@
     <div class="section-label">See it in action</div>
     <h2 class="section-title">Browse decks the team has already <span class="accent">shipped.</span></h2>
     <p class="section-lede">
-      The catalog has a growing collection of real demo decks built by B2B SEs — PDI Healthcare, TransferFlow, and more. Great inspiration before you start your own.
+      The catalog has reference decks and reusable patterns built by B2B SEs. Use these as inspiration, but Studio is moving the process away from static examples and toward guided composition. Merchant-facing delivery stays PDF-first.
     </p>
     <div class="example-card">
       <div>
         <div class="example-title">Example decks in the catalog</div>
-        <div class="example-desc">Real decks, real merchants, real wins — all built with variations of this scaffold.</div>
+        <div class="example-desc">Reference builds and reusable slide patterns that show how the system adapts across merchant stories.</div>
       </div>
       <a href="https://dustinfloer.github.io/b2b-ai-catalog/slide-decks/" target="_blank" class="btn btn-primary">Browse the catalog →</a>
     </div>
@@ -899,10 +1549,10 @@
 
   <!-- SHOWCASE: live sims -->
   <section class="block" id="showcase">
-    <div class="section-label">Live scaffolding</div>
+    <div class="section-label">Live slide moments</div>
     <h2 class="section-title">See the patterns <span class="accent">in motion.</span></h2>
     <p class="section-lede">
-      Drop-in animated slides that ship with the skill. Each one is a self-contained HTML block — paste into a deck, customize 3–5 markers, ship.
+      Drop-in animated slides that ship with the skill. Add them from Studio, customize the merchant details, then preview the final deck locally.
     </p>
 
     <!-- HERO sim: ChatGPT × Claude management
@@ -969,7 +1619,7 @@
     </div>
 
     <div class="showcase-hint">
-      <span>📚</span>
+      <span>Lib</span>
       <span>Plus 12 more in the catalog — NetSuite, SAP, Oracle, ERP, API rate limits, payouts. Browse <code>simulation-library.md</code> in the skill, or <a href="https://simulations.quick.shopify.io/" target="_blank" style="color:var(--accent-bright);text-decoration:underline;">simulations.quick.shopify.io</a>.</span>
     </div>
   </section>
@@ -977,68 +1627,78 @@
   <!-- WHAT'S INSIDE -->
   <section class="block" id="whats-inside">
     <div class="section-label">What's inside</div>
-    <h2 class="section-title">Everything you need, <span class="accent">already built.</span></h2>
+    <h2 class="section-title">A deck generator plus a real <span class="accent">Studio workspace.</span></h2>
 
     <div class="feature-grid" style="margin-bottom: 3rem;">
       <div class="feature-tile">
-        <div class="feature-tile-icon">🎨</div>
-        <div class="feature-tile-title">Pre-built visual system</div>
-        <div class="feature-tile-desc">Mesh gradient backgrounds, floating particles, pulse rings, gradient text accents — all tuned, all reusable.</div>
+        <div class="feature-tile-icon">01</div>
+        <div class="feature-tile-title">Readiness checks</div>
+        <div class="feature-tile-desc">Hybrid, B2B, DTC, Agentic Commerce, Sidekick, Plus pricing, and evidence checks before a deck is called ready.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">💬</div>
-        <div class="feature-tile-title">Animated chat mockups</div>
-        <div class="feature-tile-desc">Timed Gemini + Sidekick message reveals with realistic product pages. Narrate over them live.</div>
+        <div class="feature-tile-icon">02</div>
+        <div class="feature-tile-title">Manifest-backed state</div>
+        <div class="feature-tile-desc"><code>deck.manifest.json</code> stores stable slide IDs, slide option state, editable fields, and deck decisions.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">⌨️</div>
-        <div class="feature-tile-title">Full navigation</div>
-        <div class="feature-tile-desc">Keyboard arrows, space, click zones, bottom nav dots, progress bar, speaker tag toggle — all wired up.</div>
+        <div class="feature-tile-icon">03</div>
+        <div class="feature-tile-title">Slide text autosave</div>
+        <div class="feature-tile-desc">Update supported text fields in Studio and preview the rendered deck from manifest state after a short pause.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">📚</div>
-        <div class="feature-tile-title">13 slide patterns</div>
-        <div class="feature-tile-desc">Cover, recap, stats grid, timeline, customer proof, TOC, section header, chat, pricing tiers, closing.</div>
+        <div class="feature-tile-icon">04</div>
+        <div class="feature-tile-title">Slide library</div>
+        <div class="feature-tile-desc">All registered patterns appear as slide options, including in-deck, hidden, and planned-but-not-generated states.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">🎛️</div>
-        <div class="feature-tile-title">Palette recipes</div>
-        <div class="feature-tile-desc">Healthcare, Tech, Industrial, Food/Bev, Fashion, Finance. Swap CSS variables, done.</div>
+        <div class="feature-tile-icon">05</div>
+        <div class="feature-tile-title">Slide registry</div>
+        <div class="feature-tile-desc">Cover, recap, stats grid, timeline, customer proof, case study, storefront mockup, TOC, section headers, AI sims, pricing, source map, and closing patterns.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">🚀</div>
-        <div class="feature-tile-title">Quick-site ready</div>
-        <div class="feature-tile-desc">Outputs <code>index.html</code> — drop straight into a quick site, shareable URL, no renames.</div>
+        <div class="feature-tile-icon">06</div>
+        <div class="feature-tile-title">Studio v2 app</div>
+        <div class="feature-tile-desc">Local React/Vite app with checks, slide selection, deck preview, inspector controls, and Preview Deck workflow.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">🛒</div>
+        <div class="feature-tile-icon">07</div>
+        <div class="feature-tile-title">Quick-ready publish</div>
+        <div class="feature-tile-desc">Publishes the selected manifest deck as portable HTML at <code>exports/quick/index.html</code> for internal sharing.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">08</div>
+        <div class="feature-tile-title">PDF export ready</div>
+        <div class="feature-tile-desc">Outputs editable <code>index.html</code> for live presentation, then exports a merchant-safe PDF for sharing.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">09</div>
         <div class="feature-tile-title">Agentic commerce sim</div>
         <div class="feature-tile-desc">Buyer-side drop-in: multi-product mosaic, Google Pay checkout with discount/loyalty/subscription, order confirmation back in the chat.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">🤝</div>
+        <div class="feature-tile-icon">10</div>
         <div class="feature-tile-title">ChatGPT × Claude management</div>
         <div class="feature-tile-desc">Merchant-side drop-in: same Shopify store managed from both ChatGPT (daily ops) and Claude (strategic), with live admin sync proving both AIs hit the same admin.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">🧪</div>
+        <div class="feature-tile-icon">11</div>
         <div class="feature-tile-title">12+ pre-built sims</div>
         <div class="feature-tile-desc">NetSuite, SAP, Oracle, ERP flows, payment sync, API integration — grab-and-go from <a href="https://simulations.quick.shopify.io/" target="_blank" style="color:inherit;text-decoration:underline;">simulations.quick.shopify.io</a>.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">🔍</div>
+        <div class="feature-tile-icon">12</div>
         <div class="feature-tile-title">Thorough context gathering</div>
         <div class="feature-tile-desc">Skill pulls from merchant folder, Salesforce, Gemini meeting notes, Drive, Scout transcripts, Slack, SENTRAL, and public research before building.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">✅</div>
-        <div class="feature-tile-title">Content review step</div>
-        <div class="feature-tile-desc">Walks you slide-by-slide before the deck is called done. Catches hollow or generic content before a merchant sees it.</div>
+        <div class="feature-tile-icon">13</div>
+        <div class="feature-tile-title">Fast-follow workflow</div>
+        <div class="feature-tile-desc">Fast Follow belongs after the demo: review notes, propose deck updates, approve the addendum, then export a merchant-safe PDF.</div>
       </div>
     </div>
 
     <div style="margin-top: 3rem;">
-      <div style="font-weight: 600; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-dim);">All 14 patterns, copy-paste ready:</div>
+      <div style="font-weight: 600; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-dim);">Studio slide options and reusable patterns:</div>
       <div class="patterns-list">
         <div class="pattern-item"><span class="pattern-item-num">01</span><span class="pattern-item-name">Cover slide</span><span class="pattern-item-badge">Hero</span></div>
         <div class="pattern-item"><span class="pattern-item-num">02</span><span class="pattern-item-name">Discovery Recap</span><span class="pattern-item-badge">Two-col</span></div>
@@ -1052,8 +1712,15 @@
         <div class="pattern-item"><span class="pattern-item-num">10</span><span class="pattern-item-name">Sidekick mockup</span><span class="pattern-item-badge">Animated</span></div>
         <div class="pattern-item"><span class="pattern-item-num">11</span><span class="pattern-item-name">ChatGPT × Claude mgmt</span><span class="pattern-item-badge">Animated</span></div>
         <div class="pattern-item"><span class="pattern-item-num">12</span><span class="pattern-item-name">Feature slides</span><span class="pattern-item-badge">Two-col</span></div>
-        <div class="pattern-item"><span class="pattern-item-num">13</span><span class="pattern-item-name">Pricing Tiers</span><span class="pattern-item-badge">3-col</span></div>
-        <div class="pattern-item"><span class="pattern-item-num">14</span><span class="pattern-item-name">Closing / Next Steps</span><span class="pattern-item-badge">CTA</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">13</span><span class="pattern-item-name">Interactive storefront</span><span class="pattern-item-badge">Live mockup</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">14</span><span class="pattern-item-name">Challenges x Solutions</span><span class="pattern-item-badge">Summary</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">15</span><span class="pattern-item-name">Peer case study</span><span class="pattern-item-badge">Proof</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">16</span><span class="pattern-item-name">Three Anchors</span><span class="pattern-item-badge">Outcomes</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">17</span><span class="pattern-item-name">Pricing Tiers</span><span class="pattern-item-badge">3-col</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">18</span><span class="pattern-item-name">Milestone timeline</span><span class="pattern-item-badge">Plan</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">19</span><span class="pattern-item-name">Source Map</span><span class="pattern-item-badge">Evidence</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">20</span><span class="pattern-item-name">Fast Follow</span><span class="pattern-item-badge">Post-demo</span></div>
+        <div class="pattern-item"><span class="pattern-item-num">21</span><span class="pattern-item-name">Closing / Next Steps</span><span class="pattern-item-badge">CTA</span></div>
       </div>
     </div>
   </section>
@@ -1063,27 +1730,29 @@
 <footer>
   <div class="footer-inner">
     <div class="footer-col">
-      <h4>Demo Deck Builder</h4>
-      <p>A reusable scaffold for shipping demo decks that feel like the transferflow original. Built for Shopify SEs and AEs.</p>
+      <h4>Demo Deck Studio</h4>
+      <p>A local AE/SE workspace for building, reviewing, exporting, and following up on Shopify demo decks.</p>
+      <div class="footer-note">Current state: Studio v2 local app, manifest-backed slide selection, cover autosave, deck preview, Quick-ready publish, static HTML/PDF export path.</div>
     </div>
     <div class="footer-col">
       <h4>Resources</h4>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/tree/main/tools/demo-deck-builder" target="_blank">GitHub repo</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/tools/demo-deck-builder/skill/references/customization-guide.md" target="_blank">Customization guide</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/tools/demo-deck-builder/skill/references/slide-patterns.md" target="_blank">Slide patterns</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/tools/demo-deck-builder/skill/references/chat-animation.md" target="_blank">Chat animation</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/tools/demo-deck-builder/skill/references/agentic-commerce-sim.html" target="_blank">Agentic commerce sim</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/tools/demo-deck-builder/skill/references/chatgpt-claude-management-sim.html" target="_blank">ChatGPT × Claude mgmt sim</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/tools/demo-deck-builder/skill/references/simulation-library.md" target="_blank">Simulation library</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/tree/main/tools/demo-deck-builder" target="_blank">GitHub repo</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/references/customization-guide.md" target="_blank">Customization guide</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/studio/STUDIO.md" target="_blank">Studio direction</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/references/slide-patterns.md" target="_blank">Slide patterns</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/references/chat-animation.md" target="_blank">Chat animation</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/references/agentic-commerce-sim.html" target="_blank">Agentic commerce sim</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/references/chatgpt-claude-management-sim.html" target="_blank">ChatGPT × Claude mgmt sim</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/tools/demo-deck-builder/skill/references/simulation-library.md" target="_blank">Simulation library</a>
     </div>
     <div class="footer-col">
       <h4>Feedback</h4>
       <a href="https://shopify.enterprise.slack.com/archives/global-b2b-sales-team" target="_blank">#global-b2b-sales-team</a>
       <a href="https://app.slack.com/client/T02DEC5PB/@dustin.floer" target="_blank">DM @dustin.floer</a>
-      <a href="https://github.com/dustinfloer/b2b-ai-catalog/issues/new" target="_blank">Open an issue</a>
+      <a href="https://github.com/dustinfloer/SE-Field-Guide/issues/new" target="_blank">Open an issue</a>
     </div>
     <div class="footer-credits">
-      Built by the B2B SE Team · April 2026
+      Built by the B2B SE Team · Updated May 2026
     </div>
   </div>
 </footer>

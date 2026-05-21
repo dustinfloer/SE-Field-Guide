@@ -5,7 +5,7 @@ How to adapt the template for a specific merchant. Work through these in order.
 ## 1. Copy the Template
 
 ```bash
-cp .claude/skills/demo-deck-builder/references/template.html merchants/[merchant-slug]/demo-deck.html
+cp .claude/skills/demo-deck-builder/references/template.html merchants/[merchant-slug]/index.html
 ```
 
 Use kebab-case for the merchant slug (e.g., `pdi`, `transferflow`, `arlington-industries`).
@@ -19,10 +19,10 @@ Use kebab-case for the merchant slug (e.g., `pdi`, `transferflow`, `arlington-in
 
 **In the watermark** (top-left corner):
 ```html
-<span class="pdi-text">[MERCHANT]</span>
+<span class="merchant-text">[MERCHANT]</span>
 ```
 
-The class is named `pdi-text` historically — don't rename, just replace the inner text.
+Legacy decks may still use `pdi-text`; new decks should use the merchant-neutral `merchant-text`.
 
 ## 3. Embed the Merchant Logo
 
@@ -45,7 +45,7 @@ Then in the cover slide, replace the `.pdi-logo` text div with an `<img>` tag:
 If **no logo is available**, use a text treatment:
 
 ```html
-<div class="pdi-logo" style="background: linear-gradient(135deg, #COLOR1 0%, #COLOR2 100%);">MERCHANT</div>
+<div class="merchant-logo" style="background: linear-gradient(135deg, #COLOR1 0%, #COLOR2 100%);">MERCHANT</div>
 ```
 
 Pick two brand colors from the merchant's website for the gradient.
@@ -53,7 +53,7 @@ Pick two brand colors from the merchant's website for the gradient.
 Also add the logo to the watermark for a subtle brand presence there:
 
 ```html
-<img class="pdi-watermark-img" src="data:image/png;base64,...same base64..." alt="Merchant">
+<img class="merchant-watermark-img" src="data:image/png;base64,...same base64..." alt="Merchant">
 ```
 
 ## 4. Set the Color Palette
@@ -172,15 +172,20 @@ Before handing off:
 - [ ] No content is cut off at smaller screen sizes
 - [ ] Merchant logo renders (both cover and watermark)
 - [ ] All inline strong/bold text renders correctly
-- [ ] File size under 300KB (for quick site upload)
+- [ ] File size is reasonable for local editing and PDF export
+- [ ] Studio linter has no errors:
+  ```bash
+  node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs lint merchants/[merchant-slug]/index.html
+  ```
 
-## 9. Optional: Deploy to Quick Site
+## 9. Export Merchant-Safe PDF
 
-If the user wants the deck hosted:
+HTML is the working/presentation artifact. PDF is the default merchant-safe share artifact.
 
-1. Rename `demo-deck.html` → `index.html`
-2. Run `quick init [merchant]-demo` in the merchant folder
-3. Follow `quick deploy` prompts
-4. Shareable URL: `https://[merchant]-demo.quick.shopify.io/`
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant-slug]/index.html merchants/[merchant-slug]/exports/[merchant-slug]-demo-deck.pdf
+```
 
-Otherwise just open the HTML locally from Chrome and present fullscreen (`F` key).
+Open the PDF and verify one 16:9 slide per page. Use the HTML locally for live presentation when animations matter.
+
+Quick sites are internal Shopify review only. Do not use hosted HTML as the default merchant share path.

@@ -31,9 +31,9 @@ Opening slide with Shopify × [Merchant] logos, eyebrow, title, subhead, and met
       </div>
       <span class="x-sep">×</span>
       <!-- Option A: logo image (base64-embedded) -->
-      <img class="pdi-logo-img" src="data:image/png;base64,..." alt="Merchant">
+      <img class="merchant-logo-img" src="data:image/png;base64,..." alt="Merchant">
       <!-- Option B: text logo -->
-      <!-- <div class="pdi-logo">MERCHANT</div> -->
+      <!-- <div class="merchant-logo">MERCHANT</div> -->
     </div>
     <div class="cover-eyebrow">Short eyebrow label</div>
     <h1 class="cover-title">Main Headline<br>With <span class="accent">Accent</span> Word</h1>

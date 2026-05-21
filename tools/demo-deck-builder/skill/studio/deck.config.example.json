@@ -1,0 +1,113 @@
+{
+  "schema_version": "0.1",
+  "merchant": {
+    "name": "Acme Supplies",
+    "slug": "acme-supplies",
+    "industry": "Industrial supplies",
+    "business_model": "B2B",
+    "website": "https://example.com"
+  },
+  "deck": {
+    "title": "Shopify x Acme Supplies - B2B Demo",
+    "audience": "merchant",
+    "primary_goal": "Collaborative demo deck for a sales-led B2B evaluation",
+    "source_html": "index.html",
+    "merchant_pdf": "exports/acme-supplies-demo-deck.pdf",
+    "internal_review_pdf": "exports/acme-supplies-demo-deck-internal.pdf"
+  },
+  "speakers": [
+    {
+      "name": "AE Name",
+      "role": "AE"
+    },
+    {
+      "name": "SE Name",
+      "role": "SE"
+    }
+  ],
+  "brand": {
+    "mode": "merchant-accent",
+    "accent": "#14a098",
+    "accent_bright": "#1cc7bd",
+    "heading_font": "Inter",
+    "logo_path": "acme_logo.png",
+    "logo_alt": "Acme Supplies logo",
+    "logo_embedded": false,
+    "logo_source_url": null
+  },
+  "workflow": {
+    "creative_mode": "collaborative",
+    "export_target": "pdf",
+    "default_share_path": "merchant-safe-pdf",
+    "hosting_allowed": false
+  },
+  "studio": {
+    "slide_picker": {
+      "version": 1,
+      "updated_at": null,
+      "modules": {}
+    }
+  },
+  "strategy": {
+    "deck_type": "b2b",
+    "has_b2b": true,
+    "has_dtc": false,
+    "plus_sales_deck": true,
+    "ai_moment_required": false,
+    "sidekick_required": true,
+    "pricing_required": true
+  },
+  "source_policy": {
+    "notes": "Evidence is internal scaffolding for confidence. It is not exported to the merchant PDF unless explicitly requested.",
+    "required_for": [
+      "discovery-recap",
+      "merchant-quote",
+      "pricing",
+      "stack-or-integration-claim",
+      "case-study-metric"
+    ],
+    "optional_for": [
+      "shopify-platform-overview",
+      "agenda",
+      "section-header",
+      "closing"
+    ]
+  },
+  "sources": [
+    {
+      "id": "briefing",
+      "type": "local",
+      "path": "briefing-document.md",
+      "label": "Briefing document"
+    },
+    {
+      "id": "salesforce",
+      "type": "salesforce",
+      "label": "Salesforce opportunity"
+    }
+  ],
+  "slides": [
+    {
+      "id": "cover",
+      "pattern": "cover",
+      "speaker": "AE Name",
+      "evidence": []
+    },
+    {
+      "id": "discovery-recap",
+      "pattern": "discovery-recap",
+      "speaker": "AE Name",
+      "evidence": [
+        "briefing"
+      ]
+    },
+    {
+      "id": "buyer-journey",
+      "pattern": "feature-slide",
+      "speaker": "SE Name",
+      "evidence": [
+        "briefing"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "schema_version": "0.1",
+  "patterns": [
+    {
+      "id": "cover",
+      "name": "Cover",
+      "category": "opening",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "discovery-recap",
+      "name": "Discovery Recap",
+      "category": "opening",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "stats-grid",
+      "name": "About Shopify Stats",
+      "category": "platform",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "b2b-evolution",
+      "name": "B2B Evolution Timeline",
+      "category": "platform",
+      "best_for": ["b2b", "hybrid"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "customer-proof-grid",
+      "name": "Customer Proof Grid",
+      "category": "proof",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "case-study",
+      "name": "Peer Case Study",
+      "category": "proof",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "aspiration",
+      "name": "Aspiration",
+      "category": "bridge",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "agenda",
+      "name": "Agenda",
+      "category": "bridge",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "section-header",
+      "name": "Section Header",
+      "category": "structure",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "feature-slide",
+      "name": "Feature Slide",
+      "category": "demo",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "agentic-commerce",
+      "name": "Agentic Commerce Chat",
+      "category": "simulation",
+      "best_for": ["dtc", "hybrid"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "snapshot-final-state"
+    },
+    {
+      "id": "sidekick-chat",
+      "name": "Sidekick Chat",
+      "category": "simulation",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "snapshot-final-state"
+    },
+    {
+      "id": "chatgpt-claude-management",
+      "name": "ChatGPT x Claude Management",
+      "category": "simulation",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "snapshot-final-state"
+    },
+    {
+      "id": "interactive-storefront",
+      "name": "Interactive Storefront Mockup",
+      "category": "simulation",
+      "best_for": ["b2b", "dtc", "hybrid"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "snapshot-active-view"
+    },
+    {
+      "id": "challenges-solutions",
+      "name": "Challenges x Solutions",
+      "category": "summary",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "three-anchors",
+      "name": "Three Anchors",
+      "category": "close",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "pricing",
+      "name": "Pricing",
+      "category": "close",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "timeline",
+      "name": "Timeline",
+      "category": "close",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    },
+    {
+      "id": "source-map",
+      "name": "Source Map",
+      "category": "proof",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "internal-preferred"
+    },
+    {
+      "id": "fast-follow",
+      "name": "Fast Follow Addendum",
+      "category": "follow-up",
+      "best_for": ["all"],
+      "requires_evidence": true,
+      "requires_speaker": true,
+      "export_behavior": "appendix-or-merchant-addendum"
+    },
+    {
+      "id": "closing",
+      "name": "Closing Steps",
+      "category": "close",
+      "best_for": ["all"],
+      "requires_evidence": false,
+      "requires_speaker": true,
+      "export_behavior": "static"
+    }
+  ]
+}

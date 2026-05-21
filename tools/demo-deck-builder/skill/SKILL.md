@@ -1,11 +1,11 @@
 ---
 name: demo-deck-builder
-description: "Generate a self-contained HTML demo deck for any Shopify merchant in the transferflow/PDI style (dark UI, teal accents, animated mesh backgrounds, pulse rings on section headers, animated Gemini/Sidekick chat mockups, quick-site ready). Single portable HTML file with all CSS/JS/logo embedded. Triggered by 'build demo deck for [merchant]', 'create demo deck for [merchant]', 'generate presentation for [merchant]', 'deck builder', '/demo-deck-builder'."
+description: "Generate a self-contained HTML demo deck for any Shopify merchant in the transferflow/PDI style (dark UI, teal accents, animated mesh backgrounds, pulse rings on section headers, animated Gemini/Sidekick chat mockups, and merchant-safe PDF export). Single portable HTML file with all CSS/JS/logo embedded. Triggered by 'build demo deck for [merchant]', 'create demo deck for [merchant]', 'generate presentation for [merchant]', 'deck builder', '/demo-deck-builder'."
 ---
 
 # Demo Deck Builder
 
-Generate a polished, self-contained HTML demo deck for any merchant using the proven Shopify × transferflow visual language. Output is a single HTML file that can be opened locally, dropped into a quick site, or presented full-screen in Chrome.
+Generate a polished, self-contained HTML demo deck for any merchant using the proven Shopify × transferflow visual language. Output is a single HTML file that can be opened locally, presented full-screen in Chrome, linted, and exported to a merchant-safe PDF.
 
 ## When to Use
 
@@ -19,12 +19,13 @@ Generate a polished, self-contained HTML demo deck for any merchant using the pr
 
 ## Output
 
-One self-contained HTML file at `merchants/[merchant]/index.html` (named `index.html` so it works as the root of a quick site) containing:
+One self-contained HTML file at `merchants/[merchant]/index.html` containing:
 - Navigation (progress bar, nav dots, counter, keyboard, click zones, swipe)
 - All CSS/JS embedded (no external deps beyond Google Fonts)
 - Merchant logo embedded as base64 (if available at `merchants/[merchant]/[name]_logo.png`)
 - 15-25 slides tailored to merchant, Zach/Dustin speaker tags
 - Animated chat mockups (Gemini + Sidekick) with timed message reveals
+- PDF export readiness for merchant-safe sharing
 
 ## Prerequisites
 
@@ -38,10 +39,14 @@ Read these before starting:
 - `references/simulation-library.md` — catalog of 12+ animated simulations at simulations.quick.shopify.io (NetSuite, SAP, Oracle, ERP, payments, API, agentic commerce). For architecture / integration / payment-flow slides, grab the source from there instead of generating from scratch
 - `references/interactive-storefront-mockup.html` — drop-in multi-view merchant storefront (D2C PDP, Bulk Order, CSV Upload, Resources). Tabbed nav with working add-to-cart and cart counter. Use for one "live" demo moment instead of 4–5 static feature slides. Extracted from Terry Kealey's Taylor Guitars deck
 - `references/customization-guide.md` — how to adapt palette, logo, speakers per merchant
-- `references/deploy-github-pages.md` — protocol for publishing a password-protected deck to GitHub Pages (staticrypt + gh CLI). Referenced from Step 9 when the user picks Option A
+- `references/deploy-github-pages.md` — legacy exception protocol for publishing a password-protected deck to GitHub Pages. PDF is the default merchant share path
 - `references/redeploy.sh.template` — parameterized helper script for idempotent redeploys. Used by Step 9 Option A
 - `examples/pdi-demo-deck.html` — reference implementation for SaaS-style merchants
 - `examples/taylor-guitars-demo-deck.html` — reference for premium consumer brand B2B. Showcases Challenges×Solutions summary, Case Study with hard metrics, interactive storefront mockup, and named attendees on cover. Built by Terry Kealey
+- `studio/deck.config.example.json` — starter manifest for the future Studio workflow
+- `studio/pattern-registry.json` — pattern metadata for validation and future UI assembly
+- `studio/demo-deck-studio.mjs` — dependency-light CLI for linting and PDF export
+- `studio/app/README.md` — React/Vite Demo Deck Studio v2 scaffold and local app commands
 
 ## Workflow
 
@@ -167,9 +172,15 @@ cp .claude/skills/demo-deck-builder/references/template.html merchants/[merchant
 
 Then edit to:
 - Swap `[MERCHANT]` placeholders in `<title>` and watermark
-- Embed merchant logo (base64 encode PNG if present, or use text logo)
+- Embed merchant logo (use `embed-logo` if a logo file is present; use text logo only as a fallback)
 - Update `:root` CSS variables if palette swap
 - Add the speakers' first names to `data-speaker` attributes
+
+Logo helper:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs embed-logo merchants/[merchant]/index.html merchants/[merchant]/[merchant]-logo.png --config merchants/[merchant]/deck.config.json
+```
 
 ### Step 5: Build the Slides
 
@@ -229,7 +240,44 @@ Open the file in Chrome and walk through:
 - Pulse rings only on section-header slides
 - Speaker tag (top-right) toggles correctly
 
-### Step 8: Content Review with User
+Then run the Studio linter:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs lint merchants/[merchant]/index.html
+```
+
+Fix any errors. Warnings are judgment calls, but do not ignore placeholder content, missing speaker labels, external merchant assets, undefined CSS variables, or missing print rules.
+
+For a fast content pass, generate the slide outline:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs outline merchants/[merchant]/index.html
+```
+
+To review in the local browser Studio app:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio merchants/[merchant]/index.html
+```
+
+### Step 8: Fast Follow Addendum (After the Demo)
+
+When the user asks for a fast follow after a live demo, ingest the latest Gemini notes or transcript, then append a polished addendum slide before the close.
+
+Use the helper to create the first-pass slide:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs fast-follow merchants/[merchant]/index.html merchants/[merchant]/latest-gemini-notes.pdf --config merchants/[merchant]/deck.config.json
+```
+
+Then review and rewrite the generated bullets with the user-facing answer, not raw transcript language. The slide should cover:
+- What we covered
+- Questions to answer
+- Additional context or recommended next steps
+
+If the notes are pre-demo notes or you only need a test, write to `--output /private/tmp/[merchant]-fast-follow-preview.html` instead of changing the main deck.
+
+### Step 9: Content Review with User
 
 Before calling the deck done, walk the user through the slides for a content pass. Don't skip — this is the step that catches hollow or off-brand content before it lives through a merchant call.
 
@@ -256,30 +304,38 @@ Present a concise slide-by-slide summary, e.g.:
 
 Iterate on any flagged slides before moving on. Small fixes here save painful rework after the merchant sees the deck.
 
-### Step 9: Offer to Share the Deck
+### Step 10: Export / Share
 
-The deck file is already named `index.html`. Ask the user how they want to share/present it, using `AskUserQuestion` to offer these options:
+The working artifact is HTML. The default merchant-safe share artifact is PDF.
 
-**Option A — Password-protected GitHub Pages (recommended for merchant share)**
-A public URL the merchant can open, with AES-256 encryption + password gate. Uses `staticrypt` + `gh` CLI. Full execution protocol in `references/deploy-github-pages.md`. When the user picks this:
-1. Read `references/deploy-github-pages.md` and follow the 10-step protocol
-2. Copy `references/redeploy.sh.template` to `merchants/[merchant]/.deploy/redeploy.sh`, substituting `{{SOURCE_HTML}}`, `{{PASSWORD}}`, `{{DECK_TITLE}}`, `{{LIVE_URL}}`, `{{MERCHANT}}`
-3. Return the URL, password, and a draft email the user can paste and send
+Ask the user how they want to use it:
 
-**Option B — Quick site (internal / @shopify.com audience only)**
-Upload `merchants/[merchant]/index.html` at https://quick.shopify.io. IAP-gated — only accessible to Shopify employees. Good for internal reviews, NOT for external merchant share.
+**Option A — Export PDF for merchant share (recommended)**
+Use this for merchant follow-up, legal/compliance-sensitive decks, and async stakeholder sharing. Run:
 
-**Option C — Present locally from Chrome**
-Open the HTML file locally, present full-screen with the `F` key. No hosting involved. Best if the demo is happening live in the current session and no follow-up share is needed.
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant]/index.html merchants/[merchant]/exports/[merchant]-demo-deck.pdf
+```
 
-**Option D — Email the HTML file**
-Zip `index.html` and attach to an email. Simplest share path if the user wants to skip hosting entirely. Warn that some corporate email filters strip HTML; zipping avoids most filters.
+Then open the PDF locally and verify one 16:9 slide per page, no cut-off content, and useful final-state snapshots for chat/simulation slides.
+
+**Option B — Present locally from Chrome**
+Open `merchants/[merchant]/index.html` locally and present full-screen with `F`. Best for live calls where the presenter wants animation and keyboard navigation.
+
+**Option C — Internal quick site**
+Upload `merchants/[merchant]/index.html` at https://quick.shopify.io for Shopify-only review. Quick sites are IAP-gated and are not merchant-share artifacts.
+
+**Option D — HTML handoff**
+Zip `index.html` only for internal handoff or when a technical stakeholder explicitly asks for the source. Do not use raw HTML as the default merchant share path.
+
+**Deprecated path — GitHub Pages**
+Password-protected GitHub Pages is no longer the recommended merchant share path. Even when encrypted, the HTML/source model creates avoidable exposure and governance questions. Use PDF for merchant sharing unless the user explicitly asks for the legacy GitHub Pages protocol and confirms it is approved for that account.
 
 **Decision guide:**
-- Merchant-facing follow-up after a demo → **Option A** (encrypted, professional URL, iteration-friendly)
-- Internal review by Shopify colleagues → **Option B** (IAP-gated is a feature, not a bug, here)
-- Live in-call presentation only → **Option C** (no overhead)
-- One-off share with a low-tech stakeholder → **Option D** (lowest friction)
+- Merchant-facing follow-up after a demo → **Option A** (PDF)
+- Live in-call presentation → **Option B** (local HTML)
+- Internal Shopify review → **Option C** (quick site)
+- Approved technical handoff → **Option D** (zipped HTML)
 
 ## Key Principles
 
