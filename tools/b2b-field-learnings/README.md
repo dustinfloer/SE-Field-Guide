@@ -1,7 +1,7 @@
 ---
 name: "B2B Field Learnings"
 description: "Field-validated B2B edge cases, API patterns, and workarounds from the SE team. Searchable by category (Payments, APIs, Workflows, Tax, Integrations, Platform) with inline code samples."
-url: "https://dustinfloer.github.io/b2b-ai-catalog/learnings/"
+url: "https://dustinfloer.github.io/SE-Field-Guide/learnings/"
 category: "References"
 built_with: "Vanilla JS + GitHub Pages"
 audience: "SE-facing"
@@ -16,7 +16,7 @@ last_reviewed: "2026-05-20"
 review_cycle_days: "180"
 screenshot: ""
 slack_channel: ""
-repo_url: "https://github.com/dustinfloer/b2b-ai-catalog"
+repo_url: "https://github.com/dustinfloer/SE-Field-Guide"
 b2b_specific: true
 ---
 

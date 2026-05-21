@@ -1,7 +1,7 @@
 ---
 name: "B2B App Directory"
 description: "Opinionated app reference for B2B solutioning - searchable by use case, category, and guidance tier. Covers native-first, SE-vetted, caveats, partner-led, and avoid/legacy paths."
-url: "https://dustinfloer.github.io/b2b-ai-catalog/apps/"
+url: "https://dustinfloer.github.io/SE-Field-Guide/apps/"
 category: "References"
 built_with: "Vanilla JS + GitHub Pages"
 audience: "SE-facing"
@@ -16,7 +16,7 @@ last_reviewed: "2026-05-20"
 review_cycle_days: "90"
 screenshot: ""
 slack_channel: ""
-repo_url: "https://github.com/dustinfloer/b2b-ai-catalog"
+repo_url: "https://github.com/dustinfloer/SE-Field-Guide"
 b2b_specific: true
 ---
 

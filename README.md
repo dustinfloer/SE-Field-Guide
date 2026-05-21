@@ -2,7 +2,7 @@
 
 Tools, simulations, references, and guides — built by the **B2B SE Team** for the broader SE community.
 
-**[Browse the Field Guide](https://dustinfloer.github.io/b2b-ai-catalog/)**
+**[Browse the Field Guide](https://dustinfloer.github.io/SE-Field-Guide/)**
 
 ---
 
@@ -45,7 +45,7 @@ Built something you're proud of? Add it to the catalog in under 5 minutes — no
 - Each entry includes trust metadata: owner, status, access level, reviewer, and freshness window
 - A GitHub Action automatically builds the browsable catalog site on every merge to `main`
 - CI validates required metadata before publishing
-- The catalog site at [shopify-playground.github.io/b2b-ai-catalog](https://dustinfloer.github.io/b2b-ai-catalog/) provides search and filtering
+- The catalog site at [dustinfloer.github.io/SE-Field-Guide](https://dustinfloer.github.io/SE-Field-Guide/) provides search and filtering
 
 ## Questions?
 

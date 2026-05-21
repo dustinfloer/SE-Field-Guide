@@ -97,6 +97,80 @@
 
         .hero p { color: var(--text-secondary); font-size: 14px; }
 
+        .recipe-primer {
+            max-width: 1200px;
+            margin: 22px auto 0;
+            padding: 0 24px;
+        }
+
+        .primer-panel {
+            border: 1px solid rgba(54, 217, 134, 0.18);
+            border-radius: var(--radius-sm);
+            background: rgba(17, 24, 39, 0.86);
+            padding: 16px;
+        }
+
+        .primer-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .primer-heading h3 {
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 750;
+            line-height: 1.3;
+        }
+
+        .primer-heading p {
+            max-width: 520px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.45;
+            text-align: right;
+        }
+
+        .primer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .primer-item {
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.035);
+            padding: 11px;
+        }
+
+        .primer-label {
+            display: block;
+            color: var(--green-primary);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .primer-item strong {
+            display: block;
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
+
+        .primer-item span:last-child {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         .controls {
             max-width: 1200px;
             margin: 24px auto 0;
@@ -373,8 +447,15 @@
 
         footer a { color: var(--text-secondary); text-decoration: none; }
 
+        @media (max-width: 900px) {
+            .primer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
         @media (max-width: 600px) {
             .grid { grid-template-columns: 1fr; }
+            .primer-heading { display: block; }
+            .primer-heading p { text-align: left; margin-top: 6px; }
+            .primer-grid { grid-template-columns: 1fr; }
             .controls { flex-direction: column; }
             .search-box { min-width: 100%; }
             .card-footer { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -401,6 +482,37 @@
         <h2>B2B Demo Recipes</h2>
         <p>Pre-built demo store configs — pick a profile, copy the prompt, paste into Claude Code.</p>
     </div>
+
+    <section class="recipe-primer" aria-labelledby="recipe-primer-heading">
+        <div class="primer-panel">
+            <div class="primer-heading">
+                <h3 id="recipe-primer-heading">What happens when you copy a recipe?</h3>
+                <p>Each recipe produces a Claude Code prompt. It does not run in this page; paste it into Claude Code with the right MCPs connected.</p>
+            </div>
+            <div class="primer-grid">
+                <div class="primer-item">
+                    <span class="primer-label">Store</span>
+                    <strong>New or existing</strong>
+                    <span>New Store asks Forge MCP to create a sandbox store. Existing uses a store you provide.</span>
+                </div>
+                <div class="primer-item">
+                    <span class="primer-label">B2B setup</span>
+                    <strong>Markets and catalogs</strong>
+                    <span>Shopify MCP configures B2B markets, catalogs, price adjustments, and payment terms.</span>
+                </div>
+                <div class="primer-item">
+                    <span class="primer-label">Data</span>
+                    <strong>Products and orders</strong>
+                    <span>Spark MCP generates products, companies, DTC customers when relevant, and order history.</span>
+                </div>
+                <div class="primer-item">
+                    <span class="primer-label">Demo prep</span>
+                    <strong>Talking points only</strong>
+                    <span>Recipes include scenario cues and buyer login details, not a full call script.</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <div class="controls">
         <div class="search-box">

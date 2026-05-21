@@ -16,7 +16,7 @@ last_reviewed: "YYYY-MM-DD"
 review_cycle_days: "90"
 screenshot: ""
 # To add a screenshot: drop a screenshot.png into your tool folder, then set the URL above to:
-# https://raw.githubusercontent.com/dustinfloer/b2b-ai-catalog/main/tools/your-tool-name/screenshot.png
+# https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/your-tool-name/screenshot.png
 slack_channel: ""
 repo_url: ""
 ---

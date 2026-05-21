@@ -14,6 +14,7 @@ source_of_truth: "repo"
 reviewed_by: "@dustin.floer"
 last_reviewed: "2026-05-20"
 review_cycle_days: "90"
+b2b_specific: true
 ---
 
 ## What It Does

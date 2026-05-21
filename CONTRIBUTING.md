@@ -62,8 +62,8 @@ Once merged, the catalog site updates automatically within a few minutes.
 
 ```bash
 # Clone the repo
-git clone https://github.com/shopify-playground/b2b-ai-catalog.git
-cd b2b-ai-catalog
+git clone https://github.com/dustinfloer/SE-Field-Guide.git
+cd SE-Field-Guide
 
 # Create a branch
 git checkout -b add-your-tool-name

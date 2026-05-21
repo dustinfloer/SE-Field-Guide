@@ -1,7 +1,7 @@
 ---
 name: "HTML Deck Examples"
 description: "Library of browser-native presentation decks built by the B2B SE team — real merchant demo examples you can reference or remix. Includes Hatley, Arlington, TransferFlow, Feniex, and more."
-url: "https://dustinfloer.github.io/b2b-ai-catalog/slide-decks/"
+url: "https://dustinfloer.github.io/SE-Field-Guide/slide-decks/"
 category: "References"
 built_with: "Vanilla JS + GitHub Pages"
 audience: "SE-facing"
@@ -16,7 +16,7 @@ last_reviewed: "2026-05-20"
 review_cycle_days: "180"
 screenshot: ""
 slack_channel: ""
-repo_url: "https://github.com/dustinfloer/b2b-ai-catalog"
+repo_url: "https://github.com/dustinfloer/SE-Field-Guide"
 ---
 
 # HTML Deck Examples

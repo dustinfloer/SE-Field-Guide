@@ -377,8 +377,9 @@
         .trust-item {
             border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: var(--radius-sm);
-            background: rgba(255, 255, 255, 0.035);
-            padding: 10px 12px;
+            background: rgba(17, 24, 39, 0.82);
+            padding: 12px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
         }
 
         .trust-label {
@@ -397,6 +398,15 @@
             line-height: 1.35;
         }
 
+        .trust-metric {
+            display: block;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 750;
+            line-height: 1.25;
+            margin-bottom: 4px;
+        }
+
         /* Controls */
         .controls {
             max-width: 1200px;
@@ -406,6 +416,42 @@
             gap: 12px;
             flex-wrap: wrap;
             align-items: center;
+        }
+
+        .path-bar {
+            max-width: 1200px;
+            margin: 12px auto 0;
+            padding: 0 24px;
+        }
+
+        .path-bar-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid rgba(54, 217, 134, 0.24);
+            border-radius: var(--radius-sm);
+            background: rgba(54, 217, 134, 0.08);
+            padding: 9px 12px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .path-label strong {
+            color: var(--green-primary);
+            font-weight: 750;
+        }
+
+        .path-clear {
+            background: transparent;
+            border: 0;
+            color: var(--green-primary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            white-space: nowrap;
         }
 
         .search-box {
@@ -630,6 +676,67 @@
             border-color: rgba(96, 165, 250, 0.32);
         }
 
+        .meta-tag.all-se-meta {
+            background: rgba(54, 217, 134, 0.1);
+            color: var(--green-primary);
+            border-color: rgba(54, 217, 134, 0.24);
+        }
+
+        .meta-tag.status-active {
+            color: #c7f7df;
+            border-color: rgba(54, 217, 134, 0.2);
+        }
+
+        .card-trust {
+            margin: -2px 0 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .card-trust summary {
+            cursor: pointer;
+            list-style: none;
+            padding: 7px 10px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 650;
+        }
+
+        .card-trust summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .card-trust summary::after {
+            content: "+";
+            float: right;
+            color: var(--text-muted);
+        }
+
+        .card-trust[open] summary::after {
+            content: "-";
+        }
+
+        .trust-list {
+            display: grid;
+            grid-template-columns: max-content minmax(0, 1fr);
+            gap: 6px 10px;
+            padding: 0 10px 10px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .trust-list dt {
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .trust-list dd {
+            color: var(--text-secondary);
+            min-width: 0;
+            overflow-wrap: break-word;
+        }
+
         .card-footer {
             display: flex;
             justify-content: space-between;
@@ -821,6 +928,11 @@
                 flex-direction: column;
             }
 
+            .path-bar-inner {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
             .search-box {
                 min-width: 100%;
             }
@@ -856,10 +968,10 @@
                         Contribute <span class="contribute-caret">▾</span>
                     </button>
                     <div class="contribute-menu" role="menu">
-                        <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" role="menuitem">+ Add a tool</a>
-                        <a href="https://github.com/dustinfloer/b2b-ai-catalog/issues/new?template=tool-request.yml" target="_blank" rel="noopener" role="menuitem">Request a tool</a>
+                        <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" role="menuitem">+ Add a tool</a>
+                        <a href="https://github.com/dustinfloer/SE-Field-Guide/issues/new?template=tool-request.yml" target="_blank" rel="noopener" role="menuitem">Request a tool</a>
                         <div class="contribute-menu-divider"></div>
-                        <a href="https://github.com/dustinfloer/b2b-ai-catalog" target="_blank" rel="noopener" role="menuitem">View on GitHub</a>
+                        <a href="https://github.com/dustinfloer/SE-Field-Guide" target="_blank" rel="noopener" role="menuitem">View on GitHub</a>
                     </div>
                 </div>
             </div>
@@ -933,16 +1045,19 @@
 
         <div class="trust-strip" aria-label="Catalog trust model">
             <div class="trust-item">
-                <span class="trust-label">Reviewed</span>
-                <span class="trust-value">Every entry carries review metadata and a freshness cycle.</span>
+                <span class="trust-label">Trust</span>
+                <span class="trust-metric" id="trust-reviewed">Reviewed metadata</span>
+                <span class="trust-value">Every entry carries lifecycle, reviewer, and freshness metadata.</span>
             </div>
             <div class="trust-item">
-                <span class="trust-label">Internal</span>
-                <span class="trust-value">Built for Shopify SEs and private team contribution.</span>
+                <span class="trust-label">Applicability</span>
+                <span class="trust-metric" id="trust-applicability">B2B and all-SE paths</span>
+                <span class="trust-value">B2B-specific entries are labeled so cross-segment SEs can filter intentionally.</span>
             </div>
             <div class="trust-item">
                 <span class="trust-label">Source of truth</span>
-                <span class="trust-value">Catalog changes go through GitHub so the guide can stay durable.</span>
+                <span class="trust-metric" id="trust-source">Repo-backed guide</span>
+                <span class="trust-value">Published guidance is owned here, even when the asset lives elsewhere.</span>
             </div>
         </div>
     </section>
@@ -960,6 +1075,13 @@
             <button class="filter-btn" data-filter="Workflows">Workflows</button>
             <button class="filter-btn" data-filter="Guides">Guides</button>
             <button class="filter-btn" data-filter="b2b">B2B-only</button>
+        </div>
+    </div>
+
+    <div class="path-bar" id="path-bar" hidden>
+        <div class="path-bar-inner">
+            <span class="path-label" id="path-label"></span>
+            <button type="button" class="path-clear" id="path-clear">Clear path</button>
         </div>
     </div>
 
@@ -990,9 +1112,19 @@
         function updateWorkflowCounts() {
             document.querySelectorAll('.workflow-card').forEach(btn => {
                 const matches = getFilteredTools(btn.dataset.filter || 'all', btn.dataset.query || '');
-                const label = matches.length === 1 ? 'tool' : 'tools';
+                const label = matches.length === 1 ? 'entry' : 'entries';
                 btn.querySelector('.workflow-count').textContent = `${matches.length} ${label}`;
             });
+        }
+
+        function updateTrustStrip() {
+            const activeCount = catalog.filter(tool => tool.status === 'active').length;
+            const b2bCount = catalog.filter(tool => tool.b2b_specific === true).length;
+            const repoBacked = catalog.filter(tool => String(tool.source_of_truth || '').toLowerCase() === 'repo').length;
+
+            document.getElementById('trust-reviewed').textContent = `${activeCount} active entries`;
+            document.getElementById('trust-applicability').textContent = `${b2bCount} B2B-specific entries`;
+            document.getElementById('trust-source').textContent = `${repoBacked} repo-backed sources`;
         }
 
         async function loadCatalog() {
@@ -1001,6 +1133,7 @@
                 catalog = await response.json();
                 updateFilterCounts();
                 updateWorkflowCounts();
+                updateTrustStrip();
                 render();
             } catch (e) {
                 document.getElementById('grid').innerHTML = `
@@ -1016,11 +1149,9 @@
             const rawQuery = document.getElementById('search').value.trim();
             const filtered = getFilteredTools(activeFilter, rawQuery);
 
-            const activePath = activeWorkflow
-                ? `${activeWorkflow.querySelector('.workflow-title').textContent}: `
-                : '';
+            updatePathBar();
             document.getElementById('stats').textContent =
-                `${activePath}Showing ${filtered.length} of ${catalog.length} tools`;
+                `Showing ${filtered.length} of ${catalog.length} entries`;
 
             const grid = document.getElementById('grid');
 
@@ -1040,8 +1171,8 @@
                         <small>${sub}</small>
                         <div class="empty-state-actions">
                             ${(hasQuery || hasFilter) ? `<button type="button" class="empty-state-link" id="empty-reset">Clear filters</button>` : ''}
-                            <a href="https://github.com/dustinfloer/b2b-ai-catalog/issues/new?template=tool-request.yml" target="_blank" rel="noopener" class="btn btn-secondary">Request a tool</a>
-                            <a href="https://github.com/dustinfloer/b2b-ai-catalog/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" class="btn btn-primary">+ Add a tool</a>
+                            <a href="https://github.com/dustinfloer/SE-Field-Guide/issues/new?template=tool-request.yml" target="_blank" rel="noopener" class="btn btn-secondary">Request a tool</a>
+                            <a href="https://github.com/dustinfloer/SE-Field-Guide/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" class="btn btn-primary">+ Add a tool</a>
                         </div>
                     </div>
                 `;
@@ -1070,6 +1201,7 @@
                     </div>
                     <p class="card-description">${escapeHtml(tool.description)}</p>
                     ${renderMeta(tool)}
+                    ${renderTrustDetails(tool)}
                     <div class="card-footer">
                         <span class="card-author">${escapeHtml(tool.author)}</span>
                         <a href="${escapeHtml(tool.url)}" target="_blank" rel="noopener" class="card-link">Open</a>
@@ -1111,12 +1243,32 @@
 
         function renderMeta(tool) {
             const parts = [];
-            if (tool.b2b_specific) parts.push({ label: 'B2B-specific', className: 'b2b-meta' });
-            if (tool.status) parts.push({ label: formatStatus(tool.status) });
-            if (tool.last_reviewed) parts.push({ label: `Reviewed ${formatDate(tool.last_reviewed)}` });
-            if (tool.access_level) parts.push({ label: formatStatus(tool.access_level) });
+            parts.push({
+                label: tool.b2b_specific ? 'B2B-specific' : 'All SEs',
+                className: tool.b2b_specific ? 'b2b-meta' : 'all-se-meta'
+            });
+            if (tool.status) parts.push({ label: formatStatus(tool.status), className: `status-${String(tool.status).toLowerCase()}` });
             if (!parts.length) return '';
             return `<div class="card-meta">${parts.map(part => `<span class="meta-tag ${part.className || ''}">${escapeHtml(part.label)}</span>`).join('')}</div>`;
+        }
+
+        function renderTrustDetails(tool) {
+            const rows = [];
+            if (tool.reviewed_by) rows.push(['Reviewed by', tool.reviewed_by]);
+            if (tool.last_reviewed) rows.push(['Last reviewed', formatDate(tool.last_reviewed)]);
+            if (tool.review_cycle_days) rows.push(['Review cycle', `${tool.review_cycle_days} days`]);
+            if (tool.source_of_truth) rows.push(['Source', formatStatus(tool.source_of_truth)]);
+            if (tool.access_level) rows.push(['Access', formatStatus(tool.access_level)]);
+            if (!rows.length) return '';
+
+            return `
+                <details class="card-trust">
+                    <summary>Why trust this?</summary>
+                    <dl class="trust-list">
+                        ${rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join('')}
+                    </dl>
+                </details>
+            `;
         }
 
         function formatStatus(value) {
@@ -1149,6 +1301,7 @@
         function clearWorkflowSelection() {
             activeWorkflow = null;
             document.querySelectorAll('.workflow-card').forEach(btn => btn.classList.remove('active'));
+            updatePathBar();
         }
 
         function applyWorkflowPreset(btn) {
@@ -1157,6 +1310,20 @@
             document.getElementById('search').value = btn.dataset.query || '';
             setActiveFilter(btn.dataset.filter || 'all');
             render();
+        }
+
+        function updatePathBar() {
+            const bar = document.getElementById('path-bar');
+            const label = document.getElementById('path-label');
+            if (!activeWorkflow) {
+                bar.hidden = true;
+                label.textContent = '';
+                return;
+            }
+
+            const title = activeWorkflow.querySelector('.workflow-title').textContent;
+            label.innerHTML = `Path selected: <strong>${escapeHtml(title)}</strong>. Search and filters are tuned to this workflow.`;
+            bar.hidden = false;
         }
 
         document.getElementById('search').addEventListener('input', () => {
@@ -1174,6 +1341,13 @@
 
         document.querySelectorAll('.workflow-card').forEach(btn => {
             btn.addEventListener('click', () => applyWorkflowPreset(btn));
+        });
+
+        document.getElementById('path-clear').addEventListener('click', () => {
+            document.getElementById('search').value = '';
+            setActiveFilter('all');
+            clearWorkflowSelection();
+            render();
         });
 
         const contribute = document.getElementById('contribute');
@@ -1201,7 +1375,7 @@
     </script>
 
     <footer class="site-footer">
-        Built by <a href="https://github.com/dustinfloer" target="_blank" rel="noopener">Dustin Floer</a>
+        Built by <a href="https://shopify.enterprise.slack.com/team/U09L49KUMF0" target="_blank" rel="noopener">Dustin Floer</a>
     </footer>
 </body>
 </html>
