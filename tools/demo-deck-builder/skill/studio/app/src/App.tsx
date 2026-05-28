@@ -25,6 +25,7 @@ export default function App() {
   const [savingThemeId, setSavingThemeId] = useState<string | null>(null);
   const [inspectorFocusRequest, setInspectorFocusRequest] = useState<InspectorFocusRequest | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [saveFieldGuideCopy, setSaveFieldGuideCopy] = useState(false);
   const [publishResult, setPublishResult] = useState<PublishResult | null>(null);
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +128,7 @@ export default function App() {
     setStatus('Publishing deck');
     setError(null);
     try {
-      const result = await publishDeck();
+      const result = await publishDeck({ fieldGuideCopy: saveFieldGuideCopy });
       setPublishResult(result);
       setStatus(`Published ${result.relativeOutputPath}`);
     } catch (publishError) {
@@ -243,9 +244,19 @@ export default function App() {
           <a className="open-link" href={previewUrl} target="_blank" rel="noreferrer">
             Preview Deck
           </a>
-          <button className="open-link publish-button" type="button" disabled={isPublishing} onClick={publishCurrentDeck}>
-            {isPublishing ? 'Publishing' : 'Publish'}
-          </button>
+          <div className="publish-actions">
+            <label className="toggle-row compact-toggle">
+              <input
+                type="checkbox"
+                checked={saveFieldGuideCopy}
+                onChange={(event) => setSaveFieldGuideCopy(event.target.checked)}
+              />
+              <span>Field Guide copy</span>
+            </label>
+            <button className="open-link publish-button" type="button" disabled={isPublishing} onClick={publishCurrentDeck}>
+              {isPublishing ? 'Publishing' : 'Publish'}
+            </button>
+          </div>
         </div>
       </header>
 

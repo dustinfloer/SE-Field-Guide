@@ -102,6 +102,12 @@ export function PreviewPane({
         <div className="toolbar-status">
           {status && <span>{status}</span>}
           {publishResult && <span>Quick folder: {publishResult.relativeOutputDir}</span>}
+          {publishResult?.fieldGuideCopy?.status === 'saved' && (
+            <span>Field Guide: {publishResult.fieldGuideCopy.relativeOutputPath}</span>
+          )}
+          {publishResult?.fieldGuideCopy?.status === 'skipped' && (
+            <span className="warn-text">Field Guide skipped: {publishResult.fieldGuideCopy.message}</span>
+          )}
           {error && <span className="error-text">{error}</span>}
         </div>
       </div>

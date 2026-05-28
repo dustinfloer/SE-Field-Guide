@@ -28,6 +28,13 @@ Publish the selected Studio deck into a Quick-ready folder:
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/lt-apparel/index.html
 ```
 
+When the deck is reviewed and safe to use as team inspiration, also save a
+local Field Guide example copy:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/lt-apparel/index.html --field-guide-copy --field-guide-dir /path/to/SE-Field-Guide
+```
+
 For split-process development:
 
 ```bash
@@ -48,7 +55,8 @@ instead of serving the full source HTML deck with excluded slides hidden.
 Studio is designed to run locally. The browser UI is a local Vite app, and the
 Node backend reads/writes the merchant deck files on disk. No merchant deck data
 needs to leave the machine unless the seller explicitly publishes a quick site
-or shares a PDF.
+or shares a PDF. Field Guide example copies are local, git-ready files only;
+Studio does not commit or push them.
 
 For org rollout, document `pnpm` as the package manager. Some Shopify
 environments block global `npm` usage.

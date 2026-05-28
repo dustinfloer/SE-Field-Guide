@@ -12,7 +12,7 @@ status: "active"
 access_level: "internal"
 source_of_truth: "repo"
 reviewed_by: "@dustin.floer"
-last_reviewed: "2026-05-21"
+last_reviewed: "2026-05-28"
 review_cycle_days: "90"
 screenshot: ""
 slack_channel: "global-b2b-sales-team"
@@ -78,6 +78,12 @@ Navigation built in: keyboard arrows, space, click zones, swipe, bottom nav dots
 ## Live Example
 
 The [PDI demo deck](./examples/pdi-demo-deck.html) (152KB, 25 slides) is the reference implementation. Download it and open in Chrome to see everything in action.
+
+## Latest Update
+
+**May 28, 2026:** Publish can optionally save reviewed, merchant-safe decks as
+local Field Guide example copies. Use this to build the inspiration library
+without asking SEs to manually upload deck HTML.
 
 ## How to Get Started
 
@@ -148,7 +154,8 @@ Studio v2 opens the React app in your default browser automatically. Add
 3. Run `studio-v2` against the merchant deck; the React app opens in your browser automatically
 4. Choose slides, preview the selected deck, and open the static HTML deck for rehearsal or live demo
 5. Click **Publish** or run `publish` to create `exports/quick/index.html` for internal Quick upload
-6. Export PDF before sending anything externally to a merchant
+6. Enable **Field Guide copy** during Publish only when the deck is reviewed and safe to use as team inspiration
+7. Export PDF before sending anything externally to a merchant
 
 ## Reference Docs (Inside This Folder)
 
@@ -167,6 +174,12 @@ The skill outputs `merchants/[merchant]/index.html` for live local presentation 
 1. **Local Studio / Open Deck:** working review, rehearsal, and live demo control.
 2. **Quick site:** internal Shopify collaboration and demo sharing. Quick sites are internal and IAP-gated.
 3. **PDF export:** merchant-safe external follow-up, including approved post-demo fast-follow updates.
+4. **Field Guide example copy:** optional local, git-ready inspiration artifact saved after review. Studio does not commit or push it.
+
+Only save a Field Guide example when the deck is polished, reusable as pattern
+inspiration, and safe for internal reuse. Remove or generalize sensitive
+merchant details, raw transcript notes, private Slack/Salesforce context,
+custom pricing, and anything marked internal-only before enabling the copy.
 
 Useful commands:
 
@@ -178,6 +191,7 @@ node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio merchan
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs render-html merchants/[merchant]/index.html merchants/[merchant]/exports/[merchant]-selected-deck.html
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/[merchant]/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/[merchant]/index.html --field-guide-copy --field-guide-dir /path/to/SE-Field-Guide
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant]/index.html merchants/[merchant]/exports/[merchant]-demo-deck.pdf
 ```
 

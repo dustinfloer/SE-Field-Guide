@@ -23,6 +23,7 @@ node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-api mer
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/acme/index.html --port 7332 --api-port 7333
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs render-html merchants/acme/index.html merchants/acme/exports/acme-selected-deck.html
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/acme/index.html
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/acme/index.html --field-guide-copy --field-guide-dir /path/to/SE-Field-Guide
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/acme/index.html merchants/acme/exports/acme-demo.pdf
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs init-config merchants/acme
 ```
@@ -47,7 +48,10 @@ Studio is intended to run locally for SEs and AEs:
 3. Run `studio-v2` against a merchant deck.
 4. Use **Open deck** for local rehearsal and live demo.
 5. Use **Publish** or `publish` to render the current Studio selection to
-   `exports/quick/index.html` for internal Quick upload.
+   `exports/quick/index.html` for internal Quick upload. When the deck is safe
+   as a team reference, enable **Field Guide copy** or pass
+   `--field-guide-copy` to also save the selected HTML into
+   `tools/demo-deck-builder/examples/` in a local Field Guide checkout.
 6. Use `export-pdf` for merchant-safe sharing.
 
 Required local dependencies:
@@ -70,6 +74,8 @@ Required local dependencies:
   previewable slide. Complex modules have MVP renderers first; richer
   manifest-backed editors come next.
 - Logos should be embedded as data URIs so the live deck and PDF stay portable.
+- Field Guide example copies are local, git-ready files only. Studio does not
+  commit or push them.
 - Fast follow slides should be generated from post-demo notes and appended before the close, then polished before merchant sharing.
 - PDF is the default merchant-safe share artifact.
 - Evidence is internal confidence scaffolding. It should support discovery,

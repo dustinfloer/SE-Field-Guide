@@ -99,6 +99,16 @@ export interface PublishResult {
   manifestPath?: string | null;
   slideCount: number;
   warnings: string[];
+  fieldGuideCopy?: {
+    status: 'disabled' | 'skipped' | 'saved';
+    outputPath?: string;
+    outputDir?: string;
+    relativeOutputPath?: string;
+    relativeOutputDir?: string;
+    filename?: string;
+    targetSource?: string;
+    message: string;
+  };
   updated_at: string;
 }
 

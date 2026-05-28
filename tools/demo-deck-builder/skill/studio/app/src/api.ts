@@ -76,9 +76,9 @@ export function updateThemePreset(theme: {
   });
 }
 
-export function publishDeck(): Promise<PublishResult> {
+export function publishDeck(options: { fieldGuideCopy?: boolean } = {}): Promise<PublishResult> {
   return request<PublishResult>('/api/publish', {
     method: 'POST',
-    body: JSON.stringify({})
+    body: JSON.stringify(options)
   });
 }

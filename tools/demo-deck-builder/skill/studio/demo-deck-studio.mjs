@@ -22,7 +22,7 @@ Usage:
   node demo-deck-studio.mjs studio-api <deck.html> [--host 127.0.0.1] [--port 7333]
   node demo-deck-studio.mjs studio-v2 <deck.html> [--host 127.0.0.1] [--port 7332] [--api-port 7333] [--no-open]
   node demo-deck-studio.mjs render-html <deck.html> [output.html] [--manifest deck.manifest.json]
-  node demo-deck-studio.mjs publish|publish-quick <deck.html> [output-dir-or-index.html] [--manifest deck.manifest.json]
+  node demo-deck-studio.mjs publish|publish-quick <deck.html> [output-dir-or-index.html] [--manifest deck.manifest.json] [--field-guide-copy] [--field-guide-dir /path/to/SE-Field-Guide]
   node demo-deck-studio.mjs export-pdf <deck.html> [output.pdf] [--chrome /path/to/chrome]
   node demo-deck-studio.mjs init-config <merchant-dir> [--force]
   node demo-deck-studio.mjs init-manifest <deck.html> [--config deck.config.json] [--manifest deck.manifest.json] [--force] [--json]
@@ -455,7 +455,12 @@ function publishCommand(args) {
   if (!fs.existsSync(htmlPath)) fail(`Deck not found: ${htmlPath}`);
   const result = publishStudioDeck(htmlPath, {
     output: options.output || options._[0],
-    manifest: options.manifest
+    manifest: options.manifest,
+    config: options.config,
+    fieldGuideCopy: options.fieldGuideCopy,
+    noFieldGuideCopy: options.noFieldGuideCopy,
+    fieldGuideDir: options.fieldGuideDir,
+    fieldGuideName: options.fieldGuideName
   });
 
   console.log(`Published Studio deck: ${result.outputPath}`);
@@ -463,17 +468,22 @@ function publishCommand(args) {
   console.log(`Upload folder: ${result.relativeOutputDir}`);
   console.log(`Renderer: ${result.mode}${result.manifestPath ? ` (${result.manifestPath})` : ''}`);
   if (result.slideCount) console.log(`Slides: ${result.slideCount}`);
+  printFieldGuideCopyResult(result.fieldGuideCopy);
   printGroup('Warnings', result.warnings || []);
 }
 
 function publishStudioDeck(htmlPath, options = {}) {
   if (!fs.existsSync(htmlPath)) throw new Error(`Deck not found: ${htmlPath}`);
 
+  const configWarnings = [];
+  const configPath = resolveConfigPath(htmlPath, options.config);
+  const config = readConfig(configPath, configWarnings);
   const outputPath = resolvePublishOutputPath(htmlPath, options.output);
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
   const rendered = renderPortableDeckHtml(htmlPath, { manifest: options.manifest });
   fs.writeFileSync(outputPath, rendered.html);
+  const fieldGuideCopy = saveFieldGuideExampleCopy(htmlPath, rendered.html, { ...options, config });
 
   const outputDir = path.dirname(outputPath);
   return {
@@ -485,9 +495,153 @@ function publishStudioDeck(htmlPath, options = {}) {
     mode: rendered.mode,
     manifestPath: rendered.manifestPath,
     slideCount: rendered.slideCount,
-    warnings: rendered.warnings || [],
+    warnings: [...(rendered.warnings || []), ...configWarnings],
+    fieldGuideCopy,
     updated_at: new Date().toISOString()
   };
+}
+
+function saveFieldGuideExampleCopy(htmlPath, renderedHtml, options = {}) {
+  const mode = fieldGuideCopyMode(options);
+  if (mode === 'disabled') {
+    return {
+      status: 'disabled',
+      message: 'Field Guide example copy not requested.'
+    };
+  }
+
+  const target = resolveFieldGuideExamplesDir(options);
+  if (!target) {
+    return {
+      status: 'skipped',
+      message: 'No local Field Guide examples folder found. Pass --field-guide-dir or set DEMO_DECK_FIELD_GUIDE_DIR.'
+    };
+  }
+
+  const filename = fieldGuideExampleFilename(htmlPath, options);
+  const outputPath = path.join(target.dir, filename);
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, renderedHtml);
+
+  return {
+    status: 'saved',
+    outputPath,
+    outputDir: path.dirname(outputPath),
+    relativeOutputPath: path.relative(process.cwd(), outputPath) || outputPath,
+    relativeOutputDir: path.relative(process.cwd(), path.dirname(outputPath)) || path.dirname(outputPath),
+    filename,
+    targetSource: target.source,
+    message: `Saved Field Guide example copy: ${path.relative(process.cwd(), outputPath) || outputPath}`
+  };
+}
+
+function fieldGuideCopyMode(options = {}) {
+  if (options.noFieldGuideCopy || options.fieldGuideCopy === false) return 'disabled';
+  if (options.fieldGuideCopy === true) return 'enabled';
+  const configured = options.config?.workflow?.field_guide_copy;
+  if (configured === true || configured === 'true' || configured === 'enabled') return 'enabled';
+  if (process.env.DEMO_DECK_FIELD_GUIDE_DIR || process.env.DEMO_DECK_FIELD_GUIDE_EXAMPLES_DIR) return 'enabled';
+  return 'disabled';
+}
+
+function resolveFieldGuideExamplesDir(options = {}) {
+  const explicit = options.fieldGuideDir ||
+    process.env.DEMO_DECK_FIELD_GUIDE_EXAMPLES_DIR ||
+    process.env.DEMO_DECK_FIELD_GUIDE_DIR ||
+    options.config?.workflow?.field_guide_examples_dir ||
+    options.config?.workflow?.field_guide_dir;
+
+  if (explicit) {
+    return {
+      dir: normalizeFieldGuideExamplesDir(explicit),
+      source: 'configured'
+    };
+  }
+
+  for (const candidate of fieldGuideExamplesDirCandidates()) {
+    if (fs.existsSync(candidate)) {
+      return {
+        dir: candidate,
+        source: 'auto'
+      };
+    }
+  }
+
+  return null;
+}
+
+function normalizeFieldGuideExamplesDir(value) {
+  const target = path.resolve(expandHome(String(value || '').trim()));
+  if (!target) return target;
+  if (path.basename(target) === 'examples') return target;
+  if (path.basename(target) === 'demo-deck-builder') return path.join(target, 'examples');
+  return path.join(target, 'tools', 'demo-deck-builder', 'examples');
+}
+
+function fieldGuideExamplesDirCandidates() {
+  const roots = [];
+  let dir = process.cwd();
+  while (dir && dir !== path.dirname(dir)) {
+    roots.push(dir);
+    dir = path.dirname(dir);
+  }
+
+  const candidates = [];
+  for (const root of roots) {
+    candidates.push(
+      path.join(root, 'tools', 'demo-deck-builder', 'examples'),
+      path.join(root, 'SE-Field-Guide', 'tools', 'demo-deck-builder', 'examples'),
+      path.join(root, 'b2b-ai-catalog', 'tools', 'demo-deck-builder', 'examples')
+    );
+  }
+
+  candidates.push(
+    path.join(os.homedir(), 'Documents', 'SE-Field-Guide', 'tools', 'demo-deck-builder', 'examples'),
+    path.join(os.homedir(), 'Documents', 'SE-Assistant', 'b2b-ai-catalog', 'tools', 'demo-deck-builder', 'examples')
+  );
+
+  return unique(candidates);
+}
+
+function fieldGuideExampleFilename(htmlPath, options = {}) {
+  const rawName = options.fieldGuideName ||
+    options.config?.workflow?.field_guide_name ||
+    options.config?.merchant?.slug ||
+    options.config?.merchant?.name ||
+    fallbackDeckSlugFromPath(htmlPath);
+  const slug = slugify(rawName) || 'demo-deck';
+  const base = slug.endsWith('-demo-deck') ? slug : `${slug}-demo-deck`;
+  return `${base}.html`;
+}
+
+function fallbackDeckSlugFromPath(htmlPath) {
+  const parent = path.basename(path.dirname(htmlPath));
+  if (parent && !['examples', 'exports', 'quick'].includes(parent)) return parent;
+  return path.basename(htmlPath, path.extname(htmlPath));
+}
+
+function slugify(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function expandHome(value) {
+  if (value === '~') return os.homedir();
+  if (value.startsWith('~/')) return path.join(os.homedir(), value.slice(2));
+  return value;
+}
+
+function printFieldGuideCopyResult(result) {
+  if (!result || result.status === 'disabled') return;
+  if (result.status === 'saved') {
+    console.log(`Field Guide copy: ${result.relativeOutputPath}`);
+    return;
+  }
+  console.log(`Field Guide copy skipped: ${result.message}`);
 }
 
 function exportPdfCommand(args) {
@@ -2084,6 +2238,10 @@ function parseOptions(args) {
     else if (arg === '--api-port') options.apiPort = args[++i];
     else if (arg === '--open') options.open = true;
     else if (arg === '--no-open') options.noOpen = true;
+    else if (arg === '--field-guide-copy') options.fieldGuideCopy = true;
+    else if (arg === '--no-field-guide-copy') options.noFieldGuideCopy = true;
+    else if (arg === '--field-guide-dir') options.fieldGuideDir = args[++i];
+    else if (arg === '--field-guide-name') options.fieldGuideName = args[++i];
     else if (arg === '--alt') options.alt = args[++i];
     else if (arg === '--source-url') options.sourceUrl = args[++i];
     else if (arg === '--output') options.output = args[++i];

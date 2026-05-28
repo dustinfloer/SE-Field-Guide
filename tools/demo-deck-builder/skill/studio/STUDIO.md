@@ -244,6 +244,9 @@ export a merchant-safe deck without editing HTML.
 - Preview: open the selected deck locally for presenting and rehearsal.
 - Quick site publishing: push a shareable internal/demo preview for SE/AE
   collaboration and live demo use.
+- Field Guide example copy: when the seller marks a deck safe for reuse, save
+  the selected static HTML into a local Field Guide examples folder as a
+  git-ready reference artifact.
 - PDF export: generate the merchant-safe share artifact locally, including
   Fast Follow after a demo.
 - Fast Follow: post-demo notes update the deck through an approval workflow
@@ -302,9 +305,15 @@ Use these paths in order:
 2. **Quick site:** internal SE/AE collaboration and controlled demo sharing.
 3. **PDF export:** merchant-safe external artifact, especially after Fast
    Follow.
+4. **Field Guide example copy:** optional internal inspiration artifact after
+   review; Studio saves a local file but does not commit or push it.
 
 Do not make quick-site HTML the default merchant share artifact. PDF remains the
 safe default.
+
+Field Guide examples are for reusable inspiration, not account recordkeeping.
+Before saving one, remove or generalize sensitive merchant details, raw notes,
+private Slack/Salesforce context, custom pricing, and internal-only claims.
 
 ## Evidence Model
 

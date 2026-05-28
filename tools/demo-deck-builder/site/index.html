@@ -1193,7 +1193,7 @@
     <h1>Demo decks now have a <span class="accent">local Studio workflow</span>.</h1>
     <p class="hero-lede">
       Demo Deck Studio keeps the natural-language flow sellers already use, then adds a real local app layer:
-      manifest-backed slide selection, slide text autosave, live deck preview, reusable slide options, merchant brand palettes, Quick-ready publishing, and static HTML/PDF output as the portable artifact.
+      manifest-backed slide selection, slide text autosave, live deck preview, reusable slide options, merchant brand palettes, Quick-ready publishing, optional Field Guide example copies, and static HTML/PDF output as the portable artifact.
     </p>
     <div class="hero-ctas">
       <a href="#workflow" class="btn btn-primary">See the workflow →</a>
@@ -1252,7 +1252,7 @@
           <div class="workflow-step">
             <div>
               <div class="workflow-step-title">Share with the right artifact</div>
-              <div class="workflow-step-desc">Preview locally, publish a Quick-ready folder for internal/demo collaboration, and export PDF for merchant-safe follow-up.</div>
+              <div class="workflow-step-desc">Preview locally, publish a Quick-ready folder for internal/demo collaboration, save a reviewed Field Guide example when useful, and export PDF for merchant-safe follow-up.</div>
             </div>
           </div>
         </div>
@@ -1302,7 +1302,7 @@
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Palette library</strong><span>Use the current merchant brand palette or approved reusable color pairs.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Deck preview</strong><span>Preview the rendered deck while preserving the static HTML output path.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Checks and linting</strong><span>Strategy coverage, missing slide options, placeholders, assets, and PDF readiness remain visible.</span></div></div>
-          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Preview / Publish / PDF path</strong><span>The final artifact is still static HTML locally, Quick-ready HTML internally, and merchant-safe PDF externally.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Preview / Publish / PDF path</strong><span>The final artifact is still static HTML locally, Quick-ready HTML internally, optional Field Guide examples after review, and merchant-safe PDF externally.</span></div></div>
         </div>
       </div>
 
@@ -1409,8 +1409,13 @@ bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</co
             <button class="copy-btn" data-target="cmd-local-3">Copy</button>
           </div>
           <div class="code-block" style="margin-top: 0.65rem;">
-            <code id="cmd-local-4">node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant]/index.html</code>
+            <code id="cmd-local-4">node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/[merchant]/index.html --field-guide-copy --field-guide-dir /path/to/SE-Field-Guide</code>
             <button class="copy-btn" data-target="cmd-local-4">Copy</button>
+          </div>
+          <div class="install-note">Use Field Guide copy only after the deck is reviewed, polished, and safe as internal team inspiration.</div>
+          <div class="code-block" style="margin-top: 0.65rem;">
+            <code id="cmd-local-5">node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/[merchant]/index.html</code>
+            <button class="copy-btn" data-target="cmd-local-5">Copy</button>
           </div>
         </div>
 
@@ -1525,6 +1530,11 @@ bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</co
       </div>
       <div class="feature-tile">
         <div class="feature-tile-icon">03</div>
+        <div class="feature-tile-title">Field Guide copy</div>
+        <div class="feature-tile-desc">Optionally saves the selected deck to a local Field Guide examples folder when it is reviewed and useful for team inspiration.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">04</div>
         <div class="feature-tile-title">PDF export</div>
         <div class="feature-tile-desc">Best for merchant-safe external follow-up, including approved post-demo updates from call notes.</div>
       </div>
@@ -1667,6 +1677,11 @@ bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</co
       </div>
       <div class="feature-tile">
         <div class="feature-tile-icon">08</div>
+        <div class="feature-tile-title">Field Guide examples</div>
+        <div class="feature-tile-desc">Can save a reviewed selected deck as a git-ready example artifact without committing or pushing.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">09</div>
         <div class="feature-tile-title">PDF export ready</div>
         <div class="feature-tile-desc">Outputs editable <code>index.html</code> for live presentation, then exports a merchant-safe PDF for sharing.</div>
       </div>
@@ -1732,7 +1747,7 @@ bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</co
     <div class="footer-col">
       <h4>Demo Deck Studio</h4>
       <p>A local AE/SE workspace for building, reviewing, exporting, and following up on Shopify demo decks.</p>
-      <div class="footer-note">Current state: Studio v2 local app, manifest-backed slide selection, cover autosave, deck preview, Quick-ready publish, static HTML/PDF export path.</div>
+      <div class="footer-note">Current state: Studio v2 local app, manifest-backed slide selection, cover autosave, deck preview, Quick-ready publish, optional Field Guide copy, static HTML/PDF export path.</div>
     </div>
     <div class="footer-col">
       <h4>Resources</h4>
