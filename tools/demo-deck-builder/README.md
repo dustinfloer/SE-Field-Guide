@@ -119,6 +119,19 @@ workspace, the script can usually auto-detect the workspace:
 bash tools/demo-deck-builder/install.sh
 ```
 
+Once Demo Deck Studio is installed, future updates can be run from the Studio
+CLI without remembering the curl command:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs update
+```
+
+If the SE Assistant workspace is somewhere custom:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs update --se-assistant /path/to/SE-Assistant
+```
+
 ### Local Studio v2 prerequisites
 
 - SE Assistant repo access

@@ -16,6 +16,12 @@ node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merc
 Studio opens in your default browser automatically. Add `--no-open` if you want
 the server to start without launching a browser.
 
+Update Studio after it has already been installed:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs update
+```
+
 Export the currently selected manifest deck as portable HTML:
 
 ```bash

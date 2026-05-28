@@ -25,6 +25,7 @@ node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs render-html me
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/acme/index.html
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs publish merchants/acme/index.html --field-guide-copy --field-guide-dir /path/to/SE-Field-Guide
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs export-pdf merchants/acme/index.html merchants/acme/exports/acme-demo.pdf
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs update
 node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs init-config merchants/acme
 ```
 
@@ -53,6 +54,12 @@ Studio is intended to run locally for SEs and AEs:
    `--field-guide-copy` to also save the selected HTML into
    `tools/demo-deck-builder/examples/` in a local Field Guide checkout.
 6. Use `export-pdf` for merchant-safe sharing.
+
+For future Studio updates, run:
+
+```bash
+node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs update
+```
 
 Required local dependencies:
 

@@ -24,6 +24,7 @@ Usage:
   node demo-deck-studio.mjs render-html <deck.html> [output.html] [--manifest deck.manifest.json]
   node demo-deck-studio.mjs publish|publish-quick <deck.html> [output-dir-or-index.html] [--manifest deck.manifest.json] [--field-guide-copy] [--field-guide-dir /path/to/SE-Field-Guide]
   node demo-deck-studio.mjs export-pdf <deck.html> [output.pdf] [--chrome /path/to/chrome]
+  node demo-deck-studio.mjs update [--se-assistant /path/to/SE-Assistant] [--skip-deps] [--local]
   node demo-deck-studio.mjs init-config <merchant-dir> [--force]
   node demo-deck-studio.mjs init-manifest <deck.html> [--config deck.config.json] [--manifest deck.manifest.json] [--force] [--json]
 `;
@@ -48,6 +49,7 @@ function main() {
   if (command === 'render-html') return renderHtmlCommand(args);
   if (command === 'publish' || command === 'publish-quick') return publishCommand(args);
   if (command === 'export-pdf') return exportPdfCommand(args);
+  if (command === 'update' || command === 'self-update') return updateStudioCommand(args);
   if (command === 'init-config') return initConfigCommand(args);
   if (command === 'init-manifest') return initManifestCommand(args);
 
@@ -696,6 +698,148 @@ function exportPdfCommand(args) {
   if (!fs.existsSync(pdfPath)) fail(`Chrome finished, but PDF was not created: ${pdfPath}`);
   console.log(`PDF exported: ${pdfPath}`);
   console.log(`Renderer: ${rendered.mode}${rendered.manifestPath ? ` (${rendered.manifestPath})` : ''}`);
+}
+
+function updateStudioCommand(args) {
+  const options = parseOptions(args);
+  const seAssistantDir = resolveSeAssistantDir(options.seAssistant);
+  const installedScriptPath = path.join(seAssistantDir, '.claude', 'skills', 'demo-deck-builder', 'studio', 'demo-deck-studio.mjs');
+  const beforeSignature = fileSignature(installedScriptPath);
+  const installer = resolveStudioInstallerPath({ local: options.local });
+  const installerArgs = ['--se-assistant', seAssistantDir];
+  if (options.skipDeps) installerArgs.push('--skip-deps');
+  if (!installer.local) installerArgs.push('--from-github');
+
+  console.log('Updating Demo Deck Studio...');
+  console.log(`SE Assistant: ${seAssistantDir}`);
+  console.log(`Installer: ${installer.display}`);
+
+  const result = spawnSync('bash', [installer.path, ...installerArgs], {
+    cwd: seAssistantDir,
+    encoding: 'utf8',
+    stdio: 'inherit'
+  });
+
+  if (result.error) fail(`Demo Deck Studio update failed: ${result.error.message}`);
+  if (result.status !== 0) fail(`Demo Deck Studio update failed with exit code ${result.status}.`);
+
+  const validation = validateInstalledStudio(seAssistantDir);
+  const afterSignature = fileSignature(installedScriptPath);
+  const changed = beforeSignature && afterSignature && beforeSignature !== afterSignature;
+
+  console.log('\nDemo Deck Studio update complete.');
+  console.log(`Status: ${changed ? 'Updated' : beforeSignature ? 'Installed / refreshed' : 'Installed'}`);
+  console.log(`CLI: ${validation.cli ? 'OK' : 'missing'}`);
+  console.log(`Studio app: ${validation.app ? 'OK' : 'missing'}`);
+  console.log(`Studio app deps: ${validation.deps ? 'OK' : options.skipDeps ? 'skipped' : 'missing'}`);
+  console.log('\nRun Studio v2:');
+  console.log('node .claude/skills/demo-deck-builder/studio/demo-deck-studio.mjs studio-v2 merchants/[merchant]/index.html --port 7332 --api-port 7333');
+}
+
+function resolveSeAssistantDir(explicitPath) {
+  const candidates = [];
+  if (explicitPath) candidates.push(path.resolve(expandHome(explicitPath)));
+  if (process.env.SE_ASSISTANT_HOME) candidates.push(path.resolve(expandHome(process.env.SE_ASSISTANT_HOME)));
+  candidates.push(process.cwd());
+
+  let current = __dirname;
+  while (current && current !== path.dirname(current)) {
+    candidates.push(current);
+    current = path.dirname(current);
+  }
+
+  candidates.push(
+    path.join(os.homedir(), 'Documents', 'SE-Assistant'),
+    path.join(os.homedir(), 'SE-Assistant'),
+    path.join(os.homedir(), 'Developer', 'SE-Assistant'),
+    path.join(os.homedir(), 'Code', 'SE-Assistant'),
+    path.join(os.homedir(), 'Projects', 'SE-Assistant')
+  );
+
+  for (const candidate of unique(candidates.filter(Boolean))) {
+    if (looksLikeSeAssistant(candidate)) return candidate;
+  }
+
+  fail('Could not find an SE Assistant workspace. Re-run with --se-assistant /path/to/SE-Assistant.');
+}
+
+function looksLikeSeAssistant(candidate) {
+  return fs.existsSync(path.join(candidate, '.claude', 'skills')) ||
+    fs.existsSync(path.join(candidate, 'AGENTS.md')) ||
+    fs.existsSync(path.join(candidate, 'CLAUDE.md'));
+}
+
+function resolveStudioInstallerPath(options = {}) {
+  const localInstaller = options.local ? findLocalStudioInstaller() : null;
+  if (options.local && localInstaller) {
+    return {
+      path: localInstaller,
+      display: localInstaller,
+      local: true
+    };
+  }
+
+  if (options.local && !localInstaller) {
+    fail('Could not find a local SE-Field-Guide installer. Re-run without --local to use the released installer.');
+  }
+
+  const remoteInstaller = ensureRemoteStudioInstaller();
+  return {
+    path: remoteInstaller,
+    display: 'SE-Field-Guide main',
+    local: false
+  };
+}
+
+function findLocalStudioInstaller() {
+  const candidates = [];
+  let current = __dirname;
+  while (current && current !== path.dirname(current)) {
+    candidates.push(path.join(current, 'tools', 'demo-deck-builder', 'install.sh'));
+    candidates.push(path.join(current, 'b2b-ai-catalog', 'tools', 'demo-deck-builder', 'install.sh'));
+    current = path.dirname(current);
+  }
+
+  candidates.push(
+    path.join(os.homedir(), 'Documents', 'SE-Field-Guide', 'tools', 'demo-deck-builder', 'install.sh'),
+    path.join(os.homedir(), 'Documents', 'SE-Assistant', 'b2b-ai-catalog', 'tools', 'demo-deck-builder', 'install.sh')
+  );
+
+  return unique(candidates).find((candidate) => fs.existsSync(candidate)) || null;
+}
+
+function ensureRemoteStudioInstaller() {
+  const curl = spawnSync('curl', ['--version'], { encoding: 'utf8' });
+  if (curl.status !== 0) fail('curl is required to update Demo Deck Studio from SE-Field-Guide.');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'demo-deck-studio-update-'));
+  const installerPath = path.join(tempDir, 'install.sh');
+  const url = 'https://raw.githubusercontent.com/dustinfloer/SE-Field-Guide/main/tools/demo-deck-builder/install.sh';
+  const result = spawnSync('curl', ['-fsSL', url, '-o', installerPath], { encoding: 'utf8' });
+  if (result.status !== 0) {
+    const stderr = result.stderr ? `\n${result.stderr.trim()}` : '';
+    fail(`Could not download Demo Deck Studio installer.${stderr}`);
+  }
+  fs.chmodSync(installerPath, 0o700);
+  return installerPath;
+}
+
+function validateInstalledStudio(seAssistantDir) {
+  const cliPath = path.join(seAssistantDir, '.claude', 'skills', 'demo-deck-builder', 'studio', 'demo-deck-studio.mjs');
+  const appPath = path.join(seAssistantDir, '.claude', 'skills', 'demo-deck-builder', 'studio', 'app', 'package.json');
+  const depsPath = path.join(seAssistantDir, '.claude', 'skills', 'demo-deck-builder', 'studio', 'app', 'node_modules');
+  const cli = fs.existsSync(cliPath) && spawnSync(process.execPath, [cliPath, '--help'], { encoding: 'utf8' }).status === 0;
+  return {
+    cli,
+    app: fs.existsSync(appPath),
+    deps: fs.existsSync(depsPath)
+  };
+}
+
+function fileSignature(filePath) {
+  if (!fs.existsSync(filePath)) return '';
+  const stat = fs.statSync(filePath);
+  return `${stat.size}:${stat.mtimeMs}`;
 }
 
 function initConfigCommand(args) {
@@ -2238,6 +2382,9 @@ function parseOptions(args) {
     else if (arg === '--api-port') options.apiPort = args[++i];
     else if (arg === '--open') options.open = true;
     else if (arg === '--no-open') options.noOpen = true;
+    else if (arg === '--skip-deps') options.skipDeps = true;
+    else if (arg === '--local') options.local = true;
+    else if (arg === '--se-assistant') options.seAssistant = args[++i];
     else if (arg === '--field-guide-copy') options.fieldGuideCopy = true;
     else if (arg === '--no-field-guide-copy') options.noFieldGuideCopy = true;
     else if (arg === '--field-guide-dir') options.fieldGuideDir = args[++i];
