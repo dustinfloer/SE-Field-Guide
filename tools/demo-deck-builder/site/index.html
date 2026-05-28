@@ -1193,7 +1193,7 @@
     <h1>Demo decks now have a <span class="accent">local Studio workflow</span>.</h1>
     <p class="hero-lede">
       Demo Deck Studio keeps the natural-language flow sellers already use, then adds a real local app layer:
-      manifest-backed slide selection, slide text autosave, live deck preview, reusable slide options, merchant brand palettes, Quick-ready publishing, optional Field Guide example copies, and static HTML/PDF output as the portable artifact.
+      manifest-backed slide selection, slide text autosave, live deck preview, reusable slide options, controlled color/font/motion libraries, Quick-ready publishing, optional Field Guide example copies, and static HTML/PDF output as the portable artifact.
     </p>
     <div class="hero-ctas">
       <a href="#workflow" class="btn btn-primary">See the workflow →</a>
@@ -1299,7 +1299,7 @@
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Deck customizer layout</strong><span>Slide order, slide library, preview, and inspector live in one focused workspace.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Slide library</strong><span>Registered slide options appear as in-deck, hidden, addable, or post-demo moments.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Slide text autosave</strong><span>Edit supported text fields and see the deck preview refresh from manifest state after a short pause.</span></div></div>
-          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Palette library</strong><span>Use the current merchant brand palette or approved reusable color pairs.</span></div></div>
+          <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Style libraries</strong><span>Use the current merchant brand palette plus approved color schemes, font pairings, and motion modes.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Deck preview</strong><span>Preview the rendered deck while preserving the static HTML output path.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Checks and linting</strong><span>Strategy coverage, missing slide options, placeholders, assets, and PDF readiness remain visible.</span></div></div>
           <div class="status-row"><span class="status-pill live">Live</span><div class="status-text"><strong>Preview / Publish / PDF path</strong><span>The final artifact is still static HTML locally, Quick-ready HTML internally, optional Field Guide examples after review, and merchant-safe PDF externally.</span></div></div>
@@ -1662,56 +1662,61 @@ bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</co
       </div>
       <div class="feature-tile">
         <div class="feature-tile-icon">04</div>
+        <div class="feature-tile-title">Style libraries</div>
+        <div class="feature-tile-desc">Choose controlled color schemes, font pairings, and motion modes that carry through preview, Quick-ready HTML, and PDF export.</div>
+      </div>
+      <div class="feature-tile">
+        <div class="feature-tile-icon">05</div>
         <div class="feature-tile-title">Slide library</div>
         <div class="feature-tile-desc">All registered patterns appear as slide options, including in-deck, hidden, and planned-but-not-generated states.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">05</div>
+        <div class="feature-tile-icon">06</div>
         <div class="feature-tile-title">Slide registry</div>
         <div class="feature-tile-desc">Cover, recap, stats grid, timeline, customer proof, case study, storefront mockup, TOC, section headers, AI sims, pricing, source map, and closing patterns.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">06</div>
+        <div class="feature-tile-icon">07</div>
         <div class="feature-tile-title">Studio v2 app</div>
         <div class="feature-tile-desc">Local React/Vite app with checks, slide selection, deck preview, inspector controls, and Preview Deck workflow.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">07</div>
+        <div class="feature-tile-icon">08</div>
         <div class="feature-tile-title">Quick-ready publish</div>
         <div class="feature-tile-desc">Publishes the selected manifest deck as portable HTML at <code>exports/quick/index.html</code> for internal sharing.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">08</div>
+        <div class="feature-tile-icon">09</div>
         <div class="feature-tile-title">Field Guide examples</div>
         <div class="feature-tile-desc">Can save a reviewed selected deck as a git-ready example artifact without committing or pushing.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">09</div>
+        <div class="feature-tile-icon">10</div>
         <div class="feature-tile-title">PDF export ready</div>
         <div class="feature-tile-desc">Outputs editable <code>index.html</code> for live presentation, then exports a merchant-safe PDF for sharing.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">09</div>
+        <div class="feature-tile-icon">11</div>
         <div class="feature-tile-title">Agentic commerce sim</div>
         <div class="feature-tile-desc">Buyer-side drop-in: multi-product mosaic, Google Pay checkout with discount/loyalty/subscription, order confirmation back in the chat.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">10</div>
+        <div class="feature-tile-icon">12</div>
         <div class="feature-tile-title">ChatGPT × Claude management</div>
         <div class="feature-tile-desc">Merchant-side drop-in: same Shopify store managed from both ChatGPT (daily ops) and Claude (strategic), with live admin sync proving both AIs hit the same admin.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">11</div>
+        <div class="feature-tile-icon">13</div>
         <div class="feature-tile-title">12+ pre-built sims</div>
         <div class="feature-tile-desc">NetSuite, SAP, Oracle, ERP flows, payment sync, API integration — grab-and-go from <a href="https://simulations.quick.shopify.io/" target="_blank" style="color:inherit;text-decoration:underline;">simulations.quick.shopify.io</a>.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">12</div>
+        <div class="feature-tile-icon">14</div>
         <div class="feature-tile-title">Thorough context gathering</div>
         <div class="feature-tile-desc">Skill pulls from merchant folder, Salesforce, Gemini meeting notes, Drive, Scout transcripts, Slack, SENTRAL, and public research before building.</div>
       </div>
       <div class="feature-tile">
-        <div class="feature-tile-icon">13</div>
+        <div class="feature-tile-icon">15</div>
         <div class="feature-tile-title">Fast-follow workflow</div>
         <div class="feature-tile-desc">Fast Follow belongs after the demo: review notes, propose deck updates, approve the addendum, then export a merchant-safe PDF.</div>
       </div>
@@ -1752,7 +1757,7 @@ bash tools/demo-deck-builder/install.sh --se-assistant /path/to/SE-Assistant</co
     <div class="footer-col">
       <h4>Demo Deck Studio</h4>
       <p>A local AE/SE workspace for building, reviewing, exporting, and following up on Shopify demo decks.</p>
-      <div class="footer-note">Current state: Studio v2 local app, manifest-backed slide selection, cover autosave, deck preview, Quick-ready publish, optional Field Guide copy, static HTML/PDF export path.</div>
+      <div class="footer-note">Current state: Studio v2 local app, manifest-backed slide selection, cover autosave, controlled style libraries, deck preview, Quick-ready publish, optional Field Guide copy, static HTML/PDF export path.</div>
     </div>
     <div class="footer-col">
       <h4>Resources</h4>

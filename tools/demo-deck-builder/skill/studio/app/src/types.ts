@@ -63,12 +63,18 @@ export interface StudioBrand {
   accent_bright?: string;
   preset_id?: string;
   preset_label?: string;
+  font_preset_id?: string;
+  font_preset_label?: string;
   heading_font?: string;
+  body_font?: string;
+  motion_preset_id?: string;
+  motion_preset_label?: string;
   merchant_preset?: {
     label?: string;
     accent?: string;
     accent_bright?: string;
     heading_font?: string;
+    body_font?: string;
   };
 }
 

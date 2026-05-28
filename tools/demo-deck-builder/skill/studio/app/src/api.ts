@@ -62,7 +62,12 @@ export function updateThemePreset(theme: {
   label: string;
   accent: string;
   accent_bright: string;
+  font_preset_id?: string;
+  font_preset_label?: string;
   heading_font?: string;
+  body_font?: string;
+  motion_preset_id?: string;
+  motion_preset_label?: string;
 }): Promise<StudioDeckData> {
   return request<StudioDeckData>('/api/theme/update', {
     method: 'POST',
@@ -71,7 +76,12 @@ export function updateThemePreset(theme: {
       preset_label: theme.label,
       accent: theme.accent,
       accent_bright: theme.accent_bright,
-      heading_font: theme.heading_font || 'Inter'
+      font_preset_id: theme.font_preset_id,
+      font_preset_label: theme.font_preset_label,
+      heading_font: theme.heading_font || 'Inter',
+      body_font: theme.body_font || 'Inter',
+      motion_preset_id: theme.motion_preset_id,
+      motion_preset_label: theme.motion_preset_label
     })
   });
 }

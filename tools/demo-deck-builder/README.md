@@ -39,6 +39,7 @@ Gives you three ways to work:
 - 21 registered slide patterns available as Studio modules
 - Animated Gemini + Sidekick chat mockups with timed message reveals
 - Visual effects baked in (mesh gradient backgrounds, floating particles, pulse rings on section headers, gradient text accents)
+- Controlled Studio style libraries for color schemes, font pairings, and motion modes
 - A Claude Code skill that fully automates the build for SEs
 - A Studio v2 foundation with `deck.config.json`, `deck.manifest.json`, a pattern registry, a local Node API, a React/Vite frontend, linting, and PDF export
 
@@ -71,7 +72,7 @@ Every generated deck includes:
 | **Three Anchors** | Outcomes summary with 3 cards |
 | **Pricing Tiers** | 3-column with featured middle tier + math callout |
 | **Closing** | Next-steps cards with staged reveal |
-| **Studio v2 checks** | Local module picker, selected deck preview, missing module checks, placeholders, assets, and print/PDF readiness |
+| **Studio v2 checks** | Local module picker, selected deck preview, style libraries, missing module checks, placeholders, assets, and print/PDF readiness |
 
 Navigation built in: keyboard arrows, space, click zones, swipe, bottom nav dots, progress bar, speaker tag (AE/SE toggle per slide).
 
@@ -84,6 +85,10 @@ The [PDI demo deck](./examples/pdi-demo-deck.html) (152KB, 25 slides) is the ref
 **May 28, 2026:** Publish can optionally save reviewed, merchant-safe decks as
 local Field Guide example copies. Use this to build the inspiration library
 without asking SEs to manually upload deck HTML.
+
+**May 28, 2026:** Studio theme controls now use controlled libraries for color
+schemes, font pairings, and motion modes. The renderer applies those manifest
+choices to preview, Quick-ready HTML, and PDF export.
 
 ## How to Get Started
 

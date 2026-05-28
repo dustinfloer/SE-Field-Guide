@@ -49,12 +49,17 @@ pnpm --dir .claude/skills/demo-deck-builder/studio/app run dev
 ```
 
 The app consumes `/api/deck`, `/api/slide-picker`, `/api/pattern-library/add`,
-and `/api/pattern-library/refresh`. When `deck.manifest.json` exists beside the
-deck, the local API treats it as the preferred slide-selection source and mirrors
-changes back into `deck.config.json` for compatibility with the existing static
-HTML/PDF export path. The `/deck` preview, `render-html`, `publish`, and
-`export-pdf` commands render the selected deck from manifest slide inclusion
-instead of serving the full source HTML deck with excluded slides hidden.
+`/api/pattern-library/refresh`, and `/api/theme/update`. When
+`deck.manifest.json` exists beside the deck, the local API treats it as the
+preferred slide-selection source and mirrors changes back into `deck.config.json`
+for compatibility with the existing static HTML/PDF export path. The `/deck`
+preview, `render-html`, `publish`, and `export-pdf` commands render the selected
+deck from manifest slide inclusion instead of serving the full source HTML deck
+with excluded slides hidden.
+
+The Theme inspector uses controlled libraries for color schemes, font pairings,
+and motion modes. Those choices are saved to the manifest and applied by the
+renderer, so the preview, published Quick HTML, and PDF export stay aligned.
 
 ## Local Runtime
 

@@ -77,6 +77,9 @@ Required local dependencies:
   exclude choices without rewriting the deck HTML.
 - Studio v2 should make `deck.config.json` / future `deck.manifest.json` the
   source of truth and treat rendered HTML as an export target.
+- Theme choices should come from controlled Studio libraries for color schemes,
+  font pairings, and motion modes so SEs can polish decks without creating
+  one-off visual drift.
 - Every pattern in `pattern-registry.json` can be added from Studio as a real
   previewable slide. Complex modules have MVP renderers first; richer
   manifest-backed editors come next.

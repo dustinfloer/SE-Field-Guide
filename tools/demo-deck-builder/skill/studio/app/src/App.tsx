@@ -160,18 +160,25 @@ export default function App() {
   const saveThemePreset = useCallback(async (theme: {
     id: string;
     label: string;
+    action_id?: string;
+    action_label?: string;
     accent: string;
     accent_bright: string;
+    font_preset_id?: string;
+    font_preset_label?: string;
     heading_font?: string;
+    body_font?: string;
+    motion_preset_id?: string;
+    motion_preset_label?: string;
   }) => {
-    setSavingThemeId(theme.id);
+    setSavingThemeId(theme.action_id || theme.id);
     setStatus('Updating theme');
     setError(null);
     try {
       const nextDeck = await updateThemePreset(theme);
       setDeck(nextDeck);
       setSelectedSlide((slide) => clampSlide(slide, nextDeck.slideCount));
-      setStatus(`Theme set to ${theme.label}`);
+      setStatus(`Theme set to ${theme.action_label || theme.label}`);
     } catch (saveError) {
       setError((saveError as Error).message);
       setStatus('Theme update failed');

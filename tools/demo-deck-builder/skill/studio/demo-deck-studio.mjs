@@ -1778,7 +1778,12 @@ function summarizeBrand(config, htmlPath, html) {
     accent_bright: config?.brand?.accent_bright || '',
     preset_id: config?.brand?.preset_id || '',
     preset_label: config?.brand?.preset_label || '',
+    font_preset_id: config?.brand?.font_preset_id || '',
+    font_preset_label: config?.brand?.font_preset_label || '',
     heading_font: config?.brand?.heading_font || '',
+    body_font: config?.brand?.body_font || '',
+    motion_preset_id: config?.brand?.motion_preset_id || '',
+    motion_preset_label: config?.brand?.motion_preset_label || '',
     merchant_preset: normalizeMerchantThemePreset(config?.brand?.merchant_preset),
     logo_path: logoPath,
     logo_exists: logoExists,
@@ -2040,7 +2045,12 @@ function updateManifestTheme(htmlPath, body) {
     preset_label: theme.preset_label || 'Studio preset',
     accent: theme.accent,
     accent_bright: theme.accent_bright,
+    font_preset_id: theme.font_preset_id || existingBrand.font_preset_id || 'inter',
+    font_preset_label: theme.font_preset_label || existingBrand.font_preset_label || 'Inter',
     heading_font: theme.heading_font || existingBrand.heading_font || 'Inter',
+    body_font: theme.body_font || existingBrand.body_font || 'Inter',
+    motion_preset_id: normalizeMotionPresetId(theme.motion_preset_id || existingBrand.motion_preset_id || 'standard') || 'standard',
+    motion_preset_label: theme.motion_preset_label || existingBrand.motion_preset_label || 'Standard',
     updated_at: now
   };
   if (merchantPreset) nextBrand.merchant_preset = merchantPreset;
@@ -2050,7 +2060,7 @@ function updateManifestTheme(htmlPath, body) {
   writeManifest(manifestPath, manifest);
 }
 
-const SHARED_THEME_PRESET_IDS = new Set(['shopify-teal', 'commerce-blue', 'launch-gold', 'ai-coral']);
+const SHARED_THEME_PRESET_IDS = new Set(['shopify-teal', 'commerce-blue', 'field-green', 'launch-gold', 'ai-coral', 'executive-slate']);
 
 function normalizeMerchantThemePreset(value) {
   if (!value || typeof value !== 'object') return null;
@@ -2062,7 +2072,8 @@ function normalizeMerchantThemePreset(value) {
     label: normalizeManifestTextField(value.label || value.preset_label || '', 120),
     accent,
     accent_bright: accentBright,
-    heading_font: normalizeManifestTextField(value.heading_font || '', 80)
+    heading_font: normalizeManifestTextField(value.heading_font || '', 80),
+    body_font: normalizeManifestTextField(value.body_font || '', 80)
   });
 }
 
@@ -2082,7 +2093,8 @@ function captureMerchantThemePreset(brand, manifest) {
     label,
     accent,
     accent_bright: accentBright,
-    heading_font: normalizeManifestTextField(brand.heading_font || '', 80)
+    heading_font: normalizeManifestTextField(brand.heading_font || '', 80),
+    body_font: normalizeManifestTextField(brand.body_font || '', 80)
   });
 }
 
@@ -2092,8 +2104,18 @@ function normalizeThemeFields(value) {
     preset_label: normalizeManifestTextField(value.preset_label || value.label || '', 120),
     accent: normalizeHexColor(value.accent),
     accent_bright: normalizeHexColor(value.accent_bright || value.bright),
-    heading_font: normalizeManifestTextField(value.heading_font || '', 80)
+    font_preset_id: normalizeManifestTextField(value.font_preset_id || '', 80),
+    font_preset_label: normalizeManifestTextField(value.font_preset_label || '', 120),
+    heading_font: normalizeManifestTextField(value.heading_font || '', 80),
+    body_font: normalizeManifestTextField(value.body_font || '', 80),
+    motion_preset_id: normalizeMotionPresetId(value.motion_preset_id || ''),
+    motion_preset_label: normalizeManifestTextField(value.motion_preset_label || '', 120)
   };
+}
+
+function normalizeMotionPresetId(value) {
+  const id = normalizeManifestTextField(value || '', 80).toLowerCase();
+  return ['standard', 'calm', 'cinematic', 'still'].includes(id) ? id : '';
 }
 
 function normalizeHexColor(value) {
@@ -2693,7 +2715,9 @@ function applyManifestBrandToHtml(html, brand) {
   if (!brand || typeof brand !== 'object') return html;
   const accent = normalizeHexColor(brand.accent);
   const accentBright = normalizeHexColor(brand.accent_bright);
-  if (!accent && !accentBright) return html;
+  const headingFont = studioFontForName(brand.heading_font);
+  const bodyFont = studioFontForName(brand.body_font || brand.heading_font);
+  const motionPresetId = normalizeMotionPresetId(brand.motion_preset_id);
 
   const vars = {};
   if (accent) {
@@ -2711,8 +2735,92 @@ function applyManifestBrandToHtml(html, brand) {
     vars['--accent-bright-rgb'] = brightRgb.join(', ');
     vars['--accent-border'] = `rgba(${brightRgb.join(', ')}, 0.34)`;
   }
+  if (bodyFont) vars['--font'] = bodyFont.stack;
+  if (headingFont) vars['--font-heading'] = headingFont.stack;
 
-  return replaceRootCssVars(html, vars);
+  let output = replaceRootCssVars(html, vars);
+  if (bodyFont || headingFont) output = applyStudioFontImports(output);
+  return applyStudioThemeOverrideStyle(output, { headingFont, motionPresetId });
+}
+
+const STUDIO_GOOGLE_FONT_IMPORT = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700;800&display=swap';
+
+const STUDIO_FONT_STACKS = new Map([
+  ['inter', { family: 'Inter', stack: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }],
+  ['ibm plex sans', { family: 'IBM Plex Sans', stack: "'IBM Plex Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }],
+  ['space grotesk', { family: 'Space Grotesk', stack: "'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }],
+  ['manrope', { family: 'Manrope', stack: "'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }],
+  ['work sans', { family: 'Work Sans', stack: "'Work Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }]
+]);
+
+function studioFontForName(value) {
+  const key = String(value || '').replace(/['"]/g, '').trim().toLowerCase();
+  return STUDIO_FONT_STACKS.get(key) || null;
+}
+
+function applyStudioFontImports(html) {
+  const link = `<link href="${STUDIO_GOOGLE_FONT_IMPORT}" rel="stylesheet">`;
+  const googleFontsRe = /<link\b(?=[^>]*href=["'][^"']*fonts\.googleapis\.com\/css2[^"']*["'])[^>]*>/i;
+  if (googleFontsRe.test(html)) return html.replace(googleFontsRe, link);
+  if (/<style\b/i.test(html)) return html.replace(/<style\b/i, `${link}\n<style`);
+  return html.replace(/<\/head>/i, `${link}\n</head>`);
+}
+
+function applyStudioThemeOverrideStyle(html, { headingFont, motionPresetId }) {
+  const css = [
+    headingFont ? studioHeadingFontCss() : '',
+    studioMotionCss(motionPresetId)
+  ].filter(Boolean).join('\n\n');
+  if (!css) return html;
+
+  const style = `<style id="demo-deck-studio-theme-controls">\n${css}\n</style>`;
+  const existingRe = /<style\b(?=[^>]*id=["']demo-deck-studio-theme-controls["'])[^>]*>[\s\S]*?<\/style>/i;
+  if (existingRe.test(html)) return html.replace(existingRe, style);
+  return html.replace(/<\/head>/i, `${style}\n</head>`);
+}
+
+function studioHeadingFontCss() {
+  return [
+    '.cover-title,',
+    '.slide h1,',
+    '.slide h2,',
+    '.slide-title,',
+    '.section-header-title {',
+    '  font-family: var(--font-heading, var(--font));',
+    '}'
+  ].join('\n');
+}
+
+function studioMotionCss(motionPresetId) {
+  if (motionPresetId === 'calm') {
+    return [
+      '.particle, .slide-particles span { opacity: 0.36 !important; }',
+      '.mesh-bg { opacity: 0.52 !important; animation-duration: 24s !important; }',
+      '.pulse-ring { opacity: 0.42 !important; animation-duration: 7s !important; }'
+    ].join('\n');
+  }
+
+  if (motionPresetId === 'cinematic') {
+    return [
+      '.mesh-bg { opacity: 0.95 !important; filter: saturate(1.22); animation-duration: 9s !important; }',
+      '.pulse-ring { animation-duration: 3s !important; }',
+      '.particle { transform: scale(1.08); }'
+    ].join('\n');
+  }
+
+  if (motionPresetId === 'still') {
+    return [
+      '*, *::before, *::after {',
+      '  animation-duration: 0.001ms !important;',
+      '  animation-iteration-count: 1 !important;',
+      '  transition-duration: 0.001ms !important;',
+      '  scroll-behavior: auto !important;',
+      '}',
+      '.particle, .slide-particles, .mesh-bg, .pulse-ring { display: none !important; }'
+    ].join('\n');
+  }
+
+  return '';
 }
 
 function replaceRootCssVars(html, vars) {

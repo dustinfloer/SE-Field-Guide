@@ -159,7 +159,9 @@ export function SlideInspectorPanel({
         <div className="theme-token-grid">
           <ThemeToken label="Accent" value={deck.brand.accent || 'not set'} color={deck.brand.accent} />
           <ThemeToken label="Bright" value={deck.brand.accent_bright || 'not set'} color={deck.brand.accent_bright} />
-          <LabelValue label="Font" value={deck.brand.heading_font || 'not set'} />
+          <LabelValue label="Heading" value={deck.brand.heading_font || 'not set'} />
+          <LabelValue label="Body" value={deck.brand.body_font || deck.brand.heading_font || 'not set'} />
+          <LabelValue label="Motion" value={deck.brand.motion_preset_label || deck.brand.motion_preset_id || 'standard'} />
           <LabelValue label="Logo" value={deck.brand.logo_embedded ? 'embedded' : deck.brand.logo_path || 'missing'} tone={deck.brand.logo_embedded ? 'ok' : 'warn'} />
         </div>
       </div>
@@ -170,19 +172,57 @@ export function SlideInspectorPanel({
 interface ThemePreset {
   id: string;
   label: string;
+  action_id?: string;
+  action_label?: string;
   accent: string;
   accent_bright: string;
+  font_preset_id?: string;
+  font_preset_label?: string;
   heading_font?: string;
+  body_font?: string;
+  motion_preset_id?: string;
+  motion_preset_label?: string;
   kind?: 'merchant' | 'library';
+}
+
+interface FontPreset {
+  id: string;
+  label: string;
+  heading_font: string;
+  body_font: string;
+  note: string;
+}
+
+interface MotionPreset {
+  id: string;
+  label: string;
+  note: string;
 }
 
 const TEXT_AUTOSAVE_DELAY_MS = 1200;
 
-const SHARED_THEME_PRESETS: ThemePreset[] = [
-  { id: 'shopify-teal', label: 'Shopify Teal', accent: '#14a098', accent_bright: '#1cc7bd', heading_font: 'Inter' },
-  { id: 'commerce-blue', label: 'Commerce Blue', accent: '#3977d6', accent_bright: '#8fb7ff', heading_font: 'Inter' },
-  { id: 'launch-gold', label: 'Launch Gold', accent: '#b88922', accent_bright: '#f2c86b', heading_font: 'Inter' },
-  { id: 'ai-coral', label: 'AI Coral', accent: '#d97757', accent_bright: '#ffb089', heading_font: 'Inter' }
+const SHARED_COLOR_PRESETS: ThemePreset[] = [
+  { id: 'shopify-teal', label: 'Shopify Teal', accent: '#14a098', accent_bright: '#1cc7bd' },
+  { id: 'commerce-blue', label: 'Commerce Blue', accent: '#3977d6', accent_bright: '#8fb7ff' },
+  { id: 'field-green', label: 'Field Green', accent: '#39a36f', accent_bright: '#86e0af' },
+  { id: 'launch-gold', label: 'Launch Gold', accent: '#b88922', accent_bright: '#f2c86b' },
+  { id: 'ai-coral', label: 'AI Coral', accent: '#d97757', accent_bright: '#ffb089' },
+  { id: 'executive-slate', label: 'Executive Slate', accent: '#7d92b8', accent_bright: '#bdd0f2' }
+];
+
+const FONT_PRESETS: FontPreset[] = [
+  { id: 'inter', label: 'Inter', heading_font: 'Inter', body_font: 'Inter', note: 'Default studio deck' },
+  { id: 'ibm-plex', label: 'IBM Plex Sans', heading_font: 'IBM Plex Sans', body_font: 'IBM Plex Sans', note: 'Enterprise briefing' },
+  { id: 'space-grotesk', label: 'Space Grotesk', heading_font: 'Space Grotesk', body_font: 'Inter', note: 'Product-forward' },
+  { id: 'manrope', label: 'Manrope', heading_font: 'Manrope', body_font: 'Manrope', note: 'Retail polish' },
+  { id: 'work-sans', label: 'Work Sans', heading_font: 'Work Sans', body_font: 'Work Sans', note: 'Operational clarity' }
+];
+
+const MOTION_PRESETS: MotionPreset[] = [
+  { id: 'standard', label: 'Standard', note: 'Balanced reveal and ambient motion' },
+  { id: 'calm', label: 'Calm', note: 'Softer backgrounds and slower pulses' },
+  { id: 'cinematic', label: 'Cinematic', note: 'Higher-energy motion for live demos' },
+  { id: 'still', label: 'Still', note: 'Static mode for PDF-first review' }
 ];
 
 function ThemePresetPicker({
@@ -197,18 +237,56 @@ function ThemePresetPicker({
   onSaveThemePreset: (theme: ThemePreset) => Promise<void>;
 }) {
   const merchantPreset = merchantThemePreset(brand, merchantName);
-  const presets = merchantPreset ? [merchantPreset, ...SHARED_THEME_PRESETS] : SHARED_THEME_PRESETS;
-  const activePreset = activeThemePresetId(brand, merchantPreset);
+  const presets = merchantPreset ? [merchantPreset, ...SHARED_COLOR_PRESETS] : SHARED_COLOR_PRESETS;
+  const activeColorId = activeThemePresetId(brand, merchantPreset);
+  const activeFont = activeFontPreset(brand);
+  const activeMotion = activeMotionPreset(brand);
+
+  function saveColorPreset(preset: ThemePreset) {
+    return onSaveThemePreset(themeUpdateFromBrand(brand, merchantPreset, {
+      id: preset.id,
+      label: preset.label,
+      action_id: preset.id,
+      action_label: preset.label,
+      accent: preset.accent,
+      accent_bright: preset.accent_bright
+    }));
+  }
+
+  function saveFontPreset(preset: FontPreset) {
+    return onSaveThemePreset(themeUpdateFromBrand(brand, merchantPreset, {
+      action_id: fontSaveId(preset),
+      action_label: preset.label,
+      font_preset_id: preset.id,
+      font_preset_label: preset.label,
+      heading_font: preset.heading_font,
+      body_font: preset.body_font
+    }));
+  }
+
+  function saveMotionPreset(preset: MotionPreset) {
+    return onSaveThemePreset(themeUpdateFromBrand(brand, merchantPreset, {
+      action_id: motionSaveId(preset),
+      action_label: preset.label,
+      motion_preset_id: preset.id,
+      motion_preset_label: preset.label
+    }));
+  }
 
   return (
     <div className="theme-preset-panel">
       <div className="theme-preset-copy">
-        <span>Palette library</span>
-        <small>Merchant brand plus approved reusable color pairs. Updates preview and publish/PDF output.</small>
+        <span>Style libraries</span>
+        <small>Controlled color, type, and motion choices. Updates preview and publish/PDF output.</small>
       </div>
+      <div className="theme-library">
+        <div className="theme-library-heading">
+          <span>Color scheme</span>
+          <strong>{activeColorId ? colorLabelForId(activeColorId, presets) : 'Custom'}</strong>
+        </div>
       <div className="theme-preset-grid">
         {presets.map((preset) => {
-          const active = activePreset === preset.id;
+          const active = activeColorId === preset.id;
           const saving = savingThemeId === preset.id;
           return (
             <button
@@ -217,7 +295,7 @@ function ThemePresetPicker({
               key={preset.id}
               disabled={Boolean(savingThemeId)}
               aria-pressed={active}
-              onClick={() => onSaveThemePreset(preset)}
+              onClick={() => saveColorPreset(preset)}
             >
               <span className="theme-preset-swatches">
                 <i style={{ backgroundColor: preset.accent }} />
@@ -230,6 +308,65 @@ function ThemePresetPicker({
             </button>
           );
         })}
+      </div>
+      </div>
+
+      <div className="theme-library">
+        <div className="theme-library-heading">
+          <span>Font</span>
+          <strong>{activeFont.label}</strong>
+        </div>
+        <div className="theme-option-grid">
+          {FONT_PRESETS.map((preset) => {
+            const active = activeFont.id === preset.id;
+            const saving = savingThemeId === fontSaveId(preset);
+            return (
+              <button
+                className={`theme-option font-option ${active ? 'active' : ''}`}
+                type="button"
+                key={preset.id}
+                disabled={Boolean(savingThemeId)}
+                aria-pressed={active}
+                onClick={() => saveFontPreset(preset)}
+              >
+                <span className="font-sample" style={{ fontFamily: preset.heading_font }}>{saving ? '...' : 'Aa'}</span>
+                <span>
+                  <strong>{preset.label}</strong>
+                  <small>{preset.note}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="theme-library">
+        <div className="theme-library-heading">
+          <span>Motion</span>
+          <strong>{activeMotion.label}</strong>
+        </div>
+        <div className="theme-option-grid motion-grid">
+          {MOTION_PRESETS.map((preset) => {
+            const active = activeMotion.id === preset.id;
+            const saving = savingThemeId === motionSaveId(preset);
+            return (
+              <button
+                className={`theme-option motion-option ${active ? 'active' : ''}`}
+                type="button"
+                key={preset.id}
+                disabled={Boolean(savingThemeId)}
+                aria-pressed={active}
+                onClick={() => saveMotionPreset(preset)}
+              >
+                <span className={`motion-sample ${preset.id}`} aria-hidden="true"><i /><i /><i /></span>
+                <span>
+                  <strong>{saving ? 'Saving...' : preset.label}</strong>
+                  <small>{preset.note}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -247,12 +384,13 @@ function merchantThemePreset(brand: StudioDeckData['brand'], merchantName?: stri
     accent,
     accent_bright: accentBright,
     heading_font: source.heading_font || brand.heading_font || 'Inter',
+    body_font: source.body_font || brand.body_font || 'Inter',
     kind: 'merchant'
   };
 }
 
 function activeThemePresetId(brand: StudioDeckData['brand'], merchantPreset: ThemePreset | null) {
-  if (brand.preset_id && SHARED_THEME_PRESETS.some((preset) => preset.id === brand.preset_id)) {
+  if (brand.preset_id && SHARED_COLOR_PRESETS.some((preset) => preset.id === brand.preset_id)) {
     return brand.preset_id;
   }
 
@@ -266,11 +404,68 @@ function activeThemePresetId(brand: StudioDeckData['brand'], merchantPreset: The
 function presetIdForColors(accent = '', bright = '') {
   const accentKey = accent.toLowerCase();
   const brightKey = bright.toLowerCase();
-  return SHARED_THEME_PRESETS.find((preset) => preset.accent === accentKey && preset.accent_bright === brightKey)?.id || '';
+  return SHARED_COLOR_PRESETS.find((preset) => preset.accent.toLowerCase() === accentKey && preset.accent_bright.toLowerCase() === brightKey)?.id || '';
 }
 
 function colorsMatch(a = '', b = '') {
   return a.toLowerCase() === b.toLowerCase();
+}
+
+function colorLabelForId(id: string, presets: ThemePreset[]) {
+  return presets.find((preset) => preset.id === id)?.label || 'Custom';
+}
+
+function activeFontPreset(brand: StudioDeckData['brand']): FontPreset {
+  const id = brand.font_preset_id || '';
+  if (id) {
+    const match = FONT_PRESETS.find((preset) => preset.id === id);
+    if (match) return match;
+  }
+
+  const heading = (brand.heading_font || '').toLowerCase();
+  const body = (brand.body_font || '').toLowerCase();
+  return FONT_PRESETS.find((preset) => {
+    return preset.heading_font.toLowerCase() === heading &&
+      (!body || preset.body_font.toLowerCase() === body);
+  }) || FONT_PRESETS[0];
+}
+
+function activeMotionPreset(brand: StudioDeckData['brand']): MotionPreset {
+  return MOTION_PRESETS.find((preset) => preset.id === brand.motion_preset_id) || MOTION_PRESETS[0];
+}
+
+function themeUpdateFromBrand(
+  brand: StudioDeckData['brand'],
+  merchantPreset: ThemePreset | null,
+  patch: Partial<ThemePreset>
+): ThemePreset {
+  const activeColorId = activeThemePresetId(brand, merchantPreset);
+  const activeColor = [...(merchantPreset ? [merchantPreset] : []), ...SHARED_COLOR_PRESETS].find((preset) => preset.id === activeColorId);
+  const activeFont = activeFontPreset(brand);
+  const activeMotion = activeMotionPreset(brand);
+  const fallbackColor = activeColor || SHARED_COLOR_PRESETS[0];
+
+  return {
+    id: brand.preset_id || fallbackColor.id,
+    label: brand.preset_label || fallbackColor.label,
+    accent: brand.accent || fallbackColor.accent,
+    accent_bright: brand.accent_bright || fallbackColor.accent_bright,
+    font_preset_id: activeFont.id,
+    font_preset_label: activeFont.label,
+    heading_font: activeFont.heading_font,
+    body_font: activeFont.body_font,
+    motion_preset_id: activeMotion.id,
+    motion_preset_label: activeMotion.label,
+    ...patch
+  };
+}
+
+function fontSaveId(preset: FontPreset) {
+  return `font:${preset.id}`;
+}
+
+function motionSaveId(preset: MotionPreset) {
+  return `motion:${preset.id}`;
 }
 
 function SpeakerEditor({
