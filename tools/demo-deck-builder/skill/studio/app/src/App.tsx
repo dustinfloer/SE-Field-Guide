@@ -5,6 +5,7 @@ import {
   fetchDeck,
   publishDeck,
   refreshPatternModule,
+  reorderSlides,
   setSlidePickerDecision,
   updateSlideFields,
   updateThemePreset
@@ -14,13 +15,14 @@ import { DeckHealthPanel, SlideInspectorPanel } from './components/InspectorPane
 import { PreviewPane } from './components/PreviewPane';
 import { StudioLogo } from './components/StudioLogo';
 import { FatalError, Stat } from './components/common';
-import type { InspectorFocusRequest, PublishResult, SlidePickerModule, StudioDeckData, StudioIssue } from './types';
+import type { InspectorFocusRequest, PublishResult, SlidePickerModule, SlideReorderItem, StudioDeckData, StudioIssue } from './types';
 import { clampSlide, editableSlideId, isEditableSlide } from './utils/studio';
 
 export default function App() {
   const [deck, setDeck] = useState<StudioDeckData | null>(null);
   const [selectedSlide, setSelectedSlide] = useState(1);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
+  const [isReorderingSlides, setIsReorderingSlides] = useState(false);
   const [savingSlideId, setSavingSlideId] = useState<string | null>(null);
   const [savingThemeId, setSavingThemeId] = useState<string | null>(null);
   const [inspectorFocusRequest, setInspectorFocusRequest] = useState<InspectorFocusRequest | null>(null);
@@ -119,6 +121,28 @@ export default function App() {
       setStatus('Refresh failed');
     } finally {
       setPendingModuleId(null);
+    }
+  }
+
+  async function reorderDeckSlides(slides: SlideReorderItem[]) {
+    const previousSlideId = activeSlide ? slideStableId(activeSlide) : '';
+    setIsReorderingSlides(true);
+    setStatus('Reordering slides');
+    setError(null);
+    try {
+      const nextDeck = await reorderSlides(slides);
+      setDeck(nextDeck);
+      const nextSelected = previousSlideId
+        ? nextDeck.slides.find((slide) => slideStableId(slide) === previousSlideId)?.number
+        : null;
+      setSelectedSlide(clampSlide(nextSelected || selectedSlide, nextDeck.slideCount));
+      setStatus('Slide order updated');
+    } catch (reorderError) {
+      setError((reorderError as Error).message);
+      setStatus('Reorder failed');
+      throw reorderError;
+    } finally {
+      setIsReorderingSlides(false);
     }
   }
 
@@ -273,11 +297,13 @@ export default function App() {
             deck={deck}
             selectedSlide={selectedSlide}
             pendingModuleId={pendingModuleId}
+            isReordering={isReorderingSlides}
             onPreviewSlide={selectPreviewSlide}
             onPreviewModule={previewModule}
             onToggle={toggleModule}
             onAdd={addModule}
             onRefresh={refreshModule}
+            onReorderSlides={reorderDeckSlides}
           />
         </aside>
 
@@ -313,6 +339,10 @@ export default function App() {
       </main>
     </div>
   );
+}
+
+function slideStableId(slide: StudioDeckData['slides'][number]) {
+  return slide.manifest_slide_id || slide.id || String(slide.source_number || slide.number);
 }
 
 function inspectorFieldLabel(field: string) {

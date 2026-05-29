@@ -1,4 +1,4 @@
-import type { PublishResult, StudioDeckData } from './types';
+import type { PublishResult, SlideReorderItem, StudioDeckData } from './types';
 
 const configuredBaseUrl = import.meta.env.VITE_DEMO_DECK_STUDIO_API_URL || '';
 const API_BASE_URL = configuredBaseUrl.replace(/\/$/, '');
@@ -54,6 +54,13 @@ export function updateSlideFields(id: string, fields: Record<string, string>): P
   return request<StudioDeckData>('/api/slides/update', {
     method: 'POST',
     body: JSON.stringify({ id, fields })
+  });
+}
+
+export function reorderSlides(slides: SlideReorderItem[]): Promise<StudioDeckData> {
+  return request<StudioDeckData>('/api/slides/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ slides })
   });
 }
 

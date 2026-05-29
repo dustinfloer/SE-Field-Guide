@@ -16,6 +16,11 @@ export interface StudioSlide {
   editable?: boolean;
 }
 
+export interface SlideReorderItem {
+  id: string;
+  source_number?: number;
+}
+
 export interface StudioIssue {
   type: 'error' | 'warning' | 'info';
   text: string;

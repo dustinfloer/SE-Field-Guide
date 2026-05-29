@@ -102,7 +102,7 @@
     },
     {
       "id": "sidekick-chat",
-      "name": "Sidekick Chat",
+      "name": "Sidekick Operations",
       "category": "simulation",
       "best_for": ["all"],
       "requires_evidence": false,

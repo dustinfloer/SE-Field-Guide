@@ -1,4 +1,5 @@
-import type { SlidePickerModule, StudioDeckData } from '../types';
+import { useMemo, useState } from 'react';
+import type { SlidePickerModule, SlideReorderItem, StudioDeckData } from '../types';
 import { PanelTitle, Stat } from './common';
 import {
   isComposerSelectedModule,
@@ -18,36 +19,67 @@ interface DeckStructurePanelProps {
   deck: StudioDeckData;
   selectedSlide: number;
   pendingModuleId: string | null;
+  isReordering: boolean;
   onPreviewSlide: (slide: number) => void;
   onPreviewModule: (module: SlidePickerModule) => void;
   onToggle: (module: SlidePickerModule) => void;
   onAdd: (module: SlidePickerModule) => void;
   onRefresh: (module: SlidePickerModule) => void;
+  onReorderSlides: (slides: SlideReorderItem[]) => Promise<void>;
 }
 
 export function DeckStructurePanel({
   deck,
   selectedSlide,
   pendingModuleId,
+  isReordering,
   onPreviewSlide,
   onPreviewModule,
   onToggle,
   onAdd,
-  onRefresh
+  onRefresh,
+  onReorderSlides
 }: DeckStructurePanelProps) {
+  const [dragSlideId, setDragSlideId] = useState('');
+  const [dropSlideId, setDropSlideId] = useState('');
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const [libraryFilter, setLibraryFilter] = useState<'all' | 'ready' | 'ai' | 'proof' | 'follow-up'>('all');
   const orderedModules = orderedDeckModules(deck.slide_picker.modules);
   const selectedModules = orderedModules.filter((module) => isComposerSelectedModule(module));
   const removedModules = orderedModules.filter((module) => !module.included && (module.present || module.source_slide_number || module.user_set || module.requirement !== 'optional'));
   const libraryModules = orderedLibraryModules(deck.slide_picker.modules.filter((module) => module.can_add && !module.present));
-  const richLibraryModules = libraryModules.filter(isRichScaffold);
-  const starterLibraryModules = libraryModules.filter((module) => !isRichScaffold(module));
+  const filteredLibraryModules = useMemo(() => {
+    return libraryModules.filter((module) => {
+      return moduleMatchesLibraryQuery(module, libraryQuery) && moduleMatchesLibraryFilter(module, libraryFilter);
+    });
+  }, [libraryFilter, libraryModules, libraryQuery]);
+  const richLibraryModules = filteredLibraryModules.filter(isRichScaffold);
+  const starterLibraryModules = filteredLibraryModules.filter((module) => !isRichScaffold(module));
+  const visibleSlideIds = deck.slides.map(slideStableId);
+
+  function reorderSlide(dragId: string, targetId: string) {
+    if (!dragId || !targetId || dragId === targetId || isReordering) return;
+    const from = visibleSlideIds.indexOf(dragId);
+    const to = visibleSlideIds.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const nextSlides = [...deck.slides];
+    const [moved] = nextSlides.splice(from, 1);
+    nextSlides.splice(to, 0, moved);
+    onReorderSlides(nextSlides.map((slide) => ({
+      id: slideStableId(slide),
+      source_number: slide.source_number || slide.number
+    }))).catch(() => {
+      setDragSlideId('');
+      setDropSlideId('');
+    });
+  }
 
   return (
     <section className="panel composer-panel">
       <div className="composer-title-row">
         <div>
           <PanelTitle label="Deck" />
-          <p className="panel-subtitle">Slides are shown in presentation order. Add optional moments from the library below.</p>
+          <p className="panel-subtitle">Drag slides to reorder. Search Add slide for Sidekick, pricing, proof, and other reusable moments.</p>
         </div>
       </div>
 
@@ -60,10 +92,10 @@ export function DeckStructurePanel({
       <div className="structure-section selected-section">
         <div className="section-heading">
           <div>
-            <span>Slides in deck</span>
+            <span>Deck slides</span>
             <strong>{deck.slideCount} slides</strong>
           </div>
-          <small>Presentation order</small>
+          <small>{isReordering ? 'Saving order' : 'Drag to reorder'}</small>
         </div>
         <div className="flow-list">
           {deck.slides.length ? (
@@ -72,8 +104,25 @@ export function DeckStructurePanel({
               const previousModule = index > 0
                 ? selectedModules.find((item) => item.target_slide_number === deck.slides[index - 1]?.number) || null
                 : null;
+              const slideId = slideStableId(slide);
               return (
-                <div className="flow-item" key={`${slide.number}-${slide.manifest_slide_id || slide.id || slide.title}`}>
+                <div
+                  className={`flow-item ${dropSlideId === slideId && dragSlideId !== slideId ? 'drop-target' : ''}`}
+                  key={`${slideId}-${slide.title}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (dragSlideId && dragSlideId !== slideId) setDropSlideId(slideId);
+                  }}
+                  onDragLeave={() => {
+                    if (dropSlideId === slideId) setDropSlideId('');
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    reorderSlide(dragSlideId, slideId);
+                    setDragSlideId('');
+                    setDropSlideId('');
+                  }}
+                >
                   {shouldShowSlideSectionBreak(module, previousModule, index) && (
                     <div className="flow-section-label">{module?.section_label || slide.eyebrow || 'Other'}</div>
                   )}
@@ -81,9 +130,16 @@ export function DeckStructurePanel({
                     slide={slide}
                     module={module}
                     isActive={slide.number === selectedSlide}
+                    isDragging={dragSlideId === slideId}
+                    canDrag={!isReordering}
                     isPending={module ? pendingModuleId === module.id : false}
                     onPreview={onPreviewSlide}
                     onToggle={onToggle}
+                    onDragStart={() => setDragSlideId(slideId)}
+                    onDragEnd={() => {
+                      setDragSlideId('');
+                      setDropSlideId('');
+                    }}
                   />
                 </div>
               );
@@ -97,10 +153,32 @@ export function DeckStructurePanel({
       <div className="structure-section module-library-section">
         <div className="section-heading">
           <div>
-            <span>Slide library</span>
-            <strong>{libraryModules.length} available</strong>
+            <span>Add slide</span>
+            <strong>{filteredLibraryModules.length} of {libraryModules.length} available</strong>
           </div>
-          <small>Add to deck</small>
+          <small>Search library</small>
+        </div>
+        <div className="library-tools">
+          <label className="library-search">
+            <span>Search slides</span>
+            <input
+              value={libraryQuery}
+              placeholder="Search Sidekick, pricing, proof..."
+              onChange={(event) => setLibraryQuery(event.target.value)}
+            />
+          </label>
+          <div className="library-filters" aria-label="Slide library filters">
+            {LIBRARY_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                className={libraryFilter === filter.id ? 'active' : ''}
+                type="button"
+                onClick={() => setLibraryFilter(filter.id)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
         </div>
         {richLibraryModules.length > 0 && (
           <div className="library-group">
@@ -143,7 +221,13 @@ export function DeckStructurePanel({
             </div>
           </details>
         )}
-        {!libraryModules.length && <div className="empty">Every registered slide option is already represented in this deck.</div>}
+        {!filteredLibraryModules.length && (
+          <div className="empty">
+            {libraryModules.length
+              ? 'No slides match that search. Try Sidekick, Agentic, pricing, case study, or proof.'
+              : 'Every registered slide option is already represented in this deck.'}
+          </div>
+        )}
       </div>
 
       {removedModules.length > 0 && (
@@ -173,6 +257,53 @@ export function DeckStructurePanel({
   );
 }
 
+const LIBRARY_FILTERS: { id: 'all' | 'ready' | 'ai' | 'proof' | 'follow-up'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'ready', label: 'Ready' },
+  { id: 'ai', label: 'AI' },
+  { id: 'proof', label: 'Proof' },
+  { id: 'follow-up', label: 'Follow-up' }
+];
+
+function slideStableId(slide: StudioDeckData['slides'][number]) {
+  return slide.manifest_slide_id || slide.id || String(slide.source_number || slide.number);
+}
+
+function moduleSearchText(module: SlidePickerModule) {
+  return [
+    module.id,
+    module.label,
+    module.reason,
+    module.category,
+    module.section,
+    module.section_label,
+    module.slot,
+    module.slot_label,
+    module.pattern_label,
+    Array.isArray(module.patterns) ? module.patterns.join(' ') : '',
+    module.scaffold_quality,
+    module.scaffold_note,
+    module.reference_path
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function moduleMatchesLibraryQuery(module: SlidePickerModule, query: string) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = moduleSearchText(module);
+  return terms.every((term) => haystack.includes(term));
+}
+
+function moduleMatchesLibraryFilter(module: SlidePickerModule, filter: 'all' | 'ready' | 'ai' | 'proof' | 'follow-up') {
+  if (filter === 'all') return true;
+  if (filter === 'ready') return isRichScaffold(module);
+  const text = moduleSearchText(module);
+  if (filter === 'ai') return /\b(ai|agentic|sidekick|chatgpt|claude|gemini)\b/.test(text);
+  if (filter === 'proof') return /\b(proof|case|customer|peer|source|evidence)\b/.test(text);
+  if (filter === 'follow-up') return /\b(follow|fast-follow|post-demo|recap|question)\b/.test(text);
+  return true;
+}
+
 function shouldShowSlideSectionBreak(module: SlidePickerModule | null, previousModule: SlidePickerModule | null, index: number) {
   if (index === 0) return true;
   const section = module?.section_label || '';
@@ -184,16 +315,24 @@ function SlideCard({
   slide,
   module,
   isActive,
+  isDragging,
+  canDrag,
   isPending,
   onPreview,
-  onToggle
+  onToggle,
+  onDragStart,
+  onDragEnd
 }: {
   slide: StudioDeckData['slides'][number];
   module: SlidePickerModule | null;
   isActive: boolean;
+  isDragging: boolean;
+  canDrag: boolean;
   isPending: boolean;
   onPreview: (slide: number) => void;
   onToggle: (module: SlidePickerModule) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const positionLabel = `Slide ${String(slide.number).padStart(2, '0')}`;
   const section = module?.section_label || slide.eyebrow || '';
@@ -201,12 +340,20 @@ function SlideCard({
 
   return (
     <article
-      className={`module-card slide-card flow-card ${compactFlow ? 'compact-card' : ''} ${module?.requirement || 'optional'} ${isActive ? 'active' : ''}`}
+      className={`module-card slide-card flow-card ${compactFlow ? 'compact-card' : ''} ${module?.requirement || 'optional'} ${isActive ? 'active' : ''} ${isDragging ? 'dragging' : ''}`}
+      draggable={canDrag}
       onClick={() => onPreview(slide.number)}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', slideStableId(slide));
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
     >
       <div className="module-top">
         <div>
           <div className="module-eyebrow">
+            <span className="drag-handle" aria-hidden="true">::</span>
             <span className="position-badge">{positionLabel}</span>
             {section && <span>{section}</span>}
           </div>

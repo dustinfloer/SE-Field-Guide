@@ -397,6 +397,12 @@ function createStudioServer(htmlPath, { rootHtml }) {
         return sendJson(response, buildStudioDeckData(htmlPath));
       }
 
+      if (url.pathname === '/api/slides/reorder' && request.method === 'POST') {
+        const body = await readJsonRequest(request);
+        reorderManifestSlides(htmlPath, body);
+        return sendJson(response, buildStudioDeckData(htmlPath));
+      }
+
       if (url.pathname === '/api/theme/update' && request.method === 'POST') {
         const body = await readJsonRequest(request);
         updateManifestTheme(htmlPath, body);
@@ -1376,7 +1382,7 @@ function recommendedSlidePlanFor(strategy) {
     items.push({ id: 'agentic-commerce', label: 'Agentic Commerce buyer moment', patterns: ['agentic-commerce'], required: true, category: 'simulation', section: 'simulation', slot: '20-agentic-commerce', html_probe: /id=["']gemini-chat["']/i, reason: 'DTC and hybrid stories should show how AI discovery changes buyer behavior.' });
   }
 
-  items.push({ id: 'sidekick-ops', label: 'Merchant-side AI operations', patterns: ['sidekick-chat'], required: Boolean(strategy.sidekick_required), category: 'simulation', section: 'operations', slot: '32-sidekick', html_probe: /id=["']sidekick-chat["']/i, reason: 'Shows operator value beyond buyer-side AI.' });
+  items.push({ id: 'sidekick-ops', label: 'Sidekick operations', patterns: ['sidekick-chat'], required: Boolean(strategy.sidekick_required), category: 'simulation', section: 'operations', slot: '32-sidekick', html_probe: /id=["']sidekick-chat["']/i, reason: 'Merchant-side AI operator workflow powered by Sidekick.' });
 
   if (strategy.pricing_required) {
     items.push({ id: 'plus-pricing', label: 'Shopify Plus pricing', patterns: ['pricing'], required: true, category: 'close', section: 'close', slot: '42-pricing', html_probe: /Shopify Plus pricing|\$2,300|0\.18%|0\.35%/i, reason: 'Commercial decks need Plus pricing mechanics before the close.' });
@@ -2017,6 +2023,93 @@ function updateManifestSlideFields(htmlPath, body) {
   writeManifest(manifestPath, manifest);
 }
 
+function reorderManifestSlides(htmlPath, body) {
+  const warnings = [];
+  let manifestPath = resolveManifestPath(htmlPath, null);
+  let manifest = readManifest(manifestPath, warnings, { silentMissing: true });
+
+  if (!manifest) {
+    manifestPath = resolveManifestPath(htmlPath, null, { forWrite: true });
+    const configPath = resolveConfigPath(htmlPath, null);
+    const config = readConfig(configPath, warnings);
+    manifest = buildDeckManifestForPath(htmlPath, { configPath, config, manifestPath });
+  }
+
+  if (!manifestPath) throw new Error('No deck.manifest.json path could be resolved.');
+  if (!Array.isArray(manifest.slides)) throw new Error('deck.manifest.json has no slides array.');
+
+  const requestedSlides = Array.isArray(body?.slides) ? body.slides : [];
+  const requestedKeys = requestedSlides.map((item) => normalizeManifestSlideReorderKey(item)).filter(Boolean);
+  if (!requestedKeys.length) throw new Error('Missing slide order.');
+
+  const currentSlides = manifest.slides || [];
+  const visibleSlides = currentSlides.filter((slide) => slide?.included);
+  const hiddenSlides = currentSlides.filter((slide) => !slide?.included);
+  const visibleByKey = new Map();
+  for (const slide of visibleSlides) {
+    for (const key of manifestSlideReorderKeys(slide)) {
+      if (key && !visibleByKey.has(key)) visibleByKey.set(key, slide);
+    }
+  }
+
+  const nextVisibleSlides = [];
+  const seen = new Set();
+  for (const key of requestedKeys) {
+    const slide = visibleByKey.get(key);
+    if (!slide) throw new Error(`Unknown visible slide in requested order: ${key}`);
+    const stableKey = manifestSlidePrimaryReorderKey(slide);
+    if (seen.has(stableKey)) continue;
+    seen.add(stableKey);
+    nextVisibleSlides.push(slide);
+  }
+
+  for (const slide of visibleSlides) {
+    const stableKey = manifestSlidePrimaryReorderKey(slide);
+    if (!seen.has(stableKey)) nextVisibleSlides.push(slide);
+  }
+
+  const now = new Date().toISOString();
+  manifest.slides = [...nextVisibleSlides, ...hiddenSlides].map((slide, index) => ({
+    ...slide,
+    position: index + 1
+  }));
+  const visiblePositionBySource = new Map();
+  nextVisibleSlides.forEach((slide, index) => {
+    const sourceNumber = Number(slide?.source_slide_number);
+    if (Number.isInteger(sourceNumber)) visiblePositionBySource.set(sourceNumber, index + 1);
+  });
+  manifest.modules = (manifest.modules || []).map((module) => {
+    const sourceNumber = Number(module?.source_slide_number);
+    if (!Number.isInteger(sourceNumber) || !visiblePositionBySource.has(sourceNumber)) return module;
+    return {
+      ...module,
+      target_slide_number: visiblePositionBySource.get(sourceNumber),
+      updated_at: now
+    };
+  });
+  manifest.updated_at = now;
+  writeManifest(manifestPath, manifest);
+}
+
+function normalizeManifestSlideReorderKey(item) {
+  if (typeof item === 'string' || typeof item === 'number') return String(item).trim();
+  if (!item || typeof item !== 'object') return '';
+  return String(item.id || item.manifest_slide_id || item.source_number || item.source_slide_number || '').trim();
+}
+
+function manifestSlideReorderKeys(slide) {
+  return [
+    slide?.id,
+    slide?.manifest_slide_id,
+    slide?.source_slide_number,
+    slide?.source_number
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+}
+
+function manifestSlidePrimaryReorderKey(slide) {
+  return manifestSlideReorderKeys(slide)[0] || '';
+}
+
 function updateManifestTheme(htmlPath, body) {
   const warnings = [];
   let manifestPath = resolveManifestPath(htmlPath, null);
@@ -2219,7 +2312,7 @@ function buildDeckManifest({ htmlPath, configPath, manifestPath, config, html })
     brand: cloneJson(config?.brand || {}),
     strategy: cloneJson(plan.strategy || {}),
     modules: slidePicker.modules.map((module) => manifestModuleFromStudioModule(module, { config, sourceSlides, visibleSlides })),
-    slides: sourceSlides.map((slide) => manifestSlideFromSourceSlide(slide, { config, visibleSlides })),
+    slides: sourceSlides.map((slide, index) => manifestSlideFromSourceSlide(slide, { config, visibleSlides, index })),
     updated_at: new Date().toISOString()
   };
 }
@@ -2273,7 +2366,7 @@ function manifestModuleFromStudioModule(module, { config, sourceSlides, visibleS
   });
 }
 
-function manifestSlideFromSourceSlide(slide, { config, visibleSlides }) {
+function manifestSlideFromSourceSlide(slide, { config, visibleSlides, index = 0 }) {
   const outline = outlineSlide(slide);
   const configSlides = Array.isArray(config?.slides) ? config.slides : [];
   const configSlide = (outline.id && configSlides.find((item) => item.id === outline.id)) || configSlides[slide.number - 1] || {};
@@ -2286,6 +2379,7 @@ function manifestSlideFromSourceSlide(slide, { config, visibleSlides }) {
     speaker: configSlide.speaker || outline.speaker || '',
     pattern: configSlide.pattern || attr(slide.attrs, 'data-pattern') || '',
     included: visible,
+    position: index + 1,
     evidence: Array.isArray(configSlide.evidence) ? configSlide.evidence : []
   });
 }
@@ -2342,6 +2436,64 @@ function syncManifestIfPresent(htmlPath, configPath, config) {
   const manifest = buildDeckManifestForPath(htmlPath, { configPath, config, manifestPath });
   writeManifest(manifestPath, manifest);
   return manifest;
+}
+
+function syncManifestPreservingOrderIfPresent(htmlPath, configPath, config) {
+  const manifestPath = resolveManifestPath(htmlPath, null);
+  if (!manifestPath) return null;
+  const warnings = [];
+  const previousManifest = readManifest(manifestPath, warnings, { silentMissing: true });
+  const nextManifest = buildDeckManifestForPath(htmlPath, { configPath, config, manifestPath });
+  const manifest = preserveManifestSlideOrder(previousManifest, nextManifest);
+  writeManifest(manifestPath, manifest);
+  return manifest;
+}
+
+function preserveManifestSlideOrder(previousManifest, nextManifest) {
+  if (!previousManifest || !Array.isArray(previousManifest.slides) || !Array.isArray(nextManifest?.slides)) return nextManifest;
+
+  const nextByKey = new Map();
+  for (const slide of nextManifest.slides) {
+    for (const key of manifestSlideReorderKeys(slide)) {
+      if (key && !nextByKey.has(key)) nextByKey.set(key, slide);
+    }
+  }
+
+  const ordered = [];
+  const seen = new Set();
+  for (const previousSlide of previousManifest.slides) {
+    const slide = manifestSlideReorderKeys(previousSlide).map((key) => nextByKey.get(key)).find(Boolean);
+    if (!slide) continue;
+    const key = manifestSlidePrimaryReorderKey(slide);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(slide);
+  }
+
+  for (const slide of nextManifest.slides) {
+    const key = manifestSlidePrimaryReorderKey(slide);
+    if (seen.has(key)) continue;
+    ordered.push(slide);
+  }
+
+  nextManifest.slides = ordered.map((slide, index) => ({ ...slide, position: index + 1 }));
+  const visiblePositionBySource = new Map();
+  let visiblePosition = 1;
+  nextManifest.slides.filter((slide) => slide?.included).forEach((slide) => {
+    const sourceNumber = Number(slide?.source_slide_number);
+    if (Number.isInteger(sourceNumber)) visiblePositionBySource.set(sourceNumber, visiblePosition);
+    visiblePosition += 1;
+  });
+  nextManifest.modules = (nextManifest.modules || []).map((module) => {
+    const sourceNumber = Number(module?.source_slide_number);
+    if (!Number.isInteger(sourceNumber) || !visiblePositionBySource.has(sourceNumber)) return module;
+    return {
+      ...module,
+      target_slide_number: visiblePositionBySource.get(sourceNumber)
+    };
+  });
+
+  return nextManifest;
 }
 
 function summarizeManifest(manifest, manifestPath) {
@@ -3435,7 +3587,7 @@ function updateSlidePickerDecision(htmlPath, body) {
   };
 
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-  syncManifestIfPresent(htmlPath, configPath, config);
+  syncManifestPreservingOrderIfPresent(htmlPath, configPath, config);
 }
 
 function addPatternFromLibrary(htmlPath, body) {
@@ -3490,7 +3642,7 @@ function addPatternFromLibrary(htmlPath, body) {
   });
 
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-  syncManifestIfPresent(htmlPath, configPath, config);
+  syncManifestPreservingOrderIfPresent(htmlPath, configPath, config);
 }
 
 function refreshPatternModule(htmlPath, body) {
@@ -3552,7 +3704,7 @@ function refreshPatternModule(htmlPath, body) {
   });
 
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-  syncManifestIfPresent(htmlPath, configPath, config);
+  syncManifestPreservingOrderIfPresent(htmlPath, configPath, config);
 }
 
 function replaceSlideBlock(html, slide, replacement) {
