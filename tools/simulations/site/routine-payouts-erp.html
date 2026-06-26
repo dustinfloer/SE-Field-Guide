@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopify Routine Payouts → ERP GL Posting</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e27;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #e0e6f0;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    text-align: center; padding: 10px 0 6px;
+    background: rgba(10,14,39,0.95);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+  .header h1 { font-size: 17px; font-weight: 600; color: #fff; letter-spacing: 0.5px; }
+  .header .subtitle { font-size: 10px; color: #7b8ab8; margin-top: 1px; }
+  .badge {
+    display: inline-block;
+    background: rgba(80,200,120,0.15); border: 1px solid rgba(80,200,120,0.3);
+    color: #50c878; font-size: 8px; padding: 2px 10px;
+    border-radius: 12px; margin-top: 3px; letter-spacing: 0.5px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 16px;
+    background: rgba(10,14,39,0.9);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    flex-shrink: 0;
+  }
+  .btn {
+    padding: 5px 16px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04); color: #c0c8dc;
+    font-size: 10px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+  .btn-green { background: rgba(80,200,120,0.12); border-color: rgba(80,200,120,0.3); color: #50c878; }
+  .btn-green:hover { background: rgba(80,200,120,0.2); }
+  .btn-red { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; }
+  .btn-red:hover { background: rgba(239,68,68,0.18); }
+  .btn-yellow { background: rgba(250,200,50,0.12); border-color: rgba(250,200,50,0.3); color: #fac832; }
+  .btn-yellow:hover { background: rgba(250,200,50,0.2); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .speed-group { display: flex; gap: 4px; margin-left: 8px; }
+  .speed-btn { padding: 4px 10px; font-size: 9px; }
+  .speed-btn.active { background: rgba(139,92,246,0.2); border-color: rgba(139,92,246,0.4); color: #a78bfa; }
+  .scenario-label { font-size: 9px; color: #5a6a8a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Progress Bar */
+  .progress-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.03);
+    flex-shrink: 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #50c878, #34d399);
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  /* 3-Panel Layout */
+  .panels {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* LEFT PANEL — Polaris Shopify Admin */
+  .panel-left {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    background: #f1f1f1;
+    font-family: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, sans-serif;
+    color: #1a1a1a;
+  }
+  .panel-left::-webkit-scrollbar { width: 6px; }
+  .panel-left::-webkit-scrollbar-track { background: #e3e3e3; }
+  .panel-left::-webkit-scrollbar-thumb { background: #b5b5b5; border-radius: 3px; }
+  .panel-left::-webkit-scrollbar-thumb:hover { background: #8c8c8c; }
+
+  /* Shopify Admin Top Bar */
+  .shopify-admin-bar {
+    background: #1a1a1a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .shopify-logo-icon {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .shopify-logo-icon svg { width: 22px; height: 22px; }
+  .shopify-store-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e3e3e3;
+    letter-spacing: -0.01em;
+  }
+  .shopify-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 11px;
+    color: #8c8c8c;
+  }
+  .shopify-breadcrumb a {
+    color: #b5b5b5;
+    text-decoration: none;
+  }
+  .shopify-breadcrumb a:hover { color: #e3e3e3; }
+  .shopify-breadcrumb .sep { color: #616161; font-size: 9px; }
+  .shopify-breadcrumb .current { color: #e3e3e3; font-weight: 500; }
+
+  /* Polaris page content area */
+  .panel-left-content {
+    padding: 16px;
+  }
+
+  /* Polaris system label */
+  .panel-left .sys-label {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .panel-left .sys-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px; color: #fff;
+  }
+  .shopify-green { background: linear-gradient(135deg, #5bbf3a, #95bf47); }
+  .panel-left .sys-label h2 { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  .panel-left .sys-tag {
+    font-size: 8px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; letter-spacing: 0.3px;
+    background: #e4f3d0; color: #1a5c00;
+  }
+
+  /* Polaris Cards (Left Panel) */
+  .panel-left .card {
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 1px solid #e3e3e3;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .panel-left .card.visible { opacity: 1; transform: translateY(0); }
+
+  .panel-left .card-head {
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #e3e3e3;
+    background: #ffffff;
+  }
+  .panel-left .card-title { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .panel-left .card-sub { font-size: 11px; color: #616161; margin-top: 2px; }
+
+  /* Polaris Badges / Status Pills */
+  .panel-left .status-pill {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 600; letter-spacing: 0.01em;
+    transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+    border: none;
+  }
+  .panel-left .pill-yellow { background: #ffd6a4; color: #4a3000; }
+  .panel-left .pill-blue { background: #a4e8f2; color: #003d4d; }
+  .panel-left .pill-green { background: #aee9d1; color: #0a5c36; }
+  .panel-left .pill-purple { background: #e3d0ff; color: #3b1980; }
+  .panel-left .pill-orange { background: #ffd6a4; color: #4a3000; }
+
+  /* Polaris Card Body */
+  .panel-left .card-body { padding: 12px 16px; }
+
+  .panel-left .section-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #616161; margin-bottom: 8px; margin-top: 12px;
+  }
+  .panel-left .section-title:first-child { margin-top: 0; }
+
+  .panel-left .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0;
+  }
+  .panel-left .info-key { font-size: 12px; color: #616161; }
+  .panel-left .info-val { font-size: 12px; color: #1a1a1a; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .panel-left .val-green { color: #0a5c36 !important; }
+  .panel-left .val-orange { color: #8a4b00 !important; }
+  .panel-left .val-yellow { color: #8a4b00 !important; }
+  .panel-left .val-red { color: #c41e1e !important; }
+  .panel-left .val-purple { color: #3b1980 !important; }
+  .panel-left .val-blue { color: #003d4d !important; }
+  .panel-left .val-muted { color: #8c8c8c !important; }
+
+  /* Polaris Order Line Items Table */
+  .panel-left .txn-tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .panel-left .txn-tbl th {
+    font-size: 11px; font-weight: 600; text-transform: none;
+    letter-spacing: 0; color: #616161; padding: 8px 8px;
+    text-align: left; border-bottom: 1px solid #e3e3e3;
+    background: #f6f6f7;
+  }
+  .panel-left .txn-tbl th:nth-child(n+2) { text-align: right; }
+  .panel-left .txn-tbl td {
+    font-size: 12px; padding: 8px 8px; color: #1a1a1a;
+    border-bottom: 1px solid #f1f1f1;
+    font-variant-numeric: tabular-nums;
+    opacity: 0; transform: translateX(-4px);
+    transition: all 0.3s ease;
+  }
+  .panel-left .txn-tbl td.visible { opacity: 1; transform: translateX(0); }
+  .panel-left .txn-tbl td:nth-child(n+2) { text-align: right; }
+  .panel-left .txn-tbl tr:hover td { background: #f6f6f7; }
+
+  .panel-left .sku {
+    font-size: 10px; color: #8c8c8c; font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .panel-left .txn-type { font-family: 'SF Mono', monospace; font-size: 10px; font-weight: 600; }
+  .panel-left .type-charge { color: #0a5c36; }
+  .panel-left .type-refund { color: #c41e1e; }
+  .panel-left .type-fee { color: #8a4b00; }
+  .panel-left .type-adjustment { color: #3b1980; }
+  .panel-left .type-dispute { color: #8a4b00; }
+
+  /* Polaris Payment Info */
+  .polaris-payment-info {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 0;
+    margin-top: 4px;
+  }
+  .polaris-visa-icon {
+    width: 36px; height: 24px;
+    background: linear-gradient(135deg, #1a1f71, #2a3f9f);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.5px;
+  }
+  .polaris-payment-detail { font-size: 12px; color: #616161; }
+  .polaris-payment-detail strong { color: #1a1a1a; font-weight: 600; }
+
+  /* Polaris Payout Summary Stats */
+  .panel-left .payout-summary {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .panel-left .payout-stat {
+    flex: 1;
+    background: #f6f6f7;
+    border: 1px solid #e3e3e3;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+  .panel-left .payout-stat-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.3px; color: #616161; margin-bottom: 4px;
+  }
+  .panel-left .payout-stat-value {
+    font-size: 15px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: all 0.3s;
+    color: #1a1a1a;
+  }
+
+  /* Polaris Timeline */
+  .panel-left .timeline {
+    display: flex; align-items: center; gap: 4px;
+    padding: 10px 0;
+  }
+  .panel-left .timeline-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #e3e3e3;
+    border: 2px solid #b5b5b5;
+    transition: all 0.4s;
+  }
+  .panel-left .timeline-dot.active {
+    background: #008060;
+    border-color: #008060;
+    box-shadow: 0 0 8px rgba(0,128,96,0.35);
+  }
+  .panel-left .timeline-dot.pending {
+    background: #ffd6a4;
+    border-color: #d49200;
+    animation: pulse-dot-polaris 1.5s infinite;
+  }
+  .panel-left .timeline-line {
+    flex: 1; height: 2px;
+    background: #e3e3e3;
+    transition: background 0.4s;
+  }
+  .panel-left .timeline-line.active { background: #aee9d1; }
+  .panel-left .timeline-label {
+    font-size: 10px; color: #8c8c8c; text-align: center;
+    min-width: 55px; font-weight: 500;
+  }
+  .panel-left .timeline-label.active { color: #0a5c36; font-weight: 700; }
+
+  @keyframes pulse-dot-polaris {
+    0%,100% { box-shadow: 0 0 4px rgba(212,146,0,0.2); }
+    50% { box-shadow: 0 0 10px rgba(212,146,0,0.5); }
+  }
+
+  /* Polaris Balance Meter */
+  .panel-left .balance-meter {
+    background: #ffffff;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+  }
+  .panel-left .balance-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .panel-left .balance-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; color: #616161; }
+  .panel-left .balance-amount { font-size: 20px; font-weight: 700; color: #0a5c36; font-variant-numeric: tabular-nums; }
+  .panel-left .balance-bar-bg {
+    height: 6px; border-radius: 3px;
+    background: #e3e3e3;
+    overflow: hidden;
+  }
+  .panel-left .balance-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #008060, #00a77e);
+    width: 0%; transition: width 0.5s ease;
+  }
+
+  /* ═══ RIGHT PANEL — dark theme (unchanged) ═══ */
+  .panel-right {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .panel-right::-webkit-scrollbar { width: 3px; }
+  .panel-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+  /* Middle API Panel */
+  .panel-middle {
+    width: 280px;
+    flex-shrink: 0;
+    background: rgba(8,10,30,0.95);
+    border-left: 1px solid rgba(139,92,246,0.15);
+    border-right: 1px solid rgba(139,92,246,0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .api-panel-header {
+    padding: 10px 14px;
+    background: rgba(139,92,246,0.06);
+    border-bottom: 1px solid rgba(139,92,246,0.15);
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .api-panel-header .api-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff; font-weight: 700;
+  }
+  .api-panel-header h3 { font-size: 12px; font-weight: 600; color: #a78bfa; }
+  .api-panel-header .api-sub { font-size: 9px; color: #5a6a8a; }
+
+  .api-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .api-log::-webkit-scrollbar { width: 3px; }
+  .api-log::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.2); border-radius: 2px; }
+
+  /* API Events */
+  .api-event {
+    margin-bottom: 6px;
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .api-event.visible { opacity: 1; transform: translateY(0); }
+  .api-event-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    font-size: 9px;
+  }
+  .api-event.from-shopify .api-event-header { background: rgba(80,200,120,0.08); }
+  .api-event.from-erp .api-event-header { background: rgba(251,146,60,0.08); }
+  .api-event.middleware .api-event-header { background: rgba(139,92,246,0.08); }
+  .api-event.success .api-event-header { background: rgba(80,200,120,0.1); }
+
+  .api-dir {
+    font-size: 10px; font-weight: 800;
+    width: 18px; text-align: center;
+  }
+  .api-dir.right { color: #60a5fa; }
+  .api-dir.left { color: #50c878; }
+  .api-dir.sync { color: #a78bfa; }
+  .api-dir.ok { color: #50c878; }
+
+  .api-event-title { font-weight: 700; color: #e0e6f0; flex: 1; }
+  .api-event-status {
+    font-size: 7px; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .api-event-status.running { background: rgba(250,200,50,0.15); color: #fac832; animation: blink-status 0.8s infinite; }
+  .api-event-status.done { background: rgba(80,200,120,0.15); color: #50c878; }
+  .api-event-status.pending { background: rgba(90,100,130,0.2); color: #5a6a8a; }
+
+  @keyframes blink-status { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .api-event-body {
+    padding: 4px 10px 6px 34px;
+    font-size: 8px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: #5a6a8a;
+    line-height: 1.5;
+  }
+  .api-event-body .endpoint { color: #a78bfa; }
+  .api-event-body .payload { color: #7b8ab8; }
+  .api-event-body .response { color: #50c878; }
+
+  /* Separator */
+  .api-separator {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .api-separator.visible { opacity: 1; }
+  .api-separator-line { flex: 1; height: 1px; background: rgba(139,92,246,0.15); }
+  .api-separator-label {
+    font-size: 8px; font-weight: 700; color: #7c3aed;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  /* Right Panel System Labels */
+  .sys-label {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .sys-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 10px; color: #fff;
+  }
+  .erp-orange { background: linear-gradient(135deg, #d97706, #fb923c); }
+  .sys-label h2 { font-size: 13px; font-weight: 600; }
+  .sys-tag {
+    font-size: 8px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; letter-spacing: 0.3px;
+  }
+  .panel-right .sys-tag { background: rgba(251,146,60,0.12); color: #fb923c; }
+
+  /* Cards — Right Panel (brighter dark theme) */
+  .panel-right {
+    background: #1a2035;
+  }
+  .panel-right .card {
+    background: #232b42;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+    border: 1px solid rgba(251,146,60,0.2);
+  }
+  .panel-right .card.visible { opacity: 1; transform: translateY(0); }
+
+  .panel-right .card-head {
+    padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(251,146,60,0.06);
+  }
+  .panel-right .card-title { font-size: 12px; font-weight: 700; color: #fba34e; }
+  .panel-right .card-sub { font-size: 9px; color: #8a95b0; margin-top: 1px; }
+
+  /* Right panel pills */
+  .panel-right .status-pill {
+    font-size: 9px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 700; letter-spacing: 0.3px;
+    transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  .panel-right .pill-yellow { background: rgba(250,200,50,0.2); color: #ffd557; border: 1px solid rgba(250,200,50,0.35); }
+  .panel-right .pill-blue { background: rgba(100,160,250,0.2); color: #7db8ff; border: 1px solid rgba(100,160,250,0.35); }
+  .panel-right .pill-green { background: rgba(80,200,120,0.2); color: #6de0a0; border: 1px solid rgba(80,200,120,0.35); }
+  .panel-right .pill-purple { background: rgba(139,92,246,0.2); color: #b8a0f8; border: 1px solid rgba(139,92,246,0.35); }
+  .panel-right .pill-orange { background: rgba(251,146,60,0.2); color: #fba34e; border: 1px solid rgba(251,146,60,0.35); }
+
+  .panel-right .card-body { padding: 10px 14px; }
+
+  .panel-right .section-title {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #8a95b0; margin-bottom: 6px; margin-top: 10px;
+  }
+  .panel-right .section-title:first-child { margin-top: 0; }
+
+  .panel-right .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0;
+  }
+  .panel-right .info-key { font-size: 10px; color: #9aa5bd; }
+  .panel-right .info-val { font-size: 10px; color: #d4dae8; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .panel-right .val-green { color: #6de0a0 !important; }
+  .panel-right .val-orange { color: #fba34e !important; }
+  .panel-right .val-yellow { color: #ffd557 !important; }
+  .panel-right .val-purple { color: #b8a0f8 !important; }
+  .panel-right .val-blue { color: #7db8ff !important; }
+  .panel-right .val-red { color: #ff7b7b !important; }
+  .panel-right .val-muted { color: #6b7a94 !important; }
+
+  /* GL Journal Table (Right Panel) */
+  .gl-tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .gl-tbl th {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #8a95b0; padding: 4px 6px;
+    text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .gl-tbl th:nth-child(n+3) { text-align: right; }
+  .gl-tbl td {
+    font-size: 10px; padding: 5px 6px; color: #d4dae8;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-variant-numeric: tabular-nums;
+  }
+  .gl-tbl td:nth-child(n+3) { text-align: right; }
+  .gl-code {
+    font-family: 'SF Mono', monospace; font-size: 9px;
+    color: #fba34e; font-weight: 600;
+  }
+  .gl-debit { color: #6de0a0; }
+  .gl-credit { color: #ff7b7b; }
+
+  /* Day Timeline */
+  .day-timeline {
+    display: flex; align-items: stretch;
+    background: rgba(10,14,39,0.95);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    overflow: visible;
+    min-height: 58px;
+  }
+  .day-col {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px 10px;
+    border-right: 1px solid rgba(255,255,255,0.04);
+    position: relative;
+    transition: background 0.4s;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .day-col:last-child { border-right: none; }
+  .day-col.active { background: rgba(80,200,120,0.08); }
+  .day-col.weekend { background: rgba(255,255,255,0.015); }
+  .day-col-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #5a6a8a; line-height: 1;
+  }
+  .day-col.active .day-col-label { color: #50c878; }
+  .day-col.weekend .day-col-label { color: #3d4a66; }
+  .day-col-date {
+    font-size: 11px; font-weight: 600; color: #8a95b0;
+    line-height: 1;
+  }
+  .day-col.active .day-col-date { color: #e0e6f0; }
+  .day-col.weekend .day-col-date { color: #3d4a66; }
+  .day-col-event {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.3px;
+    padding: 3px 8px; border-radius: 4px;
+    display: inline-block;
+    opacity: 0; transition: opacity 0.4s;
+    white-space: nowrap; line-height: 1;
+    margin-top: 2px;
+  }
+  .day-col-event.visible { opacity: 1; }
+  .day-col-event.green { background: rgba(80,200,120,0.2); color: #6de0a0; }
+  .day-col-event.yellow { background: rgba(250,200,50,0.2); color: #ffd557; }
+  .day-col-event.blue { background: rgba(100,160,250,0.2); color: #7db8ff; }
+  .day-col-event.orange { background: rgba(251,146,60,0.2); color: #fba34e; }
+  .day-col-event.purple { background: rgba(139,92,246,0.2); color: #b8a0f8; }
+  .day-col-marker {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    transition: background 0.4s;
+  }
+  .day-col-marker.green { background: #50c878; }
+  .day-col-marker.blue { background: #60a5fa; }
+  .day-col-marker.orange { background: #fb923c; }
+  .day-col-marker.purple { background: #a78bfa; }
+
+  /* Footer */
+  .footer {
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    padding: 6px 16px;
+    background: rgba(10,14,39,0.95);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    flex-shrink: 0;
+  }
+  .footer-item {
+    font-size: 9px; color: #5a6a8a;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .footer-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .footer-dot.green { background: #50c878; }
+  .footer-dot.orange { background: #fb923c; }
+  .footer-dot.purple { background: #a78bfa; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .panel-middle { width: 220px; }
+  }
+  @media (max-width: 700px) {
+    .panels { flex-direction: column; }
+    .panel-middle { width: 100%; height: 200px; border-left: none; border-right: none; border-top: 1px solid rgba(139,92,246,0.15); border-bottom: 1px solid rgba(139,92,246,0.15); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Shopify Routine Payouts → ERP GL Posting</h1>
+  <div class="subtitle">Payment Capture → Payout Retrieval → Transaction Breakdown → Journal Entry Posting</div>
+  <div class="badge">SHOPIFY PLUS &bull; 2.15% + $0.30/TXN &bull; CLEARING ACCOUNT → BANK RECONCILIATION</div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-green" id="btnPlay" onclick="togglePlay()">▶ Play</button>
+  <button class="btn btn-red" id="btnReset" onclick="resetDemo()">↺ Reset</button>
+  <div class="speed-group">
+    <span class="scenario-label">Speed</span>
+    <button class="btn speed-btn" onclick="setSpeed(0.5)">0.5×</button>
+    <button class="btn speed-btn active" onclick="setSpeed(1)">1×</button>
+    <button class="btn speed-btn" onclick="setSpeed(2)">2×</button>
+    <button class="btn speed-btn" onclick="setSpeed(3)">3×</button>
+  </div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<!-- Day Timeline: Realistic Shopify Payments payout timing -->
+<!-- US established merchants: T+2 business day settlement -->
+<!-- Mon Mar 16: Orders #1042, #1043, #1044 captured (T+0) -->
+<!-- Tue Mar 17: T+1 settlement processing -->
+<!-- Wed Mar 18: Payout scheduled (T+2) -->
+<!-- Thu Mar 19: Bank processes ACH transfer (in transit) -->
+<!-- Fri Mar 20: Deposited in bank → middleware reconciles → GL posted -->
+<div class="day-timeline" id="dayTimeline">
+  <div class="day-col" id="day-mon"><div class="day-col-label">Mon</div><div class="day-col-date">Mar 16</div><div class="day-col-event" id="ev-mon"></div><div class="day-col-marker" id="mk-mon"></div></div>
+  <div class="day-col" id="day-tue"><div class="day-col-label">Tue</div><div class="day-col-date">Mar 17</div><div class="day-col-event" id="ev-tue"></div><div class="day-col-marker" id="mk-tue"></div></div>
+  <div class="day-col" id="day-wed"><div class="day-col-label">Wed</div><div class="day-col-date">Mar 18</div><div class="day-col-event" id="ev-wed"></div><div class="day-col-marker" id="mk-wed"></div></div>
+  <div class="day-col" id="day-thu"><div class="day-col-label">Thu</div><div class="day-col-date">Mar 19</div><div class="day-col-event" id="ev-thu"></div><div class="day-col-marker" id="mk-thu"></div></div>
+  <div class="day-col" id="day-fri"><div class="day-col-label">Fri</div><div class="day-col-date">Mar 20</div><div class="day-col-event" id="ev-fri"></div><div class="day-col-marker" id="mk-fri"></div></div>
+</div>
+
+<div class="panels">
+
+  <!-- LEFT: Shopify Admin (Polaris) -->
+  <div class="panel-left">
+    <!-- Admin Top Bar -->
+    <div class="shopify-admin-bar">
+      <div class="shopify-logo-icon">
+        <svg viewBox="0 0 36 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M31.1 7.63c-.04-.29-.26-.45-.44-.47-.18-.02-3.94-.07-3.94-.07s-2.62-2.55-2.91-2.84c-.29-.29-.86-.2-1.08-.13-.03.01-.56.17-1.43.44C20.27 1.67 18.78.02 16.68 0h-.15c-.32 0-.59.1-.82.27-1.02-.12-2.05.44-2.88 1.63-.59.84-1.04 1.9-1.18 2.72-1.96.61-3.32 1.03-3.38 1.05-.99.31-1.02.34-1.15 1.28C7.02 7.74 4 31.32 4 31.32l22.12 3.84L32 33.3s-1.86-25.38-1.9-25.67zM20.4 5.1l-2.17.67c0-.61-.08-1.49-.35-2.26.87.17 1.46 1.12 1.75 1.72l.77-.13zm-3.66 1.12l-4.67 1.45c.45-1.74 1.3-2.59 2.43-2.9.3-.08.63-.1.96-.04.54.98.76 2.32.76 2.32l.52-.83zM16.56.98c.21 0 .4.06.58.17-.92.44-1.9 1.54-2.31 3.75l-3.07.95c.6-2.44 2.31-4.87 4.8-4.87z" fill="#95BF47"/>
+          <path d="M30.66 7.16c-.18-.02-3.94-.07-3.94-.07s-2.62-2.55-2.91-2.84a.63.63 0 00-.34-.15l-1.35 27.56L32 33.3s-1.86-25.38-1.9-25.67c-.04-.29-.26-.45-.44-.47z" fill="#5E8E3E"/>
+          <path d="M16.68 14.38l-1.86 5.53s-.82-.43-1.81-.43c-1.46 0-1.54.92-1.54 1.15 0 1.26 3.29 1.74 3.29 4.69 0 2.32-1.47 3.81-3.45 3.81-2.38 0-3.59-1.48-3.59-1.48l.64-2.1s1.25 1.07 2.3 1.07a.94.94 0 00.98-.94c0-1.64-2.7-1.71-2.7-4.41 0-2.27 1.63-4.46 4.91-4.46 1.26 0 1.89.36 1.89.36l-.06.21z" fill="#fff"/>
+        </svg>
+      </div>
+      <span class="shopify-store-name">Apex Commerce</span>
+      <div class="shopify-breadcrumb">
+        <a href="#">Settings</a>
+        <span class="sep">›</span>
+        <a href="#">Payments</a>
+        <span class="sep">›</span>
+        <span class="current">Shopify Payments</span>
+      </div>
+    </div>
+
+    <div class="panel-left-content">
+      <div class="sys-label">
+        <div class="sys-logo shopify-green">S</div>
+        <div>
+          <h2>Shopify Payments</h2>
+          <span class="sys-tag">Live · Apex Commerce</span>
+        </div>
+      </div>
+
+      <!-- Balance -->
+      <div class="balance-meter" id="balanceMeter">
+        <div class="balance-header">
+          <span class="balance-label">Shopify Payments Balance / ERP Clearing (1210)</span>
+          <span class="balance-amount" id="balanceAmount">$0.00</span>
+        </div>
+        <div class="balance-bar-bg"><div class="balance-bar-fill" id="balanceBar"></div></div>
+      </div>
+
+      <!-- Orders -->
+      <div id="shopifyOrders"></div>
+
+      <!-- Payout Card -->
+      <div id="shopifyPayout"></div>
+    </div>
+  </div>
+
+  <!-- MIDDLE: API Flow -->
+  <div class="panel-middle">
+    <div class="api-panel-header">
+      <div class="api-icon">⇋</div>
+      <div>
+        <h3>Integration Middleware</h3>
+        <div class="api-sub">API Calls &amp; Data Mapping</div>
+      </div>
+    </div>
+    <div class="api-log" id="apiLog"></div>
+  </div>
+
+  <!-- RIGHT: ERP -->
+  <div class="panel-right">
+    <div class="sys-label">
+      <div class="sys-logo erp-orange">ERP</div>
+      <div>
+        <h2>ERP System</h2>
+        <span class="sys-tag">General Ledger</span>
+      </div>
+    </div>
+
+    <div id="erpContent"></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-item"><div class="footer-dot green"></div>Shopify Payments</div>
+  <div class="footer-item"><div class="footer-dot purple"></div>Middleware</div>
+  <div class="footer-item"><div class="footer-dot orange"></div>ERP GL</div>
+</div>
+
+<script>
+// ── State ──
+let running = false;
+let paused = false;
+let pauseResolve = null;
+let timeouts = [];
+let speedMultiplier = 1;
+let step = 0;
+const totalSteps = 34;
+
+function delay(ms) {
+  return new Promise(r => {
+    const t = setTimeout(() => {
+      if (paused) {
+        pauseResolve = r;
+      } else {
+        r();
+      }
+    }, ms / speedMultiplier);
+    timeouts.push(t);
+  });
+}
+
+// ── Day Timeline Helpers ──
+function activateDay(dayId) {
+  const col = document.getElementById(dayId);
+  if (col) col.classList.add('active');
+}
+function setDayEvent(evId, text, colorClass) {
+  const el = document.getElementById(evId);
+  if (el) { el.textContent = text; el.className = 'day-col-event ' + colorClass; el.classList.add('visible'); }
+}
+function setDayMarker(mkId, colorClass) {
+  const el = document.getElementById(mkId);
+  if (el) el.className = 'day-col-marker ' + colorClass;
+}
+function resetTimeline() {
+  document.querySelectorAll('.day-col').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.day-col-event').forEach(e => { e.textContent = ''; e.className = 'day-col-event'; });
+  document.querySelectorAll('.day-col-marker').forEach(m => m.className = 'day-col-marker');
+}
+
+function togglePlay() {
+  const btn = document.getElementById('btnPlay');
+  if (!running) {
+    startDemo();
+  } else if (paused) {
+    paused = false;
+    btn.textContent = '❚❚ Pause';
+    btn.className = 'btn btn-yellow';
+    if (pauseResolve) { pauseResolve(); pauseResolve = null; }
+  } else {
+    paused = true;
+    btn.textContent = '▶ Resume';
+    btn.className = 'btn btn-green';
+  }
+}
+
+function setSpeed(s) {
+  speedMultiplier = s;
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function updateProgress() {
+  step++;
+  document.getElementById('progressFill').style.width = (step / totalSteps * 100) + '%';
+}
+
+// ── Demo Data ──
+// All 3 orders captured on Mon Mar 16 (same business day)
+const ORDERS = [
+  { id: '#1042', customer: 'Apex Industries', items: [
+    { sku: 'WDG-PRO-100', name: 'Pro Widget Kit', qty: 25, price: 89.99 },
+    { sku: 'ACC-MNT-200', name: 'Mounting Bracket Set', qty: 25, price: 24.50 }
+  ], total: 2862.25, date: 'Mar 16, 2026 10:23 AM' },
+  { id: '#1043', customer: 'Summit Co.', items: [
+    { sku: 'ENG-DRV-500', name: 'Drive Assembly', qty: 10, price: 149.00 },
+    { sku: 'ENG-BRG-300', name: 'Bearing Kit', qty: 10, price: 32.00 }
+  ], total: 1810.00, date: 'Mar 16, 2026 2:47 PM' },
+  { id: '#1044', customer: 'Ridge Supply', items: [
+    { sku: 'WDG-STD-050', name: 'Standard Widget', qty: 50, price: 45.00 },
+    { sku: 'PKG-BOX-100', name: 'Shipping Carton', qty: 50, price: 3.25 }
+  ], total: 2412.50, date: 'Mar 16, 2026 4:14 PM' }
+];
+
+// Payout for Mon Mar 16 captures → scheduled Wed Mar 18 (T+2)
+// Shopify Plus rate: 2.15% + $0.30 per transaction (online credit card)
+// Gross = sum of 3 charges = $7,084.75
+// Fees = $61.84 + $39.22 + $52.17 = $153.23
+// Net = $7,084.75 - $153.23 = $6,931.52
+const PAYOUT = {
+  id: 'PAY-7834921',
+  date: 'Mar 18, 2026',
+  status: 'scheduled',
+  gross: 7084.75,
+  fees: 153.23,
+  net: 6931.52
+};
+
+// Only the 3 charges that correspond to the orders shown
+// Fee per txn = amount × 2.15% + $0.30
+const TRANSACTIONS = [
+  { type: 'charge', order: '#1042', source: 'Apex Industries', amount: 2862.25, fee: 61.84, net: 2800.41 },
+  { type: 'charge', order: '#1043', source: 'Summit Co.', amount: 1810.00, fee: 39.22, net: 1770.78 },
+  { type: 'charge', order: '#1044', source: 'Ridge Supply', amount: 2412.50, fee: 52.17, net: 2360.33 }
+];
+
+// GL entries at PAYOUT time: move from Clearing to Bank, recognize fees
+// Step 1 (at order capture): DR 1210 Clearing / CR 4000 Revenue — already posted per-order
+// Step 2 (at payout deposit): the journal entry below
+// Debits: $6,931.52 + $153.23 = $7,084.75 = Credit ✓ BALANCED
+const GL_ENTRIES = [
+  { code: '1000', name: 'Cash – Operating (Bank)', debit: 6931.52, credit: null, memo: 'Shopify payout net deposit' },
+  { code: '6100', name: 'Payment Processing Fees', debit: 153.23, credit: null, memo: 'Shopify Plus: 2.15% + $0.30/txn' },
+  { code: '1210', name: 'Shopify Payments Clearing', debit: null, credit: 7084.75, memo: 'Clear settled charges from clearing' }
+];
+
+// ── Helpers ──
+function fmt(n) {
+  if (n == null) return '—';
+  const abs = Math.abs(n);
+  const s = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n < 0 ? '-' : '') + '$' + s;
+}
+
+function addApiEvent(cls, dir, dirCls, title, status, body) {
+  const log = document.getElementById('apiLog');
+  const ev = document.createElement('div');
+  ev.className = 'api-event ' + cls;
+  ev.innerHTML = `
+    <div class="api-event-header">
+      <span class="api-dir ${dirCls}">${dir}</span>
+      <span class="api-event-title">${title}</span>
+      <span class="api-event-status ${status}">${status.toUpperCase()}</span>
+    </div>
+    ${body ? '<div class="api-event-body">' + body + '</div>' : ''}
+  `;
+  log.appendChild(ev);
+  requestAnimationFrame(() => { ev.classList.add('visible'); });
+  log.scrollTop = log.scrollHeight;
+  return ev;
+}
+
+function addApiSeparator(label) {
+  const log = document.getElementById('apiLog');
+  const sep = document.createElement('div');
+  sep.className = 'api-separator';
+  sep.innerHTML = `<div class="api-separator-line"></div><div class="api-separator-label">${label}</div><div class="api-separator-line"></div>`;
+  log.appendChild(sep);
+  requestAnimationFrame(() => { sep.classList.add('visible'); });
+}
+
+function updateEventStatus(ev, status) {
+  const s = ev.querySelector('.api-event-status');
+  s.className = 'api-event-status ' + status;
+  s.textContent = status.toUpperCase();
+}
+
+function showCard(container, html) {
+  const el = document.getElementById(container);
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerHTML = html;
+  el.appendChild(div);
+  requestAnimationFrame(() => { div.classList.add('visible'); });
+  return div;
+}
+
+// ── Build Order Card HTML (Polaris Style) ──
+function orderCardHTML(order, statusText, pillClass) {
+  const itemCount = order.items.reduce((s, i) => s + i.qty, 0);
+  return `
+    <div class="card-head" style="padding:10px 14px;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+          <span style="color:#005bd3;font-size:13px;font-weight:600;">Order ${order.id}</span>
+          <span class="status-pill ${pillClass}" id="pill-${order.id.replace('#','')}">${statusText}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:11px;color:#1a1a1a;font-weight:500;">${order.customer}</span>
+          <span style="font-size:13px;font-weight:700;color:#1a1a1a;">${fmt(order.total)}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
+          <span style="font-size:10px;color:#616161;">${order.date}</span>
+          <span style="font-size:10px;color:#616161;">${itemCount} items · Visa •••• 4242</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Main Demo ──
+async function startDemo() {
+  if (running) return;
+  running = true;
+  const btn = document.getElementById('btnPlay');
+  btn.textContent = '❚❚ Pause';
+  btn.className = 'btn btn-yellow';
+
+  const shopifyOrders = document.getElementById('shopifyOrders');
+  const shopifyPayout = document.getElementById('shopifyPayout');
+  const erpContent = document.getElementById('erpContent');
+
+  // ═══════════════════════════════════════
+  // PHASE 1: Payment Capture (Mon Mar 16)
+  // All 3 orders captured same business day — T+0
+  // ═══════════════════════════════════════
+  addApiSeparator('Phase 1 — Payment Capture · Mon Mar 16 (T+0)');
+  activateDay('day-mon');
+  setDayEvent('ev-mon', '3 ORDERS', 'green');
+  setDayMarker('mk-mon', 'green');
+  await delay(400);
+
+  let balance = 0;
+
+  for (let i = 0; i < ORDERS.length; i++) {
+    const order = ORDERS[i];
+    updateProgress();
+
+    // Show order with Authorized status
+    const card = showCard('shopifyOrders', orderCardHTML(order, 'AUTHORIZED', 'pill-yellow'));
+    await delay(600);
+
+    // Webhook
+    const ev1 = addApiEvent('from-shopify', '→', 'left',
+      `orders/paid webhook`, 'running',
+      `<span class="endpoint">POST /webhooks/orders-paid</span><br><span class="payload">order: ${order.id} · ${fmt(order.total)}</span>`
+    );
+    await delay(800);
+    updateEventStatus(ev1, 'done');
+
+    // Capture
+    const ev2 = addApiEvent('middleware', '⇋', 'sync',
+      `Capture payment`, 'running',
+      `<span class="endpoint">POST /admin/api/2026-01/orders/${order.id.replace('#','')}/transactions.json</span><br><span class="payload">kind: "capture" · amount: ${fmt(order.total)}</span>`
+    );
+    await delay(700);
+    updateEventStatus(ev2, 'done');
+
+    // Update pill to Captured
+    const pill = card.querySelector('.status-pill');
+    pill.className = 'status-pill pill-green';
+    pill.textContent = 'PAID';
+
+    // Post to ERP: DR Clearing / CR Revenue
+    const evErp = addApiEvent('from-erp', '←', 'right',
+      `Post to ERP clearing`, 'running',
+      `<span class="endpoint">POST /api/v1/cash-sales</span><br><span class="payload">DR 1210 Clearing ${fmt(order.total)} · CR 4000 Revenue ${fmt(order.total)}</span>`
+    );
+    await delay(500);
+    updateEventStatus(evErp, 'done');
+
+    // Add to Shopify Payments balance (and clearing account balance)
+    balance += order.total;
+    document.getElementById('balanceAmount').textContent = fmt(balance);
+    document.getElementById('balanceBar').style.width = Math.min(100, (balance / 8000) * 100) + '%';
+
+    addApiEvent('success', '✓', 'ok',
+      `${order.id} captured → Clearing balance: ${fmt(balance)}`, 'done',
+      `<span class="response">Shopify balance & ERP clearing: ${fmt(balance)}</span>`
+    );
+
+    // All orders on same day — no timeline advance needed
+
+    updateProgress();
+    await delay(500);
+  }
+
+  await delay(600);
+
+  // ═══════════════════════════════════════
+  // PHASE 2: Payout Retrieval (Wed Mar 18 = T+2)
+  // US established merchant: T+2 business day settlement
+  // Shopify initiates payouts at ~6am ET / 10am UTC each biz day
+  // ═══════════════════════════════════════
+  // Animate T+1 settlement day ticking through
+  activateDay('day-tue');
+  setDayEvent('ev-tue', 'T+1', 'yellow');
+  await delay(400);
+  // T+2: Payout scheduled
+  activateDay('day-wed');
+  setDayEvent('ev-wed', 'PAYOUT', 'yellow');
+  setDayMarker('mk-wed', 'blue');
+  addApiSeparator('Phase 2 — Payout Scheduled · Wed Mar 18 (T+2)');
+  await delay(500);
+  updateProgress();
+
+  // Query payouts
+  const ev3 = addApiEvent('middleware', '→', 'left',
+    `Query upcoming payouts`, 'running',
+    `<span class="endpoint">GET /admin/api/2026-01/shopify_payments/payouts.json</span><br><span class="payload">status=scheduled&date_min=2026-03-18</span>`
+  );
+  await delay(1000);
+  updateEventStatus(ev3, 'done');
+  updateProgress();
+
+  // Show payout as scheduled
+  const payoutHTML = `
+    <div class="card-head">
+      <div><div class="card-title">${PAYOUT.id}</div><div class="card-sub">Scheduled for ${PAYOUT.date}</div></div>
+      <span class="status-pill pill-yellow" id="payoutPill">SCHEDULED</span>
+    </div>
+    <div class="card-body">
+      <div class="section-title">Payout Timeline</div>
+      <div class="timeline" id="payoutTimeline">
+        <div class="timeline-label active">Scheduled</div>
+        <div class="timeline-dot active" id="dot0"></div>
+        <div class="timeline-line" id="line0"></div>
+        <div class="timeline-dot" id="dot1"></div>
+        <div class="timeline-label" id="label1">In Transit</div>
+        <div class="timeline-line" id="line1"></div>
+        <div class="timeline-dot" id="dot2"></div>
+        <div class="timeline-label" id="label2">Paid</div>
+      </div>
+      <div class="section-title" style="margin-top:12px">Payout Summary</div>
+      <div style="width:100%">
+        <div class="info-row" style="padding:6px 0;border-bottom:1px solid #e3e3e3"><span class="info-key">Gross charges (3 orders)</span><span class="info-val" id="payGross" style="color:#1a1a1a">$0.00</span></div>
+        <div class="info-row" style="padding:6px 0;border-bottom:1px solid #e3e3e3"><span class="info-key">Processing fees</span><span class="info-val val-yellow" id="payFees">$0.00</span></div>
+        <div class="info-row" style="padding:8px 0 2px;margin-top:2px"><span class="info-key" style="font-weight:700;font-size:13px;color:#1a1a1a">Net payout</span><span class="info-val val-green" style="font-size:16px;font-weight:700" id="payNet">$0.00</span></div>
+      </div>
+    </div>`;
+  const payoutCard = showCard('shopifyPayout', payoutHTML);
+  await delay(500);
+
+  addApiEvent('success', '✓', 'ok',
+    `Payout found: ${PAYOUT.id}`, 'done',
+    `<span class="response">status: scheduled · amount: ${fmt(PAYOUT.net)}</span>`
+  );
+
+  await delay(400);
+
+  // Animate payout amounts counting up
+  const gross = document.getElementById('payGross');
+  const fees = document.getElementById('payFees');
+  const net = document.getElementById('payNet');
+
+  gross.textContent = fmt(PAYOUT.gross);
+  await delay(250);
+  fees.textContent = '-' + fmt(PAYOUT.fees);
+  await delay(250);
+  net.textContent = fmt(PAYOUT.net);
+
+  updateProgress();
+  await delay(600);
+
+  // Transition to in_transit — Thu Mar 19 (T+3, bank processing ACH)
+  activateDay('day-thu');
+  setDayEvent('ev-thu', 'IN TRANSIT', 'blue');
+  setDayMarker('mk-thu', 'blue');
+  const ev4 = addApiEvent('from-shopify', '→', 'left',
+    `Payout status update`, 'running',
+    `<span class="endpoint">Webhook: payouts/update</span><br><span class="payload">status: scheduled → in_transit</span>`
+  );
+  await delay(800);
+  updateEventStatus(ev4, 'done');
+
+  document.getElementById('payoutPill').className = 'status-pill pill-blue';
+  document.getElementById('payoutPill').textContent = 'IN TRANSIT';
+  document.getElementById('dot1').classList.add('pending');
+  document.getElementById('line0').classList.add('active');
+  document.getElementById('label1').classList.add('active');
+
+  updateProgress();
+  await delay(800);
+
+  // Transition to paid — Fri Mar 20 (T+4, deposited after 1 biz day bank processing)
+  activateDay('day-fri');
+  setDayEvent('ev-fri', 'DEPOSITED', 'green');
+  setDayMarker('mk-fri', 'green');
+  const ev5 = addApiEvent('from-shopify', '→', 'left',
+    `Payout deposited`, 'running',
+    `<span class="endpoint">Webhook: payouts/update</span><br><span class="payload">status: in_transit → paid</span>`
+  );
+  await delay(900);
+  updateEventStatus(ev5, 'done');
+
+  document.getElementById('payoutPill').className = 'status-pill pill-green';
+  document.getElementById('payoutPill').textContent = 'PAID';
+  document.getElementById('dot1').classList.remove('pending');
+  document.getElementById('dot1').classList.add('active');
+  document.getElementById('dot2').classList.add('active');
+  document.getElementById('line1').classList.add('active');
+  document.getElementById('label2').classList.add('active');
+
+  // Note: Shopify Payments balance goes to $0 when paid, but ERP clearing
+  // account balance only clears when the journal entry posts (Phase 4)
+
+  updateProgress();
+  await delay(600);
+
+  // ═══════════════════════════════════════
+  // PHASE 3: Transaction Breakdown (same day as deposit)
+  // Middleware detects paid payout, fetches transaction detail
+  // ═══════════════════════════════════════
+  setDayEvent('ev-fri', 'RECONCILE', 'orange');
+  addApiSeparator('Phase 3 — Transaction Breakdown · Fri Mar 20 (T+4)');
+  await delay(500);
+
+  const ev6 = addApiEvent('middleware', '→', 'left',
+    `Fetch payout transactions`, 'running',
+    `<span class="endpoint">GET /admin/api/2026-01/shopify_payments/balance/transactions.json</span><br><span class="payload">payout_id=${PAYOUT.id.replace('PAY-','')}</span>`
+  );
+  await delay(1000);
+  updateEventStatus(ev6, 'done');
+  updateProgress();
+
+  addApiEvent('success', '✓', 'ok',
+    `${TRANSACTIONS.length} transactions returned`, 'done',
+    `<span class="response">3 charges · $7,084.75 gross · $153.23 fees (Plus: 2.15% + $0.30)</span>`
+  );
+  await delay(400);
+
+  // Show transaction card on Shopify side — replaces or adds
+  let txnRows = '';
+  for (let i = 0; i < TRANSACTIONS.length; i++) {
+    const t = TRANSACTIONS[i];
+    const typeClass = 'type-' + t.type;
+    txnRows += `<tr id="txnRow${i}"><td class="txn-type ${typeClass}">${t.type.toUpperCase()}</td><td>${t.order}</td><td>${fmt(t.amount)}</td><td class="val-yellow">${fmt(t.fee)}</td><td>${fmt(t.net)}</td></tr>`;
+  }
+
+  const txnCardHTML = `
+    <div class="card-head">
+      <div><div class="card-title">Payout Transactions</div><div class="card-sub">${PAYOUT.id} · ${TRANSACTIONS.length} transactions</div></div>
+      <span class="status-pill pill-purple">RETRIEVED</span>
+    </div>
+    <div class="card-body">
+      <table class="txn-tbl">
+        <tr><th>Type</th><th>Order</th><th>Amount</th><th>Fee</th><th>Net</th></tr>
+        ${txnRows}
+      </table>
+      <div class="info-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #e3e3e3">
+        <span class="info-key" style="font-weight:700;font-size:13px;color:#1a1a1a">Net Payout</span>
+        <span class="info-val val-green" style="font-size:16px;font-weight:700">${fmt(PAYOUT.net)}</span>
+      </div>
+    </div>`;
+  showCard('shopifyPayout', txnCardHTML);
+  await delay(300);
+
+  // Animate rows appearing one by one
+  for (let i = 0; i < TRANSACTIONS.length; i++) {
+    const cells = document.querySelectorAll(`#txnRow${i} td`);
+    cells.forEach(c => c.classList.add('visible'));
+    await delay(300);
+    updateProgress();
+  }
+
+  await delay(600);
+
+  // ═══════════════════════════════════════
+  // PHASE 4: Map to GL Codes & Post to ERP
+  // ═══════════════════════════════════════
+  addApiSeparator('Phase 4 — GL Journal Entry Posting · Fri Mar 20 (T+4)');
+  await delay(500);
+
+  const ev7 = addApiEvent('middleware', '⇋', 'sync',
+    `Map transactions → GL codes`, 'running',
+    `<span class="payload">Applying chart-of-accounts mapping rules…</span>`
+  );
+  await delay(800);
+  updateEventStatus(ev7, 'done');
+  updateProgress();
+
+  // Show Deposit Record in ERP (groups individual payments into payout batch)
+  const depositHTML = `
+    <div class="card-head">
+      <div><div class="card-title">Deposit Record — DEP-2026-0318</div><div class="card-sub">Payout ${PAYOUT.id} · 3 undeposited payments</div></div>
+      <span class="status-pill pill-purple" id="depPill">CREATING</span>
+    </div>
+    <div class="card-body">
+      <div class="section-title" style="margin-bottom:6px">Undeposited Payments → Deposit</div>
+      <table class="txn-tbl">
+        <tr><th>Order</th><th>Customer</th><th>Amount</th><th style="text-align:center">✓</th></tr>
+        ${ORDERS.map((o,i) => `<tr id="depRow${i}"><td>${o.id}</td><td>${o.customer}</td><td>${fmt(o.total)}</td><td style="text-align:center;color:#50c878">☑</td></tr>`).join('')}
+      </table>
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
+        <div class="info-row"><span class="info-key">Subtotal (Gross)</span><span class="info-val">${fmt(PAYOUT.gross)}</span></div>
+        <div class="info-row"><span class="info-key">Less: Processing Fees</span><span class="info-val val-yellow">-${fmt(PAYOUT.fees)}</span></div>
+        <div class="info-row" style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)"><span class="info-key" style="font-weight:700;color:#e0e6f0">Net to Bank</span><span class="info-val val-green" style="font-weight:700">${fmt(PAYOUT.net)}</span></div>
+      </div>
+      <div class="section-title" style="margin-top:10px;margin-bottom:4px">GL Impact (Clearing → Bank)</div>
+      <div class="info-row"><span class="info-key">DR <span class="gl-code">1000</span> Cash – Bank</span><span class="info-val">${fmt(PAYOUT.net)}</span></div>
+      <div class="info-row"><span class="info-key">DR <span class="gl-code">6100</span> Processing Fees</span><span class="info-val">${fmt(PAYOUT.fees)}</span></div>
+      <div class="info-row"><span class="info-key">CR <span class="gl-code">1210</span> Shopify Clearing</span><span class="info-val">${fmt(PAYOUT.gross)}</span></div>
+    </div>`;
+  showCard('erpContent', depositHTML);
+  await delay(400);
+
+  // Animate deposit rows appearing
+  for (let i = 0; i < ORDERS.length; i++) {
+    const row = document.getElementById(`depRow${i}`);
+    if (row) { row.style.transition = 'background 0.3s'; row.style.background = 'rgba(80,200,120,0.06)'; }
+    await delay(250);
+    if (row) row.style.background = 'transparent';
+  }
+
+  const depPill = document.getElementById('depPill');
+  if (depPill) { depPill.className = 'status-pill pill-green'; depPill.textContent = 'CREATED'; }
+
+  addApiEvent('success', '✓', 'ok',
+    `Deposit record created`, 'done',
+    `<span class="response">DEP-2026-0318 · 3 payments · ${fmt(PAYOUT.net)} net to bank</span>`
+  );
+  await delay(500);
+  updateProgress();
+
+  // Post deposit → journal entry (from deposit record release)
+  const ev8 = addApiEvent('from-erp', '→', 'right',
+    `Release deposit → Journal entry`, 'running',
+    `<span class="endpoint">POST /api/v1/deposits/DEP-2026-0318/release</span><br><span class="payload">DR Bank + DR Fees / CR Clearing · ${GL_ENTRIES.length} lines · ${PAYOUT.date}</span>`
+  );
+  await delay(1000);
+  updateEventStatus(ev8, 'done');
+  updateProgress();
+
+  // Show journal entry card
+  let glRows = GL_ENTRIES.map((g, i) => `
+    <tr id="glRow${i}">
+      <td><span class="gl-code">${g.code}</span></td>
+      <td>${g.name}</td>
+      <td class="gl-debit">${g.debit ? fmt(g.debit) : ''}</td>
+      <td class="gl-credit">${g.credit ? fmt(g.credit) : ''}</td>
+    </tr>`).join('');
+
+  const totalDebit = GL_ENTRIES.reduce((s, g) => s + (g.debit || 0), 0);
+  const totalCredit = GL_ENTRIES.reduce((s, g) => s + (g.credit || 0), 0);
+
+  const journalHTML = `
+    <div class="card-head">
+      <div><div class="card-title">Journal Entry — JE-2026-0318</div><div class="card-sub">From Deposit DEP-2026-0318 · ${PAYOUT.date}</div></div>
+      <span class="status-pill pill-yellow" id="jePill">POSTING</span>
+    </div>
+    <div class="card-body">
+      <table class="gl-tbl">
+        <tr><th>GL Code</th><th>Account</th><th>Debit</th><th>Credit</th></tr>
+        ${glRows}
+      </table>
+      <div style="display:flex;justify-content:space-between;padding:8px 6px 2px;border-top:1px solid rgba(255,255,255,0.06);margin-top:4px">
+        <span style="font-size:11px;font-weight:700;color:#8a95b0">Totals</span>
+        <div style="display:flex;gap:24px">
+          <span class="gl-debit" style="font-size:12px;font-weight:800" id="glTotalDebit">${fmt(totalDebit)}</span>
+          <span class="gl-credit" style="font-size:12px;font-weight:800" id="glTotalCredit">${fmt(totalCredit)}</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:8px;padding:6px;background:rgba(80,200,120,0.05);border:1px solid rgba(80,200,120,0.15);border-radius:6px;display:none" id="balancedBadge">
+        <span style="font-size:9px;font-weight:700;color:#50c878;letter-spacing:0.5px">✓ BALANCED — DEBITS EQUAL CREDITS</span>
+      </div>
+    </div>`;
+  showCard('erpContent', journalHTML);
+  await delay(600);
+
+  // Animate GL rows
+  for (let i = 0; i < GL_ENTRIES.length; i++) {
+    const row = document.getElementById(`glRow${i}`);
+    if (row) {
+      row.style.transition = 'background 0.3s';
+      row.style.background = 'rgba(251,146,60,0.06)';
+
+      addApiEvent('from-erp', '◆', 'right',
+        `GL ${GL_ENTRIES[i].code} – ${GL_ENTRIES[i].name}`, 'done',
+        `<span class="response">${GL_ENTRIES[i].debit ? 'DR ' + fmt(GL_ENTRIES[i].debit) : 'CR ' + fmt(GL_ENTRIES[i].credit)} · ${GL_ENTRIES[i].memo}</span>`
+      );
+      await delay(400);
+      row.style.background = 'transparent';
+    }
+  }
+
+  updateProgress();
+  await delay(500);
+
+  // Mark journal as posted
+  const jePill = document.getElementById('jePill');
+  jePill.className = 'status-pill pill-green';
+  jePill.textContent = 'POSTED';
+  document.getElementById('balancedBadge').style.display = 'block';
+
+  addApiEvent('success', '✓', 'ok',
+    `Journal entry posted`, 'done',
+    `<span class="response">JE-2026-0318 posted · ${GL_ENTRIES.length} lines · balanced</span>`
+  );
+
+  // Update clearing balance to $0 (funds moved to bank)
+  document.getElementById('balanceAmount').textContent = '$0.00';
+  document.getElementById('balanceBar').style.width = '0%';
+
+  updateProgress();
+  await delay(500);
+
+  // ═══════════════════════════════════════
+  // PHASE 5: Tag Orders with GL Codes
+  // Post GL references back to each order in the ERP
+  // Enables traceability: Order → JE → Deposit → Bank
+  // ═══════════════════════════════════════
+  addApiSeparator('Phase 5 — Order GL Tagging');
+  await delay(400);
+
+  for (let i = 0; i < ORDERS.length; i++) {
+    const order = ORDERS[i];
+    const t = TRANSACTIONS[i];
+    const evTag = addApiEvent('from-erp', '←', 'right',
+      `Tag ${order.id} with GL codes`, 'running',
+      `<span class="endpoint">POST /api/v1/orders/${order.id.replace('#','')}/gl-tags</span><br><span class="payload">je: JE-2026-0318 · dep: DEP-2026-0318 · bank: 1000 · clearing: 1210 · fees: 6100 · fee_amt: ${fmt(t.fee)}</span>`
+    );
+    await delay(500);
+    updateEventStatus(evTag, 'done');
+
+    // Update Shopify order pill
+    const pill = document.getElementById('pill-' + order.id.replace('#',''));
+    if (pill) {
+      pill.className = 'status-pill pill-purple';
+      pill.textContent = 'GL TAGGED';
+    }
+    updateProgress();
+    await delay(250);
+  }
+
+  addApiEvent('success', '✓', 'ok',
+    `All orders tagged with GL references`, 'done',
+    `<span class="response">3 orders → JE-2026-0318 · GL 1000/1210/6100</span>`
+  );
+  await delay(500);
+
+  // ═══════════════════════════════════════
+  // PHASE 6: Bank Reconciliation
+  // Match bank feed line to deposit record
+  // ═══════════════════════════════════════
+  addApiSeparator('Phase 6 — Bank Reconciliation · Fri Mar 20');
+  await delay(400);
+
+  const evBank = addApiEvent('from-erp', '⇋', 'sync',
+    `Import bank feed`, 'running',
+    `<span class="endpoint">GET /api/v1/bank-feeds/1000</span><br><span class="payload">Importing ACH transactions from bank…</span>`
+  );
+  await delay(800);
+  updateEventStatus(evBank, 'done');
+  updateProgress();
+
+  // Show bank reconciliation matching card
+  const reconHTML = `
+    <div class="card-head">
+      <div><div class="card-title">Bank Reconciliation</div><div class="card-sub">Account 1000 · Cash – Operating · Mar 20, 2026</div></div>
+      <span class="status-pill pill-yellow" id="reconPill">MATCHING</span>
+    </div>
+    <div class="card-body">
+      <div class="section-title" style="margin-bottom:6px">Bank Statement Line</div>
+      <div style="padding:6px 8px;background:rgba(100,160,250,0.06);border:1px solid rgba(100,160,250,0.15);border-radius:4px;margin-bottom:10px">
+        <div class="info-row"><span class="info-key">Description</span><span class="info-val" style="font-size:11px">SHOPIFY PAYMENTS DEPOSIT</span></div>
+        <div class="info-row"><span class="info-key">Amount</span><span class="info-val val-green" style="font-weight:700">${fmt(PAYOUT.net)}</span></div>
+        <div class="info-row"><span class="info-key">Date</span><span class="info-val">Mar 20, 2026</span></div>
+        <div class="info-row"><span class="info-key">Ref #</span><span class="info-val" style="font-family:monospace;font-size:10px">ACH-7834921</span></div>
+      </div>
+      <div class="section-title" style="margin-bottom:6px">Matched ERP Transaction</div>
+      <div style="padding:6px 8px;background:rgba(80,200,120,0.06);border:1px solid rgba(80,200,120,0.15);border-radius:4px;margin-bottom:10px" id="matchedTxn">
+        <div class="info-row"><span class="info-key">Type</span><span class="info-val">Deposit Record</span></div>
+        <div class="info-row"><span class="info-key">Ref</span><span class="info-val">DEP-2026-0318</span></div>
+        <div class="info-row"><span class="info-key">Amount</span><span class="info-val val-green" style="font-weight:700">${fmt(PAYOUT.net)}</span></div>
+        <div class="info-row"><span class="info-key">Journal</span><span class="info-val">JE-2026-0318</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0 2px;border-top:1px solid rgba(255,255,255,0.06)">
+        <span style="font-size:11px;font-weight:700;color:#8a95b0">Variance</span>
+        <span class="val-green" style="font-size:14px;font-weight:800" id="reconVariance">—</span>
+      </div>
+      <div style="text-align:center;margin-top:8px;padding:6px;background:rgba(80,200,120,0.05);border:1px solid rgba(80,200,120,0.15);border-radius:6px;display:none" id="reconBadge">
+        <span style="font-size:9px;font-weight:700;color:#50c878;letter-spacing:0.5px">✓ MATCHED — ZERO VARIANCE · CLEARING ACCOUNT BALANCE: $0.00</span>
+      </div>
+    </div>`;
+  showCard('erpContent', reconHTML);
+  await delay(600);
+
+  // Animate match
+  const evMatch = addApiEvent('from-erp', '⇋', 'sync',
+    `Auto-match bank line → deposit`, 'running',
+    `<span class="payload">Bank: ${fmt(PAYOUT.net)} ↔ Deposit: ${fmt(PAYOUT.net)}</span>`
+  );
+  await delay(800);
+  updateEventStatus(evMatch, 'done');
+
+  document.getElementById('reconVariance').textContent = '$0.00';
+  document.getElementById('reconBadge').style.display = 'block';
+  const reconPill = document.getElementById('reconPill');
+  if (reconPill) { reconPill.className = 'status-pill pill-green'; reconPill.textContent = 'RECONCILED'; }
+  updateProgress();
+  await delay(300);
+
+  // Update Shopify order pills to show reconciled
+  for (let i = 0; i < ORDERS.length; i++) {
+    const pill = document.getElementById('pill-' + ORDERS[i].id.replace('#',''));
+    if (pill) {
+      pill.className = 'status-pill pill-purple';
+      pill.textContent = 'RECONCILED';
+    }
+    await delay(200);
+  }
+
+  addApiSeparator('Complete — Full Reconciliation Cycle');
+  addApiEvent('success', '✓', 'ok',
+    `Payout reconciliation complete`, 'done',
+    `<span class="response">3 orders · GL tagged · Clearing → Bank · JE posted · Bank matched · $0.00 variance</span>`
+  );
+
+  document.getElementById('progressFill').style.width = '100%';
+  running = false;
+  paused = false;
+  const doneBtn = document.getElementById('btnPlay');
+  doneBtn.textContent = '✓ Done';
+  doneBtn.className = 'btn';
+  doneBtn.disabled = true;
+}
+
+function resetDemo() {
+  timeouts.forEach(t => clearTimeout(t));
+  timeouts = [];
+  running = false;
+  paused = false;
+  pauseResolve = null;
+  step = 0;
+  const btn = document.getElementById('btnPlay');
+  btn.disabled = false;
+  btn.textContent = '▶ Play';
+  btn.className = 'btn btn-green';
+  document.getElementById('progressFill').style.width = '0%';
+  resetTimeline();
+  document.getElementById('shopifyOrders').innerHTML = '';
+  document.getElementById('shopifyPayout').innerHTML = '';
+  document.getElementById('erpContent').innerHTML = '';
+  document.getElementById('apiLog').innerHTML = '';
+  document.getElementById('balanceAmount').textContent = '$0.00';
+  document.getElementById('balanceBar').style.width = '0%';
+}
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

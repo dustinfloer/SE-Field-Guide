@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Store Inventory Distribution — NetSuite → 2 Shopify Stores</title>
+<style>
+  :root {
+    --green: #008060;
+    --green-light: #5eead4;
+    --green-dark: #004c3f;
+    --ns-light: #f0c674;
+    --blue: #7c9eff;
+    --red: #ff6b6b;
+    --purple: #c084fc;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
+    --pink: #f472b6;
+    --lime: #a3e635;
+    --b2c: #5eead4;
+    --b2b: #fb923c;
+    --surface: #1e1e2e;
+    --surface-raised: #262637;
+    --bg: #13131f;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --border: #333;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .header-left h1 { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .header-left p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .header-badges { display: flex; gap: 8px; }
+  .header-badge {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 6px;
+  }
+  .badge-multi { background: rgba(192,132,252,.12); color: var(--purple); border: 1px solid rgba(192,132,252,.25); }
+  .badge-se { background: rgba(124,158,255,.12); color: var(--blue); border: 1px solid rgba(124,158,255,.25); }
+
+  .legend-bar {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+    padding: 7px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .main { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+
+  .panel {
+    flex: 1; display: flex; flex-direction: column; min-width: 0;
+    border-right: 1px solid var(--border);
+  }
+  .panel:last-child { border-right: none; }
+
+  .panel-header {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .panel-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; }
+  .panel-b2c .panel-title { color: var(--b2c); }
+  .panel-hub .panel-title { color: var(--purple); }
+  .panel-b2b .panel-title { color: var(--b2b); }
+
+  .panel-status { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-muted); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .panel-body { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #444 transparent; }
+
+  /* ── Inventory Model ── */
+  .inv-model { padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .inv-model-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px; }
+
+  .qty-row { display: flex; gap: 5px; }
+  .qty-cell { background: var(--surface-raised); border-radius: 6px; padding: 6px; text-align: center; flex: 1; }
+  .qty-name { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 2px; }
+  .qty-val { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; font-family: var(--mono); line-height: 1.1; }
+
+  .qty-val-b2c { color: var(--b2c); }
+  .qty-val-b2b { color: var(--b2b); }
+  .qty-val-ns { color: var(--ns-light); }
+  .qty-val-committed { color: var(--ns-light); }
+  .qty-val-on-hand { color: var(--blue); }
+
+  .store-tag {
+    display: inline-flex; align-items: center; gap: 3px; font-size: 9px;
+    color: var(--text-muted); background: var(--surface-raised);
+    padding: 2px 7px; border-radius: 4px; margin-top: 5px;
+  }
+
+  /* ── Console ── */
+  .console { font-family: var(--mono); font-size: 11px; line-height: 1.6; padding: 4px 0; }
+  .console-entry {
+    padding: 2px 12px; opacity: 0; transform: translateY(-4px);
+    animation: fadeIn 0.3s forwards; display: flex; align-items: flex-start;
+    gap: 5px; white-space: nowrap;
+  }
+  .console-entry:hover { background: rgba(255,255,255,.03); }
+  @keyframes fadeIn { to { opacity:1; transform:translateY(0); } }
+
+  .ce-time { color: #555; flex-shrink: 0; min-width: 55px; font-size: 10px; }
+  .ce-tag {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 1px 5px; border-radius: 3px; flex-shrink: 0; min-width: 52px; text-align: center;
+  }
+  .ce-tag-webhook { background: rgba(94,234,212,.15); color: var(--b2c); }
+  .ce-tag-graphql { background: rgba(124,158,255,.15); color: var(--blue); }
+  .ce-tag-rest { background: rgba(192,132,252,.15); color: var(--purple); }
+  .ce-tag-event { background: rgba(240,198,116,.15); color: var(--ns-light); }
+  .ce-tag-system { background: rgba(255,255,255,.08); color: var(--text-muted); }
+  .ce-tag-fulfill { background: rgba(244,114,182,.15); color: var(--pink); }
+  .ce-tag-alloc { background: rgba(192,132,252,.15); color: var(--purple); }
+  .ce-tag-b2b { background: rgba(251,146,60,.15); color: var(--b2b); }
+
+  .ce-msg { color: #ccc; }
+  .ce-msg .hl-green { color: var(--b2c); }
+  .ce-msg .hl-blue { color: var(--blue); }
+  .ce-msg .hl-yellow { color: var(--ns-light); }
+  .ce-msg .hl-purple { color: var(--purple); }
+  .ce-msg .hl-red { color: var(--red); }
+  .ce-msg .hl-orange { color: var(--b2b); }
+  .ce-msg .hl-pink { color: var(--pink); }
+  .ce-msg .hl-muted { color: #666; }
+  .ce-msg .hl-white { color: #fff; font-weight: 600; }
+
+  .ce-status { font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+  .ce-status-200 { background: rgba(94,234,212,.15); color: var(--b2c); }
+
+  .payload-block {
+    margin: 1px 12px 3px 74px; background: var(--surface-raised);
+    border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px;
+    font-family: var(--mono); font-size: 10px; line-height: 1.4; color: #aaa;
+    opacity: 0; animation: fadeIn 0.4s 0.1s forwards; overflow-x: auto; max-width: calc(100% - 86px);
+  }
+  .payload-block .key { color: var(--purple); }
+  .payload-block .str { color: var(--b2c); }
+  .payload-block .num { color: var(--ns-light); }
+  .payload-block .bool { color: var(--blue); }
+
+  /* ── Center Hub ── */
+  .panel-hub { max-width: 320px; min-width: 280px; }
+
+  .hub-inv { padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+  .pipeline-visual {
+    padding: 12px 14px; display: flex; flex-direction: column;
+    align-items: center; gap: 0; flex-shrink: 0; border-bottom: 1px solid var(--border);
+  }
+
+  .pv-node {
+    background: var(--surface-raised); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 12px; text-align: center; width: 100%;
+    transition: border-color .3s, box-shadow .3s; margin-bottom: 3px;
+  }
+  .pv-node.active-green { border-color: var(--b2c); box-shadow: 0 0 12px rgba(94,234,212,.15); }
+  .pv-node.active-blue { border-color: var(--blue); box-shadow: 0 0 12px rgba(124,158,255,.15); }
+  .pv-node.active-yellow { border-color: var(--ns-light); box-shadow: 0 0 12px rgba(240,198,116,.15); }
+  .pv-node.active-orange { border-color: var(--b2b); box-shadow: 0 0 12px rgba(251,146,60,.15); }
+  .pv-node.active-purple { border-color: var(--purple); box-shadow: 0 0 12px rgba(192,132,252,.15); }
+  .pv-node.active-pink { border-color: var(--pink); box-shadow: 0 0 12px rgba(244,114,182,.15); }
+
+  .pv-node-label { font-size: 11px; font-weight: 700; color: #fff; }
+  .pv-node-sub { font-size: 9px; color: var(--text-muted); margin-top: 1px; }
+
+  .pv-connector { width: 2px; height: 8px; background: var(--border); }
+
+  .branch-split {
+    display: flex; gap: 16px; width: 100%; margin-top: 4px;
+  }
+
+  .branch {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    background: var(--surface-raised); border-radius: 8px; padding: 8px 6px;
+    border: 1px solid var(--border);
+  }
+
+  .branch-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; margin-bottom: 6px;
+  }
+  .branch-b2c .branch-label { color: var(--b2c); }
+  .branch-b2b .branch-label { color: var(--b2b); }
+
+  .branch-tracks { display: flex; gap: 10px; }
+
+  .track-mini { display: flex; flex-direction: column; align-items: center; }
+  .track-mini-label { font-size: 8px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-align: center; }
+
+  .track-pipe {
+    width: 3px; height: 100px; background: #2a2a3e; border-radius: 2px;
+    position: relative; overflow: hidden;
+  }
+
+  .track-packet {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    left: 50%; transform: translateX(-50%); opacity: 0;
+  }
+  .track-packet-green { background: var(--b2c); box-shadow: 0 0 6px rgba(94,234,212,.5); }
+  .track-packet-blue { background: var(--blue); box-shadow: 0 0 6px rgba(124,158,255,.5); }
+  .track-packet-orange { background: var(--b2b); box-shadow: 0 0 6px rgba(251,146,60,.5); }
+  .track-packet-purple { background: var(--purple); box-shadow: 0 0 6px rgba(192,132,252,.5); }
+  .track-packet-pink { background: var(--pink); box-shadow: 0 0 6px rgba(244,114,182,.5); }
+
+  @keyframes tpDown {
+    0% { top: -8px; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 100px; opacity: 0; }
+  }
+  @keyframes tpUp {
+    0% { bottom: -8px; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { bottom: 100px; opacity: 0; }
+  }
+
+  .metrics-bar { padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+  .metric { background: var(--surface-raised); border-radius: 5px; padding: 5px 7px; }
+  .metric-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+  .metric-val { font-size: 14px; font-weight: 800; font-family: var(--mono); color: #fff; margin-top: 1px; }
+  .metric-val-green { color: var(--b2c); }
+
+  .controls {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 28px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--surface);
+  }
+  .controls-left { display: flex; align-items: center; gap: 12px; }
+  .status-text { font-size: 12px; color: var(--text-muted); font-family: var(--mono); min-width: 360px; }
+  .status-text .hl { font-weight: 600; }
+  .status-text .hl-green { color: var(--b2c); }
+  .status-text .hl-blue { color: var(--blue); }
+  .status-text .hl-orange { color: var(--b2b); }
+  .status-text .hl-purple { color: var(--purple); }
+  .status-text .hl-pink { color: var(--pink); }
+
+  .controls-right { display: flex; gap: 10px; }
+  .btn {
+    padding: 7px 18px; border: 1px solid var(--border); background: var(--surface-raised);
+    color: #ccc; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .btn:hover { background: #333; color: #fff; }
+  .btn:disabled { opacity: .3; cursor: default; }
+  .btn-primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+
+  .inv-flash { animation: flash 0.35s ease; }
+  @keyframes flash { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+
+  .speed-control { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .speed-control select {
+    background: var(--surface-raised); color: #ccc; border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: inherit; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Multi-Store Inventory Distribution</h1>
+    <p>NetSuite (single source) → 2 Shopify Stores &nbsp;·&nbsp; Celigo iPaaS &nbsp;·&nbsp; Channel-based allocation</p>
+  </div>
+  <div class="header-badges">
+    <div class="header-badge badge-multi">Multi-Store</div>
+    <div class="header-badge badge-se">SE Internal</div>
+  </div>
+</header>
+
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--b2c)"></div> B2C DTC order</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--b2b)"></div> B2B wholesale order</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Inventory push</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Rebalance / allocation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--pink)"></div> Fulfillment</div>
+</div>
+
+<div class="main">
+  <!-- ── B2C Store ── -->
+  <div class="panel panel-b2c">
+    <div class="panel-header">
+      <div class="panel-title">Shopify — B2C (DTC)</div>
+      <div class="panel-status"><div class="status-dot"></div> brand-us.myshopify.com</div>
+    </div>
+    <div class="inv-model">
+      <div class="inv-model-title">InventoryLevel — B2C Warehouse</div>
+      <div class="qty-row">
+        <div class="qty-cell"><div class="qty-name">on_hand</div><div class="qty-val qty-val-on-hand" id="b2c-oh">0</div></div>
+        <div class="qty-cell"><div class="qty-name">committed</div><div class="qty-val qty-val-committed" id="b2c-cm">0</div></div>
+        <div class="qty-cell"><div class="qty-name">available</div><div class="qty-val qty-val-b2c" id="b2c-av">0</div></div>
+      </div>
+      <div class="store-tag">gid://shopify/Location/7281903 · US-East</div>
+    </div>
+    <div class="panel-body"><div class="console" id="b2c-console"></div></div>
+  </div>
+
+  <!-- ── Center Hub ── -->
+  <div class="panel panel-hub">
+    <div class="panel-header">
+      <div class="panel-title">NetSuite → Celigo → Stores</div>
+      <div class="panel-status"><div class="status-dot"></div> Hub</div>
+    </div>
+    <div class="hub-inv">
+      <div class="inv-model-title">NetSuite — Total Inventory</div>
+      <div class="qty-row">
+        <div class="qty-cell"><div class="qty-name">on_hand</div><div class="qty-val qty-val-on-hand" id="ns-oh">200</div></div>
+        <div class="qty-cell"><div class="qty-name">committed</div><div class="qty-val qty-val-committed" id="ns-cm">0</div></div>
+        <div class="qty-cell"><div class="qty-name">available</div><div class="qty-val qty-val-ns" id="ns-av">200</div></div>
+      </div>
+    </div>
+
+    <div class="pipeline-visual">
+      <div class="pv-node" id="node-netsuite">
+        <div class="pv-node-label">NetSuite</div>
+        <div class="pv-node-sub">Source of Truth</div>
+      </div>
+      <div class="pv-connector"></div>
+      <div class="pv-node" id="node-celigo">
+        <div class="pv-node-label">Celigo</div>
+        <div class="pv-node-sub">Route · Transform · Split</div>
+      </div>
+      <div class="pv-connector"></div>
+      <div class="branch-split">
+        <div class="branch branch-b2c">
+          <div class="branch-label">B2C DTC</div>
+          <div class="branch-tracks">
+            <div class="track-mini">
+              <div class="track-mini-label">▲ Ord</div>
+              <div class="track-pipe" id="pipe-b2c-up"></div>
+            </div>
+            <div class="track-mini">
+              <div class="track-mini-label">▼ Inv</div>
+              <div class="track-pipe" id="pipe-b2c-down"></div>
+            </div>
+          </div>
+        </div>
+        <div class="branch branch-b2b">
+          <div class="branch-label">B2B Wholesale</div>
+          <div class="branch-tracks">
+            <div class="track-mini">
+              <div class="track-mini-label">▲ Ord</div>
+              <div class="track-pipe" id="pipe-b2b-up"></div>
+            </div>
+            <div class="track-mini">
+              <div class="track-mini-label">▼ Inv</div>
+              <div class="track-pipe" id="pipe-b2b-down"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics-bar">
+      <div class="metrics-grid">
+        <div class="metric"><div class="metric-label">B2C Orders</div><div class="metric-val" id="m-b2c">0</div></div>
+        <div class="metric"><div class="metric-label">B2B Orders</div><div class="metric-val" id="m-b2b">0</div></div>
+        <div class="metric"><div class="metric-label">Inv Pushes</div><div class="metric-val" id="m-inv">0</div></div>
+        <div class="metric"><div class="metric-label">Fulfilled</div><div class="metric-val" id="m-ful">0</div></div>
+        <div class="metric"><div class="metric-label">Rebalances</div><div class="metric-val" id="m-reb">0</div></div>
+        <div class="metric"><div class="metric-label">Avg Latency</div><div class="metric-val metric-val-green" id="m-lat">—</div></div>
+      </div>
+    </div>
+
+    <div class="panel-body"><div class="console" id="ns-console"></div></div>
+  </div>
+
+  <!-- ── B2B Store ── -->
+  <div class="panel panel-b2b">
+    <div class="panel-header">
+      <div class="panel-title">Shopify — B2B (Wholesale)</div>
+      <div class="panel-status"><div class="status-dot"></div> brand-wholesale.myshopify.com</div>
+    </div>
+    <div class="inv-model">
+      <div class="inv-model-title">InventoryLevel — B2B Warehouse</div>
+      <div class="qty-row">
+        <div class="qty-cell"><div class="qty-name">on_hand</div><div class="qty-val qty-val-on-hand" id="b2b-oh">0</div></div>
+        <div class="qty-cell"><div class="qty-name">committed</div><div class="qty-val qty-val-committed" id="b2b-cm">0</div></div>
+        <div class="qty-cell"><div class="qty-name">available</div><div class="qty-val qty-val-b2b" id="b2b-av">0</div></div>
+      </div>
+      <div class="store-tag">gid://shopify/Location/9442018 · Wholesale</div>
+    </div>
+    <div class="panel-body"><div class="console" id="b2b-console"></div></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="controls-left">
+    <div class="status-text" id="status">Ready — press Start to begin simulation</div>
+    <div class="speed-control">
+      <label for="speed">Speed:</label>
+      <select id="speed">
+        <option value="1.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="0.6">1.5×</option>
+        <option value="0.35">3×</option>
+      </select>
+    </div>
+  </div>
+  <div class="controls-right">
+    <button class="btn btn-primary" id="startBtn" onclick="startDemo()">Start Simulation</button>
+    <button class="btn" id="pauseBtn" onclick="togglePause()" disabled>Pause</button>
+    <button class="btn" id="resetBtn" onclick="resetDemo()" disabled>Reset</button>
+  </div>
+</div>
+
+<script>
+const S = {
+  ns:  { onHand: 200, committed: 0, available: 200 },
+  b2c: { onHand: 0, committed: 0, available: 0 },
+  b2b: { onHand: 0, committed: 0, available: 0 },
+  b2cOrders: 0, b2bOrders: 0, invPushes: 0, fulfillments: 0, rebalances: 0,
+  orderNum: 0, b2bOrderNum: 500,
+  placedOrders: [],
+  latencies: [], running: false, paused: false, pauseResolve: null, timeouts: []
+};
+
+const $ = id => document.getElementById(id);
+const el = {
+  b2cOh: $('b2c-oh'), b2cCm: $('b2c-cm'), b2cAv: $('b2c-av'),
+  b2bOh: $('b2b-oh'), b2bCm: $('b2b-cm'), b2bAv: $('b2b-av'),
+  nsOh: $('ns-oh'), nsCm: $('ns-cm'), nsAv: $('ns-av'),
+  b2cCon: $('b2c-console'), b2bCon: $('b2b-console'), nsCon: $('ns-console'),
+  mB2c: $('m-b2c'), mB2b: $('m-b2b'), mInv: $('m-inv'),
+  mFul: $('m-ful'), mReb: $('m-reb'), mLat: $('m-lat'),
+  status: $('status'),
+};
+
+function speedMult() { return parseFloat($('speed').value); }
+
+function delay(ms) {
+  return new Promise(r => {
+    const t = setTimeout(() => { if (S.paused) { S.pauseResolve = r; } else { r(); } }, ms * speedMult());
+    S.timeouts.push(t);
+  });
+}
+
+function togglePause() {
+  if (!S.running) return;
+  S.paused = !S.paused;
+  const btn = $('pauseBtn');
+  if (S.paused) {
+    btn.textContent = 'Resume'; btn.classList.add('btn-primary');
+    setStatus(el.status.innerHTML.replace(/^/, '⏸ PAUSED — '));
+  } else {
+    btn.textContent = 'Pause'; btn.classList.remove('btn-primary');
+    if (S.pauseResolve) { S.pauseResolve(); S.pauseResolve = null; }
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && S.running) { e.preventDefault(); togglePause(); }
+});
+
+function ts() { const d = new Date(); return d.toTimeString().slice(0,8) + '.' + String(d.getMilliseconds()).padStart(3,'0'); }
+function flash(e) { e.classList.remove('inv-flash'); void e.offsetWidth; e.classList.add('inv-flash'); }
+
+function updateB2C() {
+  S.b2c.available = S.b2c.onHand - S.b2c.committed;
+  el.b2cOh.textContent = S.b2c.onHand; el.b2cCm.textContent = S.b2c.committed;
+  el.b2cAv.textContent = S.b2c.available; flash(el.b2cAv);
+}
+function updateB2B() {
+  S.b2b.available = S.b2b.onHand - S.b2b.committed;
+  el.b2bOh.textContent = S.b2b.onHand; el.b2bCm.textContent = S.b2b.committed;
+  el.b2bAv.textContent = S.b2b.available; flash(el.b2bAv);
+}
+function updateNS() {
+  S.ns.available = S.ns.onHand - S.ns.committed;
+  el.nsOh.textContent = S.ns.onHand; el.nsCm.textContent = S.ns.committed;
+  el.nsAv.textContent = S.ns.available; flash(el.nsAv);
+}
+function updateMetrics() {
+  el.mB2c.textContent = S.b2cOrders; el.mB2b.textContent = S.b2bOrders;
+  el.mInv.textContent = S.invPushes; el.mFul.textContent = S.fulfillments;
+  el.mReb.textContent = S.rebalances;
+  if (S.latencies.length) el.mLat.textContent = Math.round(S.latencies.reduce((a,b)=>a+b)/S.latencies.length) + 'ms';
+}
+function addLat(l) { S.latencies.push(l); updateMetrics(); }
+
+function logEntry(container, tag, tagClass, msg, payload) {
+  const entry = document.createElement('div');
+  entry.className = 'console-entry';
+  entry.innerHTML = `<span class="ce-time">${ts()}</span><span class="ce-tag ${tagClass}">${tag}</span><span class="ce-msg">${msg}</span>`;
+  container.prepend(entry);
+  if (payload) {
+    const block = document.createElement('div');
+    block.className = 'payload-block';
+    block.innerHTML = payload;
+    container.prepend(block);
+    container.prepend(entry);
+  }
+  container.scrollTop = 0;
+}
+
+const nodeClasses = ['active-green','active-blue','active-yellow','active-orange','active-purple','active-pink'];
+function hl(id, cls) { $(id).classList.add(cls); }
+function clearNodes() {
+  ['node-netsuite','node-celigo'].forEach(id => nodeClasses.forEach(c => $(id).classList.remove(c)));
+}
+
+function sendPacket(pipeId, direction, color) {
+  const pipe = $(pipeId);
+  const p = document.createElement('div');
+  p.className = 'track-packet track-packet-' + color;
+  pipe.appendChild(p);
+  p.style.animation = (direction === 'down' ? 'tpDown' : 'tpUp') + ' 0.6s ease forwards';
+  setTimeout(() => p.remove(), 700);
+}
+
+function setStatus(html) { el.status.innerHTML = html; }
+
+function fmtPayload(obj, indent) {
+  indent = indent || 0;
+  const pad = '  '.repeat(indent), pad1 = '  '.repeat(indent + 1);
+  if (Array.isArray(obj)) return '[\n' + obj.map(v => pad1 + fmtVal(v,indent+1)).join(',\n') + '\n' + pad + ']';
+  return '{\n' + Object.entries(obj).map(([k,v]) => pad1 + `<span class="key">"${k}"</span>: ${fmtVal(v,indent+1)}`).join(',\n') + '\n' + pad + '}';
+}
+function fmtVal(v, indent) {
+  indent = indent || 0;
+  if (v === null) return '<span class="bool">null</span>';
+  if (typeof v === 'boolean') return `<span class="bool">${v}</span>`;
+  if (typeof v === 'number') return `<span class="num">${v}</span>`;
+  if (typeof v === 'string') return `<span class="str">"${v}"</span>`;
+  if (typeof v === 'object') return fmtPayload(v, indent);
+  return String(v);
+}
+
+// ═══════════════════════════════════════
+// OPERATIONS
+// ═══════════════════════════════════════
+
+async function allocateInventory(b2cQty, b2bQty) {
+  hl('node-netsuite', 'active-yellow');
+
+  logEntry(el.nsCon, 'ALLOC', 'ce-tag-alloc',
+    `<span class="hl-purple">Inventory allocation</span> → B2C: <span class="hl-green">${b2cQty}</span>, B2B: <span class="hl-orange">${b2bQty}</span>`,
+    fmtPayload({ flow: "inventory_distribution", sku: "SKU-4821", allocations: [{ channel: "B2C DTC", quantity: b2cQty }, { channel: "B2B Wholesale", quantity: b2bQty }] })
+  );
+
+  await delay(400);
+  hl('node-celigo', 'active-purple');
+
+  // Push to B2C
+  sendPacket('pipe-b2c-down', 'down', 'blue');
+  const lat1 = 70 + Math.floor(Math.random() * 50);
+  await delay(500);
+
+  S.b2c.onHand += b2cQty;
+  updateB2C();
+  addLat(lat1);
+  S.invPushes++;
+
+  logEntry(el.b2cCon, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">inventorySetQuantities</span> → on_hand=<span class="hl-green">${S.b2c.onHand}</span> &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat1}ms</span>`,
+    fmtPayload({ input: { reason: "correction", name: "on_hand", quantities: [{ inventoryItemId: "gid://shopify/InventoryItem/4482019", locationId: "gid://shopify/Location/7281903", quantity: S.b2c.onHand }] } })
+  );
+
+  await delay(300);
+
+  // Push to B2B
+  sendPacket('pipe-b2b-down', 'down', 'blue');
+  const lat2 = 65 + Math.floor(Math.random() * 50);
+  await delay(500);
+
+  S.b2b.onHand += b2bQty;
+  updateB2B();
+  addLat(lat2);
+  S.invPushes++;
+
+  logEntry(el.b2bCon, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">inventorySetQuantities</span> → on_hand=<span class="hl-orange">${S.b2b.onHand}</span> &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat2}ms</span>`,
+    fmtPayload({ input: { reason: "correction", name: "on_hand", quantities: [{ inventoryItemId: "gid://shopify/InventoryItem/4482019", locationId: "gid://shopify/Location/9442018", quantity: S.b2b.onHand }] } })
+  );
+
+  updateMetrics();
+  await delay(250);
+  clearNodes();
+}
+
+async function b2cOrder(qty) {
+  S.orderNum++;
+  S.b2cOrders++;
+  const name = '#DTC-' + String(S.orderNum).padStart(3, '0');
+  const orderId = 6100000000 + S.orderNum;
+
+  S.placedOrders.push({ name, qty, orderId, store: 'b2c', fulfilled: false });
+
+  S.b2c.committed += qty;
+  updateB2C();
+
+  logEntry(el.b2cCon, 'WEBHOOK', 'ce-tag-webhook',
+    `<span class="hl-green">orders/create</span> → ${name} &nbsp;<span class="hl-muted">${qty} × SKU-4821</span>`
+  );
+  logEntry(el.b2cCon, 'SYSTEM', 'ce-tag-system',
+    `committed <span class="hl-yellow">+${qty}</span> → available = <span class="hl-green">${S.b2c.available}</span>`
+  );
+
+  await delay(350);
+  sendPacket('pipe-b2c-up', 'up', 'green');
+  await delay(350);
+  hl('node-celigo', 'active-green');
+  await delay(300);
+  hl('node-netsuite', 'active-yellow');
+
+  const lat = 80 + Math.floor(Math.random() * 80);
+  addLat(lat);
+
+  S.ns.committed += qty;
+  updateNS();
+
+  logEntry(el.nsCon, 'EVENT', 'ce-tag-event',
+    `<span class="hl-yellow">SalesOrder.create</span> ← B2C ${name} &nbsp;<span class="hl-muted">${qty} units (${lat}ms)</span>`
+  );
+  logEntry(el.nsCon, 'SYSTEM', 'ce-tag-system',
+    `committed <span class="hl-yellow">+${qty}</span> → available = <span class="hl-yellow">${S.ns.available}</span>`
+  );
+
+  updateMetrics();
+  await delay(250);
+  clearNodes();
+}
+
+async function b2bOrder(qty, company) {
+  S.b2bOrderNum++;
+  S.b2bOrders++;
+  const name = '#WHL-' + String(S.b2bOrderNum).padStart(3, '0');
+  const orderId = 7200000000 + S.b2bOrderNum;
+
+  S.placedOrders.push({ name, qty, orderId, store: 'b2b', fulfilled: false });
+
+  S.b2b.committed += qty;
+  updateB2B();
+
+  logEntry(el.b2bCon, 'B2B', 'ce-tag-b2b',
+    `<span class="hl-orange">orders/create</span> → ${name} &nbsp;<span class="hl-muted">${qty} × SKU-4821 · ${company}</span>`
+  );
+  logEntry(el.b2bCon, 'SYSTEM', 'ce-tag-system',
+    `committed <span class="hl-yellow">+${qty}</span> → available = <span class="hl-orange">${S.b2b.available}</span>`
+  );
+
+  await delay(350);
+  sendPacket('pipe-b2b-up', 'up', 'orange');
+  await delay(350);
+  hl('node-celigo', 'active-orange');
+  await delay(300);
+  hl('node-netsuite', 'active-yellow');
+
+  const lat = 90 + Math.floor(Math.random() * 100);
+  addLat(lat);
+
+  S.ns.committed += qty;
+  updateNS();
+
+  logEntry(el.nsCon, 'EVENT', 'ce-tag-event',
+    `<span class="hl-yellow">SalesOrder.create</span> ← B2B ${name} &nbsp;<span class="hl-muted">${qty} units · ${company} (${lat}ms)</span>`
+  );
+  logEntry(el.nsCon, 'SYSTEM', 'ce-tag-system',
+    `committed <span class="hl-yellow">+${qty}</span> → available = <span class="hl-yellow">${S.ns.available}</span>`
+  );
+
+  updateMetrics();
+  await delay(250);
+  clearNodes();
+}
+
+async function fulfillOrder(orderName) {
+  const order = S.placedOrders.find(o => o.name === orderName && !o.fulfilled);
+  if (!order) return;
+  order.fulfilled = true;
+  S.fulfillments++;
+  const qty = order.qty;
+  const isB2C = order.store === 'b2c';
+  const con = isB2C ? el.b2cCon : el.b2bCon;
+  const pipeDown = isB2C ? 'pipe-b2c-down' : 'pipe-b2b-down';
+  const tracking = '1Z' + Math.random().toString(36).slice(2,10).toUpperCase();
+
+  hl('node-netsuite', 'active-pink');
+
+  S.ns.onHand -= qty;
+  S.ns.committed -= qty;
+  updateNS();
+
+  logEntry(el.nsCon, 'FULFILL', 'ce-tag-fulfill',
+    `<span class="hl-pink">ItemFulfillment</span> → ${orderName} &nbsp;<span class="hl-muted">${qty} units · ${tracking}</span>`
+  );
+
+  await delay(400);
+  hl('node-celigo', 'active-pink');
+  sendPacket(pipeDown, 'down', 'pink');
+  await delay(500);
+
+  const lat = 80 + Math.floor(Math.random() * 60);
+  addLat(lat);
+
+  if (isB2C) { S.b2c.onHand -= qty; S.b2c.committed -= qty; updateB2C(); }
+  else { S.b2b.onHand -= qty; S.b2b.committed -= qty; updateB2B(); }
+
+  logEntry(con, 'FULFILL', 'ce-tag-fulfill',
+    `<span class="hl-pink">fulfillmentCreateV2</span> → ${orderName} shipped · ${tracking} &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat}ms</span>`
+  );
+
+  updateMetrics();
+  await delay(250);
+  clearNodes();
+}
+
+async function poReceipt(qty, poNum, b2cSplit, b2bSplit) {
+  hl('node-netsuite', 'active-yellow');
+
+  S.ns.onHand += qty;
+  updateNS();
+
+  logEntry(el.nsCon, 'EVENT', 'ce-tag-event',
+    `<span class="hl-yellow">ItemReceipt</span> → PO #${poNum}: <span class="hl-yellow">+${qty}</span> units received`
+  );
+
+  await delay(400);
+
+  logEntry(el.nsCon, 'ALLOC', 'ce-tag-alloc',
+    `Distributing: B2C <span class="hl-green">+${b2cSplit}</span>, B2B <span class="hl-orange">+${b2bSplit}</span>`
+  );
+
+  hl('node-celigo', 'active-blue');
+  await delay(300);
+
+  sendPacket('pipe-b2c-down', 'down', 'blue');
+  sendPacket('pipe-b2b-down', 'down', 'blue');
+
+  const lat1 = 70 + Math.floor(Math.random() * 50);
+  const lat2 = 75 + Math.floor(Math.random() * 50);
+  await delay(500);
+
+  S.b2c.onHand += b2cSplit; updateB2C(); addLat(lat1); S.invPushes++;
+  S.b2b.onHand += b2bSplit; updateB2B(); addLat(lat2); S.invPushes++;
+
+  logEntry(el.b2cCon, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">inventoryAdjustQuantities</span> → +${b2cSplit} on_hand &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat1}ms</span>`
+  );
+  logEntry(el.b2bCon, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">inventoryAdjustQuantities</span> → +${b2bSplit} on_hand &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat2}ms</span>`
+  );
+
+  updateMetrics();
+  await delay(250);
+  clearNodes();
+}
+
+async function rebalance(fromStore, toStore, qty) {
+  S.rebalances++;
+  hl('node-netsuite', 'active-purple');
+
+  logEntry(el.nsCon, 'ALLOC', 'ce-tag-alloc',
+    `<span class="hl-purple">Rebalance</span> → shift <span class="hl-purple">${qty}</span> units from ${fromStore === 'b2b' ? '<span class="hl-orange">B2B</span>' : '<span class="hl-green">B2C</span>'} to ${toStore === 'b2c' ? '<span class="hl-green">B2C</span>' : '<span class="hl-orange">B2B</span>'}`,
+    fmtPayload({ action: "rebalance", reason: "sell_through_velocity", from_channel: fromStore === 'b2b' ? 'B2B Wholesale' : 'B2C DTC', to_channel: toStore === 'b2c' ? 'B2C DTC' : 'B2B Wholesale', quantity: qty })
+  );
+
+  await delay(400);
+  hl('node-celigo', 'active-purple');
+
+  const fromPipe = fromStore === 'b2c' ? 'pipe-b2c-down' : 'pipe-b2b-down';
+  const toPipe = toStore === 'b2c' ? 'pipe-b2c-down' : 'pipe-b2b-down';
+
+  sendPacket(fromPipe, 'down', 'purple');
+  sendPacket(toPipe, 'down', 'purple');
+
+  const lat1 = 60 + Math.floor(Math.random() * 40);
+  const lat2 = 65 + Math.floor(Math.random() * 40);
+  await delay(500);
+
+  if (fromStore === 'b2b') { S.b2b.onHand -= qty; updateB2B(); } else { S.b2c.onHand -= qty; updateB2C(); }
+  addLat(lat1); S.invPushes++;
+
+  if (toStore === 'b2c') { S.b2c.onHand += qty; updateB2C(); } else { S.b2b.onHand += qty; updateB2B(); }
+  addLat(lat2); S.invPushes++;
+
+  const fromCon = fromStore === 'b2c' ? el.b2cCon : el.b2bCon;
+  const toCon = toStore === 'b2c' ? el.b2cCon : el.b2bCon;
+
+  logEntry(fromCon, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">inventorySetQuantities</span> → on_hand=<span class="hl-purple">${fromStore === 'b2b' ? S.b2b.onHand : S.b2c.onHand}</span> (rebalance) &nbsp;<span class="ce-status ce-status-200">200</span>`
+  );
+  logEntry(toCon, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">inventorySetQuantities</span> → on_hand=<span class="hl-purple">${toStore === 'b2c' ? S.b2c.onHand : S.b2b.onHand}</span> (rebalance) &nbsp;<span class="ce-status ce-status-200">200</span>`
+  );
+
+  updateMetrics();
+  await delay(250);
+  clearNodes();
+}
+
+// ═══════════════════════════════════════
+// SIMULATION
+// ═══════════════════════════════════════
+async function startDemo() {
+  if (S.running) return;
+  S.running = true;
+  $('startBtn').disabled = true;
+  $('pauseBtn').disabled = false;
+  $('resetBtn').disabled = true;
+
+  setStatus('Initializing — NetSuite has <span class="hl hl-blue">200</span> on_hand, stores at 0');
+  await delay(1800);
+
+  // ── Phase 1: Initial allocation ──
+  setStatus('Phase 1: <span class="hl hl-purple">Initial allocation</span> — NetSuite distributes inventory 60/40');
+  await delay(1600);
+
+  await allocateInventory(120, 80);
+  await delay(800);
+
+  setStatus('B2C: <span class="hl hl-green">120</span> units · B2B: <span class="hl hl-orange">80</span> units — both stores stocked');
+  await delay(2000);
+
+  // ── Phase 2: B2C orders ──
+  setStatus('Phase 2: DTC customers place orders on <span class="hl hl-green">B2C store</span>');
+  await delay(1400);
+
+  await b2cOrder(5);
+  await delay(800);
+  await b2cOrder(3);
+  await delay(600);
+
+  setStatus('2 B2C orders synced to NetSuite in real-time');
+  await delay(1600);
+
+  // ── Phase 3: B2B wholesale order ──
+  setStatus('Phase 3: Wholesale buyer places <span class="hl hl-orange">B2B order</span> — larger quantity');
+  await delay(1400);
+
+  await b2bOrder(25, 'Nordstrom');
+  await delay(1000);
+
+  setStatus('B2B order for 25 units → NetSuite committed=<span class="hl hl-blue">' + S.ns.committed + '</span>');
+  await delay(1800);
+
+  // ── Phase 4: Concurrent — B2C + B2B at same time ──
+  setStatus('Phase 4: Concurrent — <span class="hl hl-green">B2C</span> + <span class="hl hl-orange">B2B</span> orders overlap');
+  await delay(1400);
+
+  await b2cOrder(7);
+  await delay(400);
+  await b2bOrder(15, 'REI');
+  await delay(1200);
+
+  // ── Phase 5: Fulfillment ──
+  setStatus('Phase 5: Warehouse fulfills — <span class="hl hl-pink">tracking + status</span> flows to each store');
+  await delay(1600);
+
+  await fulfillOrder('#DTC-001');
+  await delay(700);
+  await fulfillOrder('#WHL-501');
+  await delay(700);
+  await fulfillOrder('#DTC-002');
+  await delay(600);
+
+  setStatus('3 orders fulfilled — each store received its own fulfillmentCreateV2');
+  await delay(2000);
+
+  // ── Phase 6: PO receipt → split to both ──
+  setStatus('Phase 6: PO received — <span class="hl hl-blue">100 units</span> distributed 60/40 to both stores');
+  await delay(1600);
+
+  await poReceipt(100, '4520', 60, 40);
+  await delay(1200);
+
+  setStatus('Both stores restocked simultaneously — B2C +60, B2B +40');
+  await delay(2000);
+
+  // ── Phase 7: Rebalance ──
+  setStatus('Phase 7: B2C selling fast — <span class="hl hl-purple">rebalance 20 units</span> from B2B → B2C');
+  await delay(1600);
+
+  await rebalance('b2b', 'b2c', 20);
+  await delay(1200);
+
+  setStatus('Rebalanced — B2C: <span class="hl hl-green">' + S.b2c.available + '</span> avail, B2B: <span class="hl hl-orange">' + S.b2b.available + '</span> avail');
+  await delay(2000);
+
+  // ── Phase 8: Final burst ──
+  setStatus('Phase 8: Final activity burst across both channels');
+  await delay(1200);
+
+  await b2cOrder(4);
+  await delay(400);
+  await b2bOrder(10, 'Target');
+  await delay(500);
+  await fulfillOrder('#DTC-003');
+  await delay(500);
+  await fulfillOrder('#WHL-502');
+  await delay(800);
+
+  setStatus(
+    'Complete — B2C: <span class="hl hl-green">' + S.b2cOrders + '</span> orders, ' +
+    'B2B: <span class="hl hl-orange">' + S.b2bOrders + '</span> orders, ' +
+    '<span class="hl hl-blue">' + S.invPushes + '</span> inv pushes, ' +
+    '<span class="hl hl-purple">' + S.rebalances + '</span> rebalances'
+  );
+
+  $('pauseBtn').disabled = true;
+  $('resetBtn').disabled = false;
+}
+
+function resetDemo() {
+  S.timeouts.forEach(t => clearTimeout(t));
+  S.timeouts = [];
+  S.running = false; S.paused = false; S.pauseResolve = null;
+  S.ns = { onHand: 200, committed: 0, available: 200 };
+  S.b2c = { onHand: 0, committed: 0, available: 0 };
+  S.b2b = { onHand: 0, committed: 0, available: 0 };
+  S.orderNum = 0; S.b2bOrderNum = 500;
+  S.b2cOrders = 0; S.b2bOrders = 0; S.invPushes = 0;
+  S.fulfillments = 0; S.rebalances = 0;
+  S.placedOrders = []; S.latencies = [];
+
+  updateB2C(); updateB2B(); updateNS(); updateMetrics();
+  el.mLat.textContent = '—';
+  el.b2cCon.innerHTML = ''; el.b2bCon.innerHTML = ''; el.nsCon.innerHTML = '';
+  clearNodes();
+  setStatus('Ready — press Start to begin simulation');
+  $('startBtn').disabled = false;
+  $('pauseBtn').disabled = true; $('pauseBtn').textContent = 'Pause'; $('pauseBtn').classList.remove('btn-primary');
+  $('resetBtn').disabled = true;
+}
+</script>
+
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

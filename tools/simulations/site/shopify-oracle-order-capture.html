@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopify ↔ Oracle · Delayed Capture & Order Editing</title>
+<style>
+  :root {
+    --shopify: #008060;
+    --shopify-light: #e3f5f0;
+    --shopify-dark: #004c3f;
+    --oracle: #c74634;
+    --oracle-light: #fdf0ee;
+    --oracle-dark: #8b2719;
+    --bg: #0f0f18;
+    --surface: #1a1a28;
+    --surface-raised: #232335;
+    --border: #2e2e45;
+    --text: #e4e4f0;
+    --text-muted: #7a7a9a;
+    --yellow: #f5c842;
+    --blue: #6ea8fe;
+    --green: #4ade80;
+    --red: #f87171;
+    --purple: #c084fc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .header-title h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .header-title p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  .system-badges {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .badge {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-shopify { background: var(--shopify); color: #fff; }
+  .badge-oracle { background: var(--oracle); color: #fff; }
+  .badge-sep { color: var(--text-muted); font-size: 16px; }
+
+  /* ── Scenarios ── */
+  .scenarios {
+    display: flex;
+    gap: 10px;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .scenario-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .scenario-btn:hover { border-color: #555; color: var(--text); }
+
+  .scenario-btn.active-shopify {
+    background: #004c3f;
+    border-color: var(--shopify);
+    color: #4ade80;
+  }
+
+  .scenario-btn.active-oracle {
+    background: #5c1a13;
+    border-color: var(--oracle);
+    color: #fca5a5;
+  }
+
+  .scenario-btn.active-capture {
+    background: #2a2040;
+    border-color: var(--purple);
+    color: var(--purple);
+  }
+
+  .reset-btn {
+    margin-left: auto;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .reset-btn:hover { border-color: #555; color: var(--text); }
+
+  /* ── Main layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: 1fr;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── System Panels ── */
+  .system-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .system-panel.oracle-panel {
+    border-right: none;
+    border-left: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-header.shopify-header {
+    background: linear-gradient(135deg, #004c3f 0%, #002b24 100%);
+  }
+
+  .panel-header.oracle-header {
+    background: linear-gradient(135deg, #5c1a13 0%, #3a0f0a 100%);
+  }
+
+  .panel-system-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 8px;
+  }
+
+  .shopify-name { color: #4ade80; }
+  .oracle-name { color: #fca5a5; }
+
+  .order-card {
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .order-id {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .order-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .order-line-items {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  .order-line-items .line-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .line-item.highlight {
+    color: var(--yellow);
+    font-weight: 600;
+  }
+
+  .line-item.removed {
+    text-decoration: line-through;
+    opacity: 0.4;
+  }
+
+  .line-item.added {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .order-total {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .auth-badge {
+    margin-top: 8px;
+    padding: 5px 8px;
+    background: rgba(250,200,50,0.1);
+    border: 1px solid rgba(250,200,50,0.3);
+    border-radius: 5px;
+    font-size: 11px;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Activity log */
+  .panel-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+
+  .log-entry.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .log-icon { font-size: 14px; flex-shrink: 0; line-height: 1.4; }
+
+  .log-text { color: var(--text-muted); }
+  .log-text strong { color: var(--text); }
+  .log-text .highlight { color: var(--yellow); }
+  .log-text .success { color: var(--green); }
+  .log-text .danger { color: var(--red); }
+  .log-text .info { color: var(--blue); }
+
+  /* ── Center canvas ── */
+  .center-canvas {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .canvas-stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── SVG zone (top half of active stage) ── */
+  .svg-zone {
+    flex: 0 0 190px;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+
+  svg.flow-svg {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0; left: 0;
+  }
+
+  /* ── Step description zone (bottom half) ── */
+  .step-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 24px;
+    overflow: hidden;
+  }
+
+  .scenario-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .current-step-box {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .step-number {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .step-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+
+  .step-description {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* Floating API call pill — inside svg-zone */
+  .api-pill {
+    position: absolute;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .api-pill.show { opacity: 1; }
+
+  .api-pill-method {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+
+  .method-post { background: #1e3a2e; color: var(--green); }
+  .method-put { background: #2a2040; color: var(--purple); }
+  .method-get { background: #1a2a40; color: var(--blue); }
+  .method-patch { background: #3a2a10; color: var(--yellow); }
+
+  /* Arrows on SVG */
+  .flow-arrow {
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  .flow-arrow.show { opacity: 1; }
+
+  /* ── Bottom controls ── */
+  .controls {
+    padding: 14px 28px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .step-indicator {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .step-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex: 1;
+  }
+
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s;
+  }
+
+  .step-dot.done { background: var(--shopify); }
+  .step-dot.active { background: #fff; transform: scale(1.4); }
+  .step-dot.oracle-active { background: var(--oracle); }
+  .step-dot.capture-active { background: var(--purple); }
+  .step-dot.oracle-done { background: var(--oracle); }
+  .step-dot.capture-done { background: var(--purple); }
+
+  .next-btn {
+    padding: 9px 22px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .next-btn.shopify-btn { background: var(--shopify); color: #fff; }
+  .next-btn.oracle-btn { background: var(--oracle); color: #fff; }
+  .next-btn.capture-btn { background: var(--purple); color: #fff; }
+
+  .next-btn:hover { filter: brightness(1.15); }
+  .next-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+
+  /* Pulse animation for active pill */
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,128,96,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(0,128,96,0); }
+  }
+
+  @keyframes fly-right {
+    0% { transform: translateX(-30px); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateX(30px); opacity: 0; }
+  }
+
+  @keyframes fly-left {
+    0% { transform: translateX(30px); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateX(-30px); opacity: 0; }
+  }
+
+  .flying-right { animation: fly-right 1.2s ease-in-out forwards; }
+  .flying-left { animation: fly-left 1.2s ease-in-out forwards; }
+
+  /* Welcome state */
+  .welcome-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+    padding: 40px;
+  }
+
+  .welcome-state h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .welcome-state p {
+    font-size: 14px;
+    color: var(--text-muted);
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .welcome-scenarios {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .welcome-scenario-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 300px;
+  }
+
+  .welcome-scenario-card:hover { border-color: #555; background: #2a2a40; }
+
+  .welcome-scenario-card.wsc-shopify:hover { border-color: var(--shopify); }
+  .welcome-scenario-card.wsc-oracle:hover { border-color: var(--oracle); }
+  .welcome-scenario-card.wsc-capture:hover { border-color: var(--purple); }
+
+  .wsc-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .wsc-shopify .wsc-label { color: var(--shopify); }
+  .wsc-oracle .wsc-label { color: var(--oracle); }
+  .wsc-capture .wsc-label { color: var(--purple); }
+
+  .wsc-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 3px; }
+  .wsc-desc { font-size: 12px; color: var(--text-muted); }
+
+  /* Auth amount transition */
+  .amount-change {
+    display: inline-block;
+    transition: all 0.3s;
+  }
+
+  .amount-change.increasing { color: var(--green); }
+  .amount-change.decreasing { color: var(--red); }
+
+  /* Capture bar */
+  .capture-progress-container {
+    margin-top: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+  }
+
+  .capture-progress-bar {
+    height: 100%;
+    background: var(--purple);
+    width: 0%;
+    transition: width 1.5s ease;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-title">
+    <h1>Shopify ↔ Oracle · Delayed Capture & Order Editing</h1>
+    <p>Interactive simulation — see how order changes flow between systems in real time</p>
+  </div>
+  <div class="system-badges">
+    <span class="badge badge-shopify">Shopify Commerce</span>
+    <span class="badge-sep">↔</span>
+    <span class="badge badge-oracle">Oracle OMS / ERP</span>
+  </div>
+</header>
+
+<!-- Scenario selector -->
+<div class="scenarios">
+  <button class="scenario-btn" id="btn-shopify-edit" onclick="startScenario('shopify-edit')">
+    ✏️ &nbsp;Scenario A — Edit Order in Shopify
+  </button>
+  <button class="scenario-btn" id="btn-oracle-edit" onclick="startScenario('oracle-edit')">
+    🔄 &nbsp;Scenario B — Edit Order in Oracle
+  </button>
+  <button class="scenario-btn" id="btn-capture" onclick="startScenario('capture')">
+    💳 &nbsp;Scenario C — Delayed Payment Capture
+  </button>
+  <button class="reset-btn" onclick="resetAll()">↺ Reset</button>
+</div>
+
+<!-- Main 3-column layout -->
+<div class="main">
+
+  <!-- LEFT: Shopify -->
+  <div class="system-panel" id="shopify-panel">
+    <div class="panel-header shopify-header">
+      <div class="panel-system-name shopify-name">Shopify</div>
+      <div class="order-card" id="shopify-order-card">
+        <div class="order-id">Order #SP-10048</div>
+        <div id="shopify-status-badge" class="order-status" style="background:#1a3a2e; color:#4ade80;">
+          <span class="status-dot" style="background:#4ade80;"></span>
+          Authorized
+        </div>
+        <div class="order-line-items" id="shopify-line-items">
+          <div class="line-item"><span>Office Chair × 2</span><span>$598</span></div>
+          <div class="line-item"><span>Desk Lamp × 1</span><span>$89</span></div>
+          <div class="line-item"><span>Monitor Stand × 1</span><span>$49</span></div>
+        </div>
+        <div class="order-total">
+          <span>Auth Hold</span>
+          <span id="shopify-auth-amount">$736</span>
+        </div>
+        <div class="auth-badge">
+          🔒 Payment authorized — not yet captured
+        </div>
+      </div>
+    </div>
+    <div class="panel-log" id="shopify-log">
+      <div class="log-section-title">Activity Log</div>
+    </div>
+  </div>
+
+  <!-- CENTER: Flow canvas -->
+  <div class="center-canvas">
+    <div class="canvas-stage" id="canvas-stage">
+
+      <!-- Welcome state -->
+      <div class="welcome-state" id="welcome-state">
+        <h2>Choose a Scenario</h2>
+        <p>This simulation shows how Shopify and Oracle stay in sync when orders change — and how payment capture is handled after fulfillment.</p>
+        <div class="welcome-scenarios">
+          <div class="welcome-scenario-card wsc-shopify" onclick="startScenario('shopify-edit')">
+            <div class="wsc-label">Scenario A</div>
+            <div class="wsc-title">✏️ Edit Order in Shopify</div>
+            <div class="wsc-desc">A CSR removes an item in Shopify — see how Oracle is notified and the auth hold adjusts.</div>
+          </div>
+          <div class="welcome-scenario-card wsc-oracle" onclick="startScenario('oracle-edit')">
+            <div class="wsc-label">Scenario B</div>
+            <div class="wsc-title">🔄 Edit Order in Oracle</div>
+            <div class="wsc-desc">Oracle's fulfillment team adds a shipping fee — see how Shopify reflects the change.</div>
+          </div>
+          <div class="welcome-scenario-card wsc-capture" onclick="startScenario('capture')">
+            <div class="wsc-label">Scenario C</div>
+            <div class="wsc-title">💳 Delayed Payment Capture</div>
+            <div class="wsc-desc">Oracle signals fulfillment is ready — Shopify captures the exact authorized amount.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active scenario stage -->
+      <div id="active-stage" style="display:none; width:100%; height:100%; flex-direction:column;">
+
+        <!-- Top: SVG flow diagram -->
+        <div class="svg-zone">
+          <svg class="flow-svg" id="flow-svg" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet">
+            <!-- Left system box -->
+            <rect x="10" y="15" width="110" height="160" rx="10" fill="#1a1a28" stroke="#2e2e45" stroke-width="1"/>
+            <text x="65" y="38" text-anchor="middle" fill="#4ade80" font-size="10" font-weight="700" font-family="system-ui">SHOPIFY</text>
+            <text x="65" y="95" text-anchor="middle" font-size="28">🛒</text>
+            <text x="65" y="123" text-anchor="middle" fill="#7a7a9a" font-size="9" font-family="system-ui">Order #SP-10048</text>
+            <text x="65" y="142" text-anchor="middle" id="svg-shopify-label" fill="#4ade80" font-size="10" font-weight="600" font-family="system-ui">Authorized</text>
+
+            <!-- Right system box -->
+            <rect x="380" y="15" width="110" height="160" rx="10" fill="#1a1a28" stroke="#2e2e45" stroke-width="1"/>
+            <text x="435" y="38" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="700" font-family="system-ui">ORACLE</text>
+            <text x="435" y="95" text-anchor="middle" font-size="28">🏛</text>
+            <text x="435" y="123" text-anchor="middle" fill="#7a7a9a" font-size="9" font-family="system-ui">ORD-10048</text>
+            <text x="435" y="142" text-anchor="middle" id="svg-oracle-label" fill="#fca5a5" font-size="10" font-weight="600" font-family="system-ui">Synced</text>
+
+            <!-- Connector line -->
+            <line x1="120" y1="95" x2="380" y2="95" stroke="#2e2e45" stroke-width="1.5" stroke-dasharray="5,4"/>
+
+            <!-- Right arrow (Shopify → Oracle) -->
+            <g class="flow-arrow" id="arrow-right">
+              <line x1="155" y1="82" x2="345" y2="82" stroke="#008060" stroke-width="2.5" stroke-linecap="round"/>
+              <polygon points="345,77 357,82 345,87" fill="#008060"/>
+              <text x="250" y="74" text-anchor="middle" fill="#4ade80" font-size="9" font-weight="600" font-family="system-ui">→ Shopify notifies Oracle</text>
+            </g>
+
+            <!-- Left arrow (Oracle → Shopify) -->
+            <g class="flow-arrow" id="arrow-left">
+              <line x1="345" y1="108" x2="155" y2="108" stroke="#c74634" stroke-width="2.5" stroke-linecap="round"/>
+              <polygon points="155,103 143,108 155,113" fill="#c74634"/>
+              <text x="250" y="122" text-anchor="middle" fill="#fca5a5" font-size="9" font-weight="600" font-family="system-ui">← Oracle pushes to Shopify</text>
+            </g>
+
+            <!-- Capture arrow -->
+            <g class="flow-arrow" id="arrow-capture">
+              <line x1="120" y1="95" x2="375" y2="95" stroke="#c084fc" stroke-width="2.5" stroke-linecap="round"/>
+              <polygon points="375,90 387,95 375,100" fill="#c084fc"/>
+              <text x="250" y="74" text-anchor="middle" fill="#c084fc" font-size="9" font-weight="600" font-family="system-ui">Capture signal →</text>
+            </g>
+          </svg>
+
+          <!-- API Pill anchored in SVG zone -->
+          <div class="api-pill" id="api-pill">
+            <span class="api-pill-method" id="api-pill-method">POST</span>
+            <span id="api-pill-text">/admin/api/orders/edit</span>
+          </div>
+        </div>
+
+        <!-- Bottom: Step description -->
+        <div class="step-zone">
+          <div class="scenario-title" id="scenario-title">Scenario A</div>
+          <div class="current-step-box" id="step-box">
+            <div class="step-number" id="step-number">Step 1 of 4</div>
+            <div class="step-title" id="step-title">Order Placed</div>
+            <div class="step-description" id="step-desc">Customer completes checkout. Shopify places an authorization hold — no money is captured yet.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Step controls -->
+    <div class="controls" id="controls" style="display:none;">
+      <div class="step-indicator" id="step-indicator">Step 1 of 5</div>
+      <div class="step-dots" id="step-dots"></div>
+      <button class="next-btn shopify-btn" id="next-btn" onclick="nextStep()">Next →</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Oracle -->
+  <div class="system-panel oracle-panel" id="oracle-panel">
+    <div class="panel-header oracle-header">
+      <div class="panel-system-name oracle-name">Oracle OMS / ERP</div>
+      <div class="order-card" id="oracle-order-card">
+        <div class="order-id">Order ORD-10048</div>
+        <div id="oracle-status-badge" class="order-status" style="background:#3a1210; color:#fca5a5;">
+          <span class="status-dot" style="background:#fca5a5;"></span>
+          Imported
+        </div>
+        <div class="order-line-items" id="oracle-line-items">
+          <div class="line-item"><span>Office Chair × 2</span><span>$598</span></div>
+          <div class="line-item"><span>Desk Lamp × 1</span><span>$89</span></div>
+          <div class="line-item"><span>Monitor Stand × 1</span><span>$49</span></div>
+        </div>
+        <div class="order-total">
+          <span>Order Value</span>
+          <span id="oracle-amount">$736</span>
+        </div>
+        <div class="auth-badge" id="oracle-sync-badge">
+          🔗 Synced from Shopify
+        </div>
+      </div>
+    </div>
+    <div class="panel-log" id="oracle-log">
+      <div class="log-section-title">Activity Log</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ────────────────────────────────────────────
+//  State
+// ────────────────────────────────────────────
+let currentScenario = null;
+let currentStep = 0;
+let isAnimating = false;
+
+// ────────────────────────────────────────────
+//  Scenario Definitions
+// ────────────────────────────────────────────
+const scenarios = {
+
+  'shopify-edit': {
+    label: 'Scenario A — Edit in Shopify',
+    btnClass: 'active-shopify',
+    nextBtnClass: 'shopify-btn',
+    steps: [
+      {
+        title: 'Order Placed & Authorized',
+        desc: 'Customer checks out for $736. Shopify places a payment authorization hold with the card network — no money moves yet.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '🛒', text: '<strong>Order #SP-10048 created</strong>' },
+          { icon: '🔒', text: '<strong>Auth hold placed:</strong> <span class="highlight">$736</span> — awaiting capture' },
+        ],
+        oracleLog: [
+          { icon: '📥', text: '<strong>ORD-10048 received</strong> via Shopify webhook' },
+          { icon: '✅', text: 'Order imported into <strong>Oracle OMS</strong>' },
+        ],
+        shopifyStatus: { text: 'Authorized', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Imported', bg: '#3a1210', color: '#fca5a5' },
+        shopifyAmount: '$736',
+        oracleAmount: '$736',
+        svgShopifyLabel: 'Authorized',
+        svgOracleLabel: 'Synced',
+      },
+      {
+        title: 'CSR Removes an Item in Shopify',
+        desc: 'A customer service rep opens the order in Shopify Admin and removes the Monitor Stand ($49). The order edit is saved.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '✏️', text: '<strong>CSR edits order</strong> in Shopify Admin' },
+          { icon: '🗑️', text: '<span class="danger">Removed:</span> Monitor Stand × 1 <span class="highlight">(−$49)</span>' },
+          { icon: '💾', text: 'Order edit <strong>saved</strong> — new total <span class="highlight">$687</span>' },
+        ],
+        oracleLog: [],
+        shopifyStatus: { text: 'Edit Pending', bg: '#2a2010', color: '#f5c842' },
+        oracleStatus: { text: 'Imported', bg: '#3a1210', color: '#fca5a5' },
+        shopifyAmount: '$687',
+        oracleAmount: '$736',
+        shopifyLineItemMod: 'removed-monitor',
+        svgShopifyLabel: 'Edited ✏️',
+        svgOracleLabel: 'Stale ⚠️',
+      },
+      {
+        title: 'Shopify Sends Update to Oracle',
+        desc: 'Shopify fires a webhook or the middleware polls for changes. The updated order — with the item removed — is pushed to Oracle via API.',
+        arrow: 'right',
+        apiPill: { method: 'POST', methodClass: 'method-post', text: 'Order Update Webhook → Oracle' },
+        shopifyLog: [
+          { icon: '📡', text: '<span class="info">Webhook fired:</span> <strong>orders/updated</strong>' },
+          { icon: '→', text: 'Sending diff to Oracle: <span class="danger">−Monitor Stand</span>, <span class="highlight">new total $687</span>' },
+        ],
+        oracleLog: [
+          { icon: '📨', text: '<strong>Webhook received</strong> from Shopify' },
+          { icon: '🔄', text: 'Oracle processing <span class="danger">item removal</span>…' },
+        ],
+        shopifyStatus: { text: 'Edit Pending', bg: '#2a2010', color: '#f5c842' },
+        oracleStatus: { text: 'Updating…', bg: '#2a2020', color: '#f5c842' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Webhook →',
+        svgOracleLabel: 'Receiving…',
+      },
+      {
+        title: 'Oracle Updates & Confirms',
+        desc: 'Oracle updates its own order record and sends a confirmation back to Shopify. The auth hold is adjusted to match the new order total.',
+        arrow: 'left',
+        apiPill: { method: 'PATCH', methodClass: 'method-patch', text: 'Oracle Confirms → Shopify Auth Adjusted' },
+        shopifyLog: [
+          { icon: '✅', text: '<span class="success">Confirmation received</span> from Oracle' },
+          { icon: '🔒', text: '<strong>Auth hold adjusted:</strong> <span class="highlight">$736 → $687</span>' },
+          { icon: '📋', text: 'Order edit <span class="success">committed</span>' },
+        ],
+        oracleLog: [
+          { icon: '✅', text: '<strong>ORD-10048 updated</strong> — Monitor Stand removed' },
+          { icon: '📤', text: 'Sending <span class="success">confirmation</span> to Shopify' },
+          { icon: '💾', text: 'Oracle order value: <span class="highlight">$687</span>' },
+        ],
+        oracleLineItemMod: 'removed-monitor',
+        shopifyStatus: { text: 'Edit Complete', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Synced', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Adjusted ✅',
+        svgOracleLabel: 'Updated ✅',
+      },
+      {
+        title: 'Both Systems in Sync',
+        desc: 'Shopify and Oracle now reflect the same order — $687, with the Monitor Stand removed. The revised auth hold is in place, ready for capture at fulfillment.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '🟢', text: '<span class="success">Systems in sync</span> — order #SP-10048 final: <strong>$687</strong>' },
+        ],
+        oracleLog: [
+          { icon: '🟢', text: '<span class="success">ORD-10048 finalized</span> — awaiting fulfillment' },
+        ],
+        shopifyStatus: { text: 'Authorized $687', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Ready to Fulfill', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Synced ✅',
+        svgOracleLabel: 'Synced ✅',
+      },
+    ]
+  },
+
+  'oracle-edit': {
+    label: 'Scenario B — Edit in Oracle',
+    btnClass: 'active-oracle',
+    nextBtnClass: 'oracle-btn',
+    steps: [
+      {
+        title: 'Order in Oracle — Pre-Fulfillment',
+        desc: 'The order is sitting in Oracle OMS awaiting pick-pack-ship. Oracle\'s fulfillment team has the order and may need to make adjustments before it ships.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '🛒', text: '<strong>Order #SP-10048</strong> — $736 authorized' },
+          { icon: '📦', text: 'Order forwarded to Oracle for <strong>fulfillment</strong>' },
+        ],
+        oracleLog: [
+          { icon: '📥', text: '<strong>ORD-10048</strong> received — awaiting pick/pack' },
+          { icon: '🏪', text: 'Assigned to <strong>warehouse team</strong>' },
+        ],
+        shopifyStatus: { text: 'Authorized', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'In Fulfillment', bg: '#3a1210', color: '#fca5a5' },
+        shopifyAmount: '$736',
+        oracleAmount: '$736',
+        svgShopifyLabel: 'Authorized',
+        svgOracleLabel: 'Fulfilling',
+      },
+      {
+        title: 'Oracle Adds a Shipping Surcharge',
+        desc: 'Oracle\'s logistics team discovers a remote-area delivery fee applies ($25). They add it directly in Oracle OMS before the order ships.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [],
+        oracleLog: [
+          { icon: '✏️', text: '<strong>Logistics team edits</strong> order in Oracle OMS' },
+          { icon: '🚚', text: '<span class="highlight">Added:</span> Remote Delivery Surcharge +<span class="highlight">$25</span>' },
+          { icon: '💾', text: 'Oracle order saved — new value: <span class="highlight">$761</span>' },
+        ],
+        shopifyStatus: { text: 'Authorized', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Edit Pending', bg: '#2a2010', color: '#f5c842' },
+        shopifyAmount: '$736',
+        oracleAmount: '$761',
+        oracleLineItemMod: 'added-surcharge',
+        svgShopifyLabel: 'Stale ⚠️',
+        svgOracleLabel: 'Edited ✏️',
+      },
+      {
+        title: 'Oracle Pushes Change to Shopify',
+        desc: 'Oracle\'s integration layer calls the Shopify Orders API to sync the update — adding the surcharge as a line item so Shopify\'s record matches.',
+        arrow: 'left',
+        apiPill: { method: 'POST', methodClass: 'method-post', text: 'Oracle → Shopify Order Edit API' },
+        shopifyLog: [
+          { icon: '📨', text: '<strong>Update received</strong> from Oracle OMS' },
+          { icon: '🔄', text: 'Processing <span class="highlight">+$25 surcharge</span> addition…' },
+        ],
+        oracleLog: [
+          { icon: '📡', text: '<strong>Calling Shopify API:</strong> <span class="info">POST /orders/edit</span>' },
+          { icon: '→', text: 'Payload: <span class="highlight">add line "Remote Delivery +$25"</span>' },
+        ],
+        shopifyStatus: { text: 'Updating…', bg: '#2a2010', color: '#f5c842' },
+        oracleStatus: { text: 'Pushing Update', bg: '#2a1a3a', color: '#c084fc' },
+        shopifyAmount: '$761',
+        oracleAmount: '$761',
+        svgShopifyLabel: 'Receiving…',
+        svgOracleLabel: 'Pushing →',
+      },
+      {
+        title: 'Shopify Reflects the Change',
+        desc: 'Shopify accepts the edit and raises the authorization hold to match the new $761 total. The card network is notified of the revised amount.',
+        arrow: 'right',
+        apiPill: { method: 'PATCH', methodClass: 'method-patch', text: 'Auth Hold Updated: $736 → $761' },
+        shopifyLog: [
+          { icon: '✅', text: '<strong>Order edit applied</strong> — surcharge added' },
+          { icon: '🔒', text: 'Auth hold <span class="highlight">raised: $736 → $761</span>' },
+          { icon: '📤', text: 'Confirmation <span class="success">sent back to Oracle</span>' },
+        ],
+        oracleLog: [
+          { icon: '✅', text: '<span class="success">Shopify acknowledged</span> the update' },
+          { icon: '🟢', text: 'Both systems show <strong>$761</strong>' },
+        ],
+        shopifyLineItemMod: 'added-surcharge',
+        shopifyStatus: { text: 'Auth Raised $761', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Synced', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$761',
+        oracleAmount: '$761',
+        svgShopifyLabel: 'Updated ✅',
+        svgOracleLabel: 'Confirmed ✅',
+      },
+      {
+        title: 'Both Systems in Sync',
+        desc: 'The $25 surcharge is now reflected in both Shopify and Oracle. The auth hold covers the full $761 — ready for capture when fulfillment is confirmed.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '🟢', text: '<span class="success">In sync:</span> Order #SP-10048 — <strong>$761 authorized</strong>' },
+        ],
+        oracleLog: [
+          { icon: '🟢', text: '<span class="success">ORD-10048 finalized</span> — ready to ship' },
+        ],
+        shopifyStatus: { text: 'Auth $761 — Ready', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Ready to Ship', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$761',
+        oracleAmount: '$761',
+        svgShopifyLabel: 'Synced ✅',
+        svgOracleLabel: 'Synced ✅',
+      },
+    ]
+  },
+
+  'capture': {
+    label: 'Scenario C — Delayed Capture',
+    btnClass: 'active-capture',
+    nextBtnClass: 'capture-btn',
+    steps: [
+      {
+        title: 'Order Ready for Fulfillment',
+        desc: 'After all edits are done, the order sits with an authorization hold. No money has been collected yet — Shopify is waiting for Oracle to signal that the order has shipped.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '🛒', text: '<strong>Order #SP-10048</strong> — authorized for <span class="highlight">$687</span>' },
+          { icon: '🔒', text: 'Payment <strong>held</strong> — waiting on fulfillment signal' },
+          { icon: '⏳', text: '<span class="info">Authorization valid for 7 days</span>' },
+        ],
+        oracleLog: [
+          { icon: '📦', text: '<strong>ORD-10048</strong> — being picked & packed' },
+          { icon: '🔜', text: 'Fulfillment in progress — will signal Shopify on shipment' },
+        ],
+        shopifyStatus: { text: 'Auth Hold $687', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Packing', bg: '#1a1a35', color: '#6ea8fe' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Awaiting…',
+        svgOracleLabel: 'Packing',
+      },
+      {
+        title: 'Oracle Confirms Shipment',
+        desc: 'Oracle\'s warehouse marks the order as shipped and assigns a tracking number. Oracle now triggers the payment capture flow.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [],
+        oracleLog: [
+          { icon: '🚚', text: '<strong>Order shipped!</strong> Tracking: <span class="info">UPS 1Z999AA1</span>' },
+          { icon: '💳', text: 'Initiating <strong>payment capture signal</strong> to Shopify' },
+          { icon: '📡', text: 'Calling Shopify Transactions API…' },
+        ],
+        shopifyStatus: { text: 'Auth Hold $687', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Shipped 🚚', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Awaiting…',
+        svgOracleLabel: 'Shipped ✅',
+      },
+      {
+        title: 'Capture Request Sent to Shopify',
+        desc: 'Oracle calls Shopify\'s Transactions API — specifically the "capture" endpoint — with the exact order amount. This tells Shopify to charge the customer\'s card.',
+        arrow: 'left',
+        apiPill: { method: 'POST', methodClass: 'method-post', text: 'Oracle → Shopify: Capture $687' },
+        shopifyLog: [
+          { icon: '📨', text: '<strong>Capture request received</strong> from Oracle' },
+          { icon: '💳', text: 'Shopify submitting <span class="highlight">$687 capture</span> to payment gateway…' },
+        ],
+        oracleLog: [
+          { icon: '📤', text: '<strong>API call sent:</strong> <span class="info">POST /transactions</span>' },
+          { icon: '⏳', text: 'Awaiting payment gateway response…' },
+        ],
+        shopifyStatus: { text: 'Capturing…', bg: '#2a1a3a', color: '#c084fc' },
+        oracleStatus: { text: 'Capture Sent', bg: '#2a1a3a', color: '#c084fc' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        showCaptureProgress: true,
+        svgShopifyLabel: 'Capturing…',
+        svgOracleLabel: 'Awaiting…',
+      },
+      {
+        title: 'Payment Gateway Approves Capture',
+        desc: 'The payment gateway confirms the charge. The $687 authorization is converted to a real charge. Shopify notifies Oracle of the successful capture.',
+        arrow: 'right',
+        apiPill: { method: 'POST', methodClass: 'method-post', text: 'Gateway Approved → Oracle Notified' },
+        shopifyLog: [
+          { icon: '✅', text: '<span class="success">Gateway approved!</span> Charge confirmed' },
+          { icon: '💰', text: '<strong>$687 captured</strong> — funds will settle in 2–3 days' },
+          { icon: '📤', text: '<span class="info">Sending fulfillment confirmation</span> to Oracle' },
+        ],
+        oracleLog: [
+          { icon: '📨', text: '<strong>Capture confirmation received</strong> from Shopify' },
+          { icon: '💰', text: 'Payment status updated: <span class="success">Paid $687</span>' },
+          { icon: '🧾', text: 'Invoice generated in Oracle ERP' },
+        ],
+        shopifyStatus: { text: 'Payment Captured ✅', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Paid ✅', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Captured ✅',
+        svgOracleLabel: 'Paid ✅',
+      },
+      {
+        title: 'Order Fully Complete',
+        desc: 'The order lifecycle is done. Shopify shows "Fulfilled & Paid", Oracle closes the order record, and the customer\'s card has been charged the exact final amount.',
+        arrow: null,
+        apiPill: null,
+        shopifyLog: [
+          { icon: '🎉', text: '<span class="success">Order complete:</span> Fulfilled & Paid — <strong>$687</strong>' },
+          { icon: '📧', text: 'Customer receipt and tracking email sent' },
+        ],
+        oracleLog: [
+          { icon: '🎉', text: '<span class="success">ORD-10048 closed</span> — fulfilled, paid, archived' },
+          { icon: '📊', text: 'Revenue recognized in Oracle ERP: <strong>$687</strong>' },
+        ],
+        shopifyStatus: { text: 'Fulfilled & Paid', bg: '#1a3a2e', color: '#4ade80' },
+        oracleStatus: { text: 'Closed ✅', bg: '#1a3020', color: '#4ade80' },
+        shopifyAmount: '$687',
+        oracleAmount: '$687',
+        svgShopifyLabel: 'Complete ✅',
+        svgOracleLabel: 'Closed ✅',
+      },
+    ]
+  }
+};
+
+// ────────────────────────────────────────────
+//  DOM helpers
+// ────────────────────────────────────────────
+function el(id) { return document.getElementById(id); }
+
+function addLog(panelId, entries) {
+  const panel = el(panelId);
+  entries.forEach((entry, i) => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="log-icon">${entry.icon}</span><span class="log-text">${entry.text}</span>`;
+    panel.appendChild(div);
+    setTimeout(() => div.classList.add('visible'), i * 120);
+  });
+  setTimeout(() => panel.scrollTop = panel.scrollHeight, entries.length * 120 + 100);
+}
+
+function setStatus(elId, cfg) {
+  const el2 = el(elId);
+  el2.style.background = cfg.bg;
+  el2.style.color = cfg.color;
+  el2.querySelector('.status-dot').style.background = cfg.color;
+  el2.innerHTML = `<span class="status-dot" style="background:${cfg.color};"></span>${cfg.text}`;
+}
+
+function showArrow(which) {
+  ['arrow-right','arrow-left','arrow-capture'].forEach(id => {
+    const e = el(id);
+    if (e) e.classList.remove('show');
+  });
+  if (which) {
+    const e = el('arrow-' + which);
+    if (e) e.classList.add('show');
+  }
+}
+
+function showApiPill(cfg) {
+  const pill = el('api-pill');
+  const method = el('api-pill-method');
+  const text = el('api-pill-text');
+  if (!cfg) { pill.classList.remove('show'); return; }
+  method.textContent = cfg.method;
+  method.className = 'api-pill-method ' + cfg.methodClass;
+  text.textContent = cfg.text;
+  pill.classList.add('show');
+}
+
+function updateLineItems(panelId, mod) {
+  const container = panelId === 'shopify' ? el('shopify-line-items') : el('oracle-line-items');
+  if (!container) return;
+
+  if (mod === 'removed-monitor') {
+    container.innerHTML = `
+      <div class="line-item"><span>Office Chair × 2</span><span>$598</span></div>
+      <div class="line-item"><span>Desk Lamp × 1</span><span>$89</span></div>
+      <div class="line-item removed"><span>Monitor Stand × 1</span><span>$49</span></div>
+    `;
+  } else if (mod === 'added-surcharge') {
+    container.innerHTML = `
+      <div class="line-item"><span>Office Chair × 2</span><span>$598</span></div>
+      <div class="line-item"><span>Desk Lamp × 1</span><span>$89</span></div>
+      <div class="line-item"><span>Monitor Stand × 1</span><span>$49</span></div>
+      <div class="line-item added"><span>Remote Delivery Surcharge</span><span>+$25</span></div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="line-item"><span>Office Chair × 2</span><span>$598</span></div>
+      <div class="line-item"><span>Desk Lamp × 1</span><span>$89</span></div>
+      <div class="line-item"><span>Monitor Stand × 1</span><span>$49</span></div>
+    `;
+  }
+}
+
+function resetLineItems() {
+  ['shopify-line-items','oracle-line-items'].forEach(id => {
+    const c = el(id);
+    if (c) c.innerHTML = `
+      <div class="line-item"><span>Office Chair × 2</span><span>$598</span></div>
+      <div class="line-item"><span>Desk Lamp × 1</span><span>$89</span></div>
+      <div class="line-item"><span>Monitor Stand × 1</span><span>$49</span></div>
+    `;
+  });
+}
+
+function buildDots(count, activeIdx, doneClass, activeClass) {
+  const container = el('step-dots');
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = 'step-dot';
+    if (i < activeIdx) d.classList.add(doneClass);
+    else if (i === activeIdx) d.classList.add(activeClass);
+    container.appendChild(d);
+  }
+}
+
+// ────────────────────────────────────────────
+//  Scenario control
+// ────────────────────────────────────────────
+function startScenario(name) {
+  currentScenario = name;
+  currentStep = 0;
+
+  // Button highlight
+  ['btn-shopify-edit','btn-oracle-edit','btn-capture'].forEach(id => {
+    el(id).className = 'scenario-btn';
+  });
+
+  const scenario = scenarios[name];
+  const btnId = name === 'shopify-edit' ? 'btn-shopify-edit' : name === 'oracle-edit' ? 'btn-oracle-edit' : 'btn-capture';
+  el(btnId).classList.add(scenario.btnClass);
+
+  // Show active stage
+  el('welcome-state').style.display = 'none';
+  el('active-stage').style.display = 'flex';
+  el('controls').style.display = 'flex';
+
+  // Reset logs
+  el('shopify-log').innerHTML = '<div class="log-section-title">Activity Log</div>';
+  el('oracle-log').innerHTML = '<div class="log-section-title">Activity Log</div>';
+
+  // Reset amounts & line items
+  el('shopify-auth-amount').textContent = '$736';
+  el('oracle-amount').textContent = '$736';
+  resetLineItems();
+
+  // Reset arrows
+  showArrow(null);
+  el('api-pill').classList.remove('show');
+
+  // Next button style
+  const nb = el('next-btn');
+  nb.className = 'next-btn ' + scenario.nextBtnClass;
+  nb.textContent = 'Next →';
+  nb.disabled = false;
+
+  // Update scenario title
+  el('scenario-title').textContent = scenario.label;
+
+  applyStep(0);
+}
+
+function applyStep(idx) {
+  const scenario = scenarios[currentScenario];
+  const step = scenario.steps[idx];
+  const total = scenario.steps.length;
+
+  // Step box
+  el('step-number').textContent = `Step ${idx + 1} of ${total}`;
+  el('step-title').textContent = step.title;
+  el('step-desc').textContent = step.desc;
+  el('step-indicator').textContent = `Step ${idx + 1} of ${total}`;
+
+  // Dots
+  const doneClass = currentScenario === 'shopify-edit' ? 'done' : currentScenario === 'oracle-edit' ? 'oracle-done' : 'capture-done';
+  const activeClass = currentScenario === 'shopify-edit' ? 'active' : currentScenario === 'oracle-edit' ? 'oracle-active' : 'capture-active';
+  buildDots(total, idx, doneClass, activeClass);
+
+  // Statuses
+  setStatus('shopify-status-badge', step.shopifyStatus);
+  setStatus('oracle-status-badge', step.oracleStatus);
+
+  // Amounts
+  el('shopify-auth-amount').textContent = step.shopifyAmount;
+  el('oracle-amount').textContent = step.oracleAmount;
+
+  // SVG labels
+  el('svg-shopify-label').textContent = step.svgShopifyLabel;
+  el('svg-oracle-label').textContent = step.svgOracleLabel;
+
+  // Line items
+  if (step.shopifyLineItemMod) updateLineItems('shopify', step.shopifyLineItemMod);
+  if (step.oracleLineItemMod) updateLineItems('oracle', step.oracleLineItemMod);
+
+  // Arrow
+  if (step.arrow) showArrow(step.arrow);
+  else showArrow(null);
+
+  // API Pill
+  if (step.apiPill) showApiPill(step.apiPill);
+  else el('api-pill').classList.remove('show');
+
+  // Logs
+  if (step.shopifyLog && step.shopifyLog.length > 0) addLog('shopify-log', step.shopifyLog);
+  if (step.oracleLog && step.oracleLog.length > 0) addLog('oracle-log', step.oracleLog);
+
+  // Capture progress bar
+  if (step.showCaptureProgress) {
+    const existing = document.querySelector('.capture-progress-container');
+    if (!existing) {
+      const card = el('shopify-order-card');
+      const bar = document.createElement('div');
+      bar.className = 'capture-progress-container';
+      bar.innerHTML = '<div class="capture-progress-bar" id="capture-bar"></div>';
+      card.appendChild(bar);
+      setTimeout(() => { const b = el('capture-bar'); if(b) b.style.width = '100%'; }, 100);
+    }
+  }
+
+  // Next button
+  const nb = el('next-btn');
+  if (idx === total - 1) {
+    nb.textContent = 'Done ✓';
+    nb.disabled = false;
+  } else {
+    nb.textContent = 'Next →';
+    nb.disabled = false;
+  }
+}
+
+function nextStep() {
+  const scenario = scenarios[currentScenario];
+  if (currentStep < scenario.steps.length - 1) {
+    currentStep++;
+    applyStep(currentStep);
+  } else {
+    // Last step — cycle back or do nothing
+    el('next-btn').disabled = true;
+  }
+}
+
+function resetAll() {
+  currentScenario = null;
+  currentStep = 0;
+
+  ['btn-shopify-edit','btn-oracle-edit','btn-capture'].forEach(id => {
+    el(id).className = 'scenario-btn';
+  });
+
+  el('welcome-state').style.display = 'flex';
+  el('active-stage').style.display = 'none';
+  el('active-stage').style.flexDirection = 'column';
+  el('controls').style.display = 'none';
+
+  el('shopify-log').innerHTML = '<div class="log-section-title">Activity Log</div>';
+  el('oracle-log').innerHTML = '<div class="log-section-title">Activity Log</div>';
+
+  el('shopify-auth-amount').textContent = '$736';
+  el('oracle-amount').textContent = '$736';
+  resetLineItems();
+
+  setStatus('shopify-status-badge', { text: 'Authorized', bg: '#1a3a2e', color: '#4ade80' });
+  setStatus('oracle-status-badge', { text: 'Imported', bg: '#3a1210', color: '#fca5a5' });
+
+  // Remove capture bar if exists
+  const cb = document.querySelector('.capture-progress-container');
+  if (cb) cb.remove();
+}
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semi-Technical Netsuite Integration</title>
+<style>
+  :root {
+    --green: #008060;
+    --green-light: #5eead4;
+    --green-dark: #004c3f;
+    --ns-color: #d4760a;
+    --ns-light: #f0c674;
+    --blue: #7c9eff;
+    --purple: #c084fc;
+    --red: #ff6b6b;
+    --surface: #1e1e2e;
+    --surface-raised: #262637;
+    --bg: #13131f;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --border: #333;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .header-left h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .header-left p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .speed-control select {
+    background: var(--surface-raised);
+    color: #ccc;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* ── Main Layout ── */
+  .main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .panel-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  .panel-shopify .panel-title { color: var(--green-light); }
+  .panel-shopify { border-right: 1px solid var(--border); }
+  .panel-netsuite .panel-title { color: var(--ns-light); }
+
+  .panel-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .4; }
+  }
+
+  /* ── Inventory Bar ── */
+  .inv-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .inv-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+  }
+
+  .inv-val {
+    font-size: 22px;
+    font-weight: 800;
+    font-family: var(--mono);
+    transition: transform 0.3s;
+  }
+
+  .inv-val-green { color: var(--green-light); }
+  .inv-val-yellow { color: var(--ns-light); }
+
+  .inv-flash { animation: invFlash 0.35s ease; }
+  @keyframes invFlash {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  /* ── Order Cards ── */
+  .orders-area {
+    flex-shrink: 0;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
+  }
+
+  .orders-area-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .order-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(-6px);
+    animation: fadeIn 0.3s forwards;
+  }
+
+  .order-card-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .order-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    font-family: var(--mono);
+  }
+
+  .order-detail {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .order-detail .hl { font-weight: 600; }
+  .order-detail .hl-green { color: var(--green-light); }
+  .order-detail .hl-yellow { color: var(--ns-light); }
+
+  .order-amount {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--green-light);
+  }
+
+  .order-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 12px;
+    flex-shrink: 0;
+  }
+
+  .badge-new { background: rgba(94,234,212,.15); color: var(--green-light); }
+  .badge-synced { background: rgba(124,158,255,.15); color: var(--blue); }
+  .badge-fulfilled { background: rgba(192,132,252,.15); color: var(--purple); }
+  .badge-paid { background: rgba(52,211,153,.2); color: #34d399; }
+
+  /* ── Event Log ── */
+  .event-log {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 8px 0;
+  }
+
+  .log-entry {
+    padding: 5px 18px;
+    opacity: 0;
+    transform: translateY(-4px);
+    animation: fadeIn 0.3s forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .le-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-green { background: var(--green-light); }
+  .dot-blue { background: var(--blue); }
+  .dot-yellow { background: var(--ns-light); }
+  .dot-purple { background: var(--purple); }
+
+  .le-msg { color: #ccc; }
+  .le-msg .hl { font-weight: 600; }
+  .le-msg .hl-green { color: var(--green-light); font-weight: 600; }
+  .le-msg .hl-yellow { color: var(--ns-light); font-weight: 600; }
+  .le-msg .hl-white { color: #fff; font-weight: 600; }
+
+  /* ── Middle Flow ── */
+  .flow-panel {
+    width: 180px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface);
+  }
+
+  .flow-panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--purple);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    text-align: center;
+  }
+
+  .flow-visual {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 16px 12px;
+    width: 100%;
+  }
+
+  .flow-node {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    text-align: center;
+    width: 100%;
+    transition: border-color .3s, box-shadow .3s;
+  }
+
+  .flow-node.active-green { border-color: var(--green-light); box-shadow: 0 0 14px rgba(94,234,212,.15); }
+  .flow-node.active-blue { border-color: var(--blue); box-shadow: 0 0 14px rgba(124,158,255,.15); }
+  .flow-node.active-yellow { border-color: var(--ns-light); box-shadow: 0 0 14px rgba(240,198,116,.15); }
+  .flow-node.active-purple { border-color: var(--purple); box-shadow: 0 0 14px rgba(192,132,252,.15); }
+
+  .flow-node-label { font-size: 12px; font-weight: 700; color: #fff; }
+  .flow-node-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+  .flow-arrow {
+    height: 32px;
+    width: 2px;
+    background: var(--border);
+    position: relative;
+    overflow: visible;
+  }
+
+  .flow-arrow-label {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .flow-packet {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+  }
+
+  .fp-green { background: var(--green-light); box-shadow: 0 0 8px rgba(94,234,212,.5); }
+  .fp-blue { background: var(--blue); box-shadow: 0 0 8px rgba(124,158,255,.5); }
+  .fp-purple { background: var(--purple); box-shadow: 0 0 8px rgba(192,132,252,.5); }
+
+  @keyframes pktDown {
+    0% { top: -6px; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 26px; opacity: 0; }
+  }
+
+  @keyframes pktUp {
+    0% { bottom: -6px; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { bottom: 26px; opacity: 0; }
+  }
+
+  /* ── Metrics Strip ── */
+  .metrics-strip {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    width: 100%;
+  }
+
+  .ms-item {
+    flex: 1;
+    background: var(--surface-raised);
+    border-radius: 6px;
+    padding: 6px 8px;
+    text-align: center;
+  }
+
+  .ms-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+
+  .ms-val {
+    font-size: 16px;
+    font-weight: 800;
+    font-family: var(--mono);
+    color: #fff;
+    margin-top: 1px;
+  }
+
+  .ms-val-green { color: var(--green-light); }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 28px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .status-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  .status-text .hl { font-weight: 600; }
+  .status-text .hl-green { color: var(--green-light); }
+  .status-text .hl-blue { color: var(--blue); }
+
+  .controls-right {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 8px 20px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: #ccc;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+
+  .btn:hover { background: #333; color: #fff; }
+  .btn:disabled { opacity: .3; cursor: default; }
+  .btn-primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Semi-Technical Netsuite Integration</h1>
+    <p>Real-time webhook &rarr; Celigo iPaaS &rarr; NetSuite Sales Order &rarr; Fulfillment &rarr; Invoice</p>
+  </div>
+  <div class="header-right">
+    <div class="speed-control">
+      <label for="speed">Speed:</label>
+      <select id="speed">
+        <option value="1.5">0.5&times;</option>
+        <option value="1" selected>1&times;</option>
+        <option value="0.6">1.5&times;</option>
+        <option value="0.35">3&times;</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Shopify Panel -->
+  <div class="panel panel-shopify">
+    <div class="panel-header">
+      <div class="panel-title">Shopify</div>
+      <div class="panel-status"><div class="status-dot"></div> Storefront</div>
+    </div>
+    <div class="inv-bar">
+      <span class="inv-label">Available Inventory</span>
+      <span class="inv-val inv-val-green" id="s-inv">500</span>
+    </div>
+    <div class="orders-area">
+      <div class="orders-area-title">Orders</div>
+      <div id="shopify-orders"></div>
+    </div>
+    <div class="event-log" id="shopify-log"></div>
+  </div>
+
+  <!-- Flow Panel -->
+  <div class="flow-panel">
+    <div class="flow-panel-title">Integration</div>
+    <div class="flow-visual">
+      <div class="flow-node" id="fn-shopify">
+        <div class="flow-node-label">Shopify</div>
+        <div class="flow-node-sub">Order + Payment</div>
+      </div>
+      <div class="flow-arrow" id="fa-1">
+        <div class="flow-arrow-label">orders/create</div>
+      </div>
+      <div class="flow-node" id="fn-celigo">
+        <div class="flow-node-label">Celigo</div>
+        <div class="flow-node-sub">Transform</div>
+      </div>
+      <div class="flow-arrow" id="fa-2">
+        <div class="flow-arrow-label">SuiteScript</div>
+      </div>
+      <div class="flow-node" id="fn-netsuite">
+        <div class="flow-node-label">NetSuite</div>
+        <div class="flow-node-sub">Sales Order</div>
+      </div>
+      <div style="height: 10px"></div>
+      <div class="flow-node" id="fn-fulfill">
+        <div class="flow-node-label">Fulfillment</div>
+        <div class="flow-node-sub">Ship + Inventory</div>
+      </div>
+      <div class="flow-arrow" id="fa-3">
+        <div class="flow-arrow-label">fulfill + inv</div>
+      </div>
+      <div class="flow-node" id="fn-shopify2">
+        <div class="flow-node-label">Shopify</div>
+        <div class="flow-node-sub">Update Status</div>
+      </div>
+    </div>
+    <div class="metrics-strip">
+      <div class="ms-item">
+        <div class="ms-label">Orders</div>
+        <div class="ms-val" id="m-orders">0</div>
+      </div>
+      <div class="ms-item">
+        <div class="ms-label">Revenue</div>
+        <div class="ms-val ms-val-green" id="m-revenue">$0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NetSuite Panel -->
+  <div class="panel panel-netsuite">
+    <div class="panel-header">
+      <div class="panel-title">NetSuite</div>
+      <div class="panel-status"><div class="status-dot"></div> ERP</div>
+    </div>
+    <div class="inv-bar">
+      <span class="inv-label">Available Inventory</span>
+      <span class="inv-val inv-val-yellow" id="n-inv">500</span>
+    </div>
+    <div class="orders-area">
+      <div class="orders-area-title">Sales Orders</div>
+      <div id="netsuite-orders"></div>
+    </div>
+    <div class="event-log" id="netsuite-log"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="status-text" id="status">Press Start to begin the order sync simulation</div>
+  <div class="controls-right">
+    <button class="btn btn-primary" id="startBtn" onclick="startDemo()">Start Simulation</button>
+    <button class="btn" id="resetBtn" onclick="resetDemo()" disabled>Reset</button>
+  </div>
+</div>
+
+<script>
+const state = {
+  orders: [],
+  orderNum: 0,
+  totalRevenue: 0,
+  shopifyInv: 500,
+  netsuiteInv: 500,
+  running: false,
+  timeouts: []
+};
+
+const el = {
+  shopifyOrders: document.getElementById('shopify-orders'),
+  netsuiteOrders: document.getElementById('netsuite-orders'),
+  shopifyLog: document.getElementById('shopify-log'),
+  netsuiteLog: document.getElementById('netsuite-log'),
+  mOrders: document.getElementById('m-orders'),
+  mRevenue: document.getElementById('m-revenue'),
+  sInv: document.getElementById('s-inv'),
+  nInv: document.getElementById('n-inv'),
+  status: document.getElementById('status')
+};
+
+const customers = [
+  { name: 'Acme Industrial', co: 'B2B' },
+  { name: 'Summit Outdoors', co: 'B2B' },
+  { name: 'Coastal Living Co', co: 'B2B' },
+  { name: 'Metro Supply Group', co: 'B2B' },
+  { name: 'Northland Retailers', co: 'B2B' },
+  { name: 'Pacific Trade Inc', co: 'B2B' },
+  { name: 'Redwood Partners', co: 'B2B' },
+  { name: 'Skyline Distribution', co: 'B2B' }
+];
+
+const products = [
+  { sku: 'WDG-4200', name: 'Pro Widget', price: 42.00 },
+  { sku: 'GZM-8100', name: 'Gizmo XL', price: 81.00 },
+  { sku: 'SPR-2400', name: 'Sprocket Kit', price: 24.50 },
+  { sku: 'BLT-6600', name: 'Bolt Pack 100', price: 66.00 },
+  { sku: 'FRM-3300', name: 'Frame Assembly', price: 133.00 }
+];
+
+function speedMult() {
+  return parseFloat(document.getElementById('speed').value);
+}
+
+function delay(ms) {
+  return new Promise(r => {
+    const t = setTimeout(r, ms * speedMult());
+    state.timeouts.push(t);
+  });
+}
+
+function fmt$(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function setStatus(html) {
+  el.status.innerHTML = html;
+}
+
+function log(container, dotColor, msg) {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML =
+    `<span class="le-dot dot-${dotColor}"></span>` +
+    `<span class="le-msg">${msg}</span>`;
+  container.prepend(entry);
+  container.scrollTop = 0;
+}
+
+function addOrderCard(container, name, customer, items, total, badgeClass, badgeText) {
+  const itemStr = items.map(i => `${i.qty}&times; ${i.sku}`).join(', ');
+  const card = document.createElement('div');
+  card.className = 'order-card';
+  card.id = 'card-' + name.replace('#', '') + '-' + (container === el.shopifyOrders ? 's' : 'n');
+  card.innerHTML =
+    `<div class="order-card-left">
+      <div class="order-name">${name}</div>
+      <div class="order-detail">${customer} &middot; ${itemStr}</div>
+    </div>
+    <div style="display:flex;align-items:center;">
+      <div class="order-amount">${fmt$(total)}</div>
+      <div class="order-badge ${badgeClass}">${badgeText}</div>
+    </div>`;
+  container.prepend(card);
+}
+
+function updateBadge(container, orderName, badgeClass, badgeText) {
+  const id = 'card-' + orderName.replace('#', '') + '-' + (container === el.shopifyOrders ? 's' : 'n');
+  const card = document.getElementById(id);
+  if (!card) return;
+  const badge = card.querySelector('.order-badge');
+  if (badge) {
+    badge.className = 'order-badge ' + badgeClass;
+    badge.textContent = badgeText;
+  }
+}
+
+function highlightNode(id, cls) {
+  document.getElementById(id).classList.add(cls);
+}
+
+function clearNodes() {
+  ['fn-shopify','fn-celigo','fn-netsuite','fn-fulfill','fn-shopify2']
+    .forEach(id => {
+      const n = document.getElementById(id);
+      n.classList.remove('active-green','active-blue','active-yellow','active-purple');
+    });
+}
+
+function sendPacket(arrowId, direction, color) {
+  const arrow = document.getElementById(arrowId);
+  const p = document.createElement('div');
+  p.className = 'flow-packet fp-' + color;
+  arrow.appendChild(p);
+  p.style.animation = (direction === 'down' ? 'pktDown' : 'pktUp') + ' 0.5s ease forwards';
+  setTimeout(() => p.remove(), 600);
+}
+
+function updateMetrics() {
+  el.mOrders.textContent = state.orders.length;
+  el.mRevenue.textContent = fmt$(state.totalRevenue);
+}
+
+function flash(elem) {
+  elem.classList.remove('inv-flash');
+  void elem.offsetWidth;
+  elem.classList.add('inv-flash');
+}
+
+function updateInv() {
+  el.sInv.textContent = state.shopifyInv;
+  el.nInv.textContent = state.netsuiteInv;
+  flash(el.sInv);
+  flash(el.nInv);
+}
+
+function genOrder() {
+  state.orderNum++;
+  const cust = customers[state.orderNum % customers.length];
+  const numItems = 1 + Math.floor(Math.random() * 3);
+  const items = [];
+  const used = new Set();
+  for (let i = 0; i < numItems; i++) {
+    let idx;
+    do { idx = Math.floor(Math.random() * products.length); } while (used.has(idx));
+    used.add(idx);
+    const qty = 2 + Math.floor(Math.random() * 18);
+    items.push({ ...products[idx], qty });
+  }
+  const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const name = '#SO-20' + String(state.orderNum).padStart(2, '0');
+  return { name, customer: cust.name, items, total };
+}
+
+// ── Order Lifecycle Steps ──
+
+async function placeOrder(order) {
+  state.orders.push(order);
+  state.totalRevenue += order.total;
+
+  const unitsSold = order.items.reduce((s, i) => s + i.qty, 0);
+  state.shopifyInv -= unitsSold;
+  order.unitsSold = unitsSold;
+
+  updateMetrics();
+  el.sInv.textContent = state.shopifyInv;
+  flash(el.sInv);
+
+  addOrderCard(el.shopifyOrders, order.name, order.customer, order.items, order.total, 'badge-new', 'New');
+  highlightNode('fn-shopify', 'active-green');
+
+  log(el.shopifyLog, 'green', `Order ${order.name} placed &mdash; ${order.customer} &middot; <span class="hl-white">${fmt$(order.total)}</span>`);
+  log(el.shopifyLog, 'green', `Inventory &minus;${unitsSold} units &rarr; <span class="hl-green">${state.shopifyInv}</span> available`);
+
+  await delay(300);
+  clearNodes();
+}
+
+async function syncToNetsuite(order) {
+  highlightNode('fn-shopify', 'active-green');
+  await delay(200);
+
+  sendPacket('fa-1', 'down', 'green');
+  await delay(300);
+  highlightNode('fn-celigo', 'active-purple');
+
+  log(el.shopifyLog, 'purple', `${order.name} syncing to NetSuite via Celigo`);
+
+  await delay(400);
+  sendPacket('fa-2', 'down', 'green');
+  await delay(300);
+  highlightNode('fn-netsuite', 'active-yellow');
+
+  addOrderCard(el.netsuiteOrders, order.name, order.customer, order.items, order.total, 'badge-synced', 'Sales Order');
+
+  log(el.netsuiteLog, 'yellow', `Sales Order created &mdash; ${order.customer} &middot; <span class="hl-white">${fmt$(order.total)}</span>`);
+
+  updateBadge(el.shopifyOrders, order.name, 'badge-synced', 'Synced');
+
+  await delay(300);
+  clearNodes();
+}
+
+async function capturePayment(order) {
+  // Payment captured on Shopify (credit card) → syncs down to mark paid in NetSuite
+  highlightNode('fn-shopify', 'active-green');
+
+  log(el.shopifyLog, 'green', `${order.name} payment captured &mdash; <span class="hl-white">${fmt$(order.total)}</span> via credit card`);
+
+  updateBadge(el.shopifyOrders, order.name, 'badge-paid', 'Paid');
+
+  await delay(300);
+
+  sendPacket('fa-1', 'down', 'green');
+  await delay(300);
+  highlightNode('fn-celigo', 'active-purple');
+
+  await delay(300);
+  sendPacket('fa-2', 'down', 'green');
+  await delay(300);
+  highlightNode('fn-netsuite', 'active-yellow');
+
+  log(el.netsuiteLog, 'yellow', `${order.name} marked <span class="hl-green">Paid in Full</span> &mdash; Customer Deposit applied`);
+
+  updateBadge(el.netsuiteOrders, order.name, 'badge-paid', 'Paid');
+
+  await delay(300);
+  clearNodes();
+}
+
+async function fulfillOrder(order) {
+  // NetSuite fulfills → ships → inventory updates flow back to Shopify
+  highlightNode('fn-netsuite', 'active-yellow');
+  highlightNode('fn-fulfill', 'active-purple');
+
+  const tracking = 'TRK' + (100000 + Math.floor(Math.random() * 900000));
+
+  state.netsuiteInv -= order.unitsSold;
+  el.nInv.textContent = state.netsuiteInv;
+  flash(el.nInv);
+
+  log(el.netsuiteLog, 'yellow', `${order.name} fulfilled &mdash; ${order.unitsSold} units shipped`);
+  log(el.netsuiteLog, 'yellow', `Inventory &minus;${order.unitsSold} &rarr; <span class="hl-yellow">${state.netsuiteInv}</span> available &middot; ${tracking}`);
+
+  updateBadge(el.netsuiteOrders, order.name, 'badge-fulfilled', 'Shipped');
+
+  await delay(500);
+
+  // Fulfillment + inventory sync back to Shopify
+  sendPacket('fa-3', 'up', 'blue');
+  await delay(300);
+  highlightNode('fn-shopify2', 'active-blue');
+
+  log(el.shopifyLog, 'blue', `${order.name} marked fulfilled &mdash; customer notified &middot; ${tracking}`);
+  log(el.shopifyLog, 'blue', `Inventory synced from NetSuite &rarr; <span class="hl-green">${state.netsuiteInv}</span> available`);
+
+  state.shopifyInv = state.netsuiteInv;
+  el.sInv.textContent = state.shopifyInv;
+  flash(el.sInv);
+
+  updateBadge(el.shopifyOrders, order.name, 'badge-fulfilled', 'Fulfilled');
+
+  await delay(300);
+  clearNodes();
+}
+
+// ── Demo Flow ──
+
+async function startDemo() {
+  if (state.running) return;
+  state.running = true;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('resetBtn').disabled = true;
+
+  setStatus('Initializing &mdash; Shopify storefront connected to NetSuite via Celigo');
+  await delay(1500);
+
+  // Phase 1: Orders placed and synced in real-time via webhook
+  setStatus('Phase 1: Orders placed on Shopify &rarr; webhook fires &rarr; syncs to NetSuite in real-time');
+  await delay(1200);
+
+  const order1 = genOrder();
+  await placeOrder(order1);
+  await delay(400);
+  await syncToNetsuite(order1);
+  await delay(800);
+
+  const order2 = genOrder();
+  await placeOrder(order2);
+  await delay(400);
+  await syncToNetsuite(order2);
+  await delay(800);
+
+  const order3 = genOrder();
+  await placeOrder(order3);
+  await delay(400);
+  await syncToNetsuite(order3);
+  await delay(1200);
+
+  // Phase 2: Credit card payments captured on Shopify → synced to NetSuite
+  setStatus('Phase 2: Credit card payments captured on Shopify &rarr; synced to mark orders paid in NetSuite');
+  await delay(1200);
+
+  await capturePayment(order1);
+  await delay(600);
+
+  await capturePayment(order2);
+  await delay(600);
+
+  await capturePayment(order3);
+  await delay(1200);
+
+  // Phase 3: NetSuite fulfills → inventory syncs back to Shopify
+  setStatus('Phase 3: Warehouse ships from NetSuite &rarr; fulfillment + inventory syncs back to Shopify');
+  await delay(1200);
+
+  await fulfillOrder(order1);
+  await delay(700);
+
+  await fulfillOrder(order2);
+  await delay(700);
+
+  await fulfillOrder(order3);
+  await delay(1200);
+
+  // Phase 4: More orders arrive — full lifecycle
+  setStatus('Phase 4: More orders arrive &mdash; full lifecycle: order &rarr; payment &rarr; fulfill &rarr; inventory sync');
+  await delay(1200);
+
+  const order4 = genOrder();
+  await placeOrder(order4);
+  await delay(400);
+  await syncToNetsuite(order4);
+  await delay(600);
+  await capturePayment(order4);
+  await delay(600);
+
+  const order5 = genOrder();
+  await placeOrder(order5);
+  await delay(400);
+  await syncToNetsuite(order5);
+  await delay(600);
+  await capturePayment(order5);
+  await delay(800);
+
+  await fulfillOrder(order4);
+  await delay(700);
+
+  await fulfillOrder(order5);
+  await delay(1200);
+
+  setStatus(`Simulation complete &mdash; <span class="hl hl-green">${state.orders.length} orders</span> synced &middot; <span class="hl hl-green">${fmt$(state.totalRevenue)}</span> revenue processed`);
+  document.getElementById('resetBtn').disabled = false;
+}
+
+function resetDemo() {
+  state.timeouts.forEach(t => clearTimeout(t));
+  state.timeouts = [];
+  state.running = false;
+  state.orders = [];
+  state.orderNum = 0;
+  state.totalRevenue = 0;
+  state.shopifyInv = 500;
+  state.netsuiteInv = 500;
+
+  el.shopifyOrders.innerHTML = '';
+  el.netsuiteOrders.innerHTML = '';
+  el.shopifyLog.innerHTML = '';
+  el.netsuiteLog.innerHTML = '';
+  el.sInv.textContent = '500';
+  el.nInv.textContent = '500';
+  updateMetrics();
+  clearNodes();
+  setStatus('Press Start to begin the order sync simulation');
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('resetBtn').disabled = true;
+}
+</script>
+
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

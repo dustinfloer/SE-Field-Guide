@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify ↔ SAP S/4 HANA Integration Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1rem;
+        }
+
+        .diagram-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .system-box {
+            flex: 1;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .shopify-box {
+            background: linear-gradient(180deg, #96bf48 0%, #7ab55c 100%);
+            color: white;
+        }
+
+        .middleware-box {
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 0.8;
+        }
+
+        .sap-box {
+            background: linear-gradient(180deg, #0070f3 0%, #0051a8 100%);
+            color: white;
+        }
+
+        .system-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .system-logo {
+            width: 48px;
+            height: 48px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+            color: #333;
+        }
+
+        .system-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .system-subtitle {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .object-group {
+            margin-bottom: 20px;
+        }
+
+        .group-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .object-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .object-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .object-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        .b2b-badge {
+            background: #ff6b6b;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: auto;
+            font-weight: 600;
+        }
+
+        /* Flow Section */
+        .flow-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .flow-title {
+            font-size: 1.3rem;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .flow-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .flow-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .flow-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .flow-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .flow-direction {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .flow-to-sap {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .flow-to-shopify {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .flow-bidirectional {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .flow-card-title {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .flow-card-content {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .flow-mapping {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
+        }
+
+        .mapping-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .mapping-source {
+            color: #96bf48;
+            font-weight: 600;
+        }
+
+        .mapping-arrow {
+            color: #999;
+        }
+
+        .mapping-target {
+            color: #0070f3;
+            font-weight: 600;
+        }
+
+        /* Middleware capabilities */
+        .middleware-capabilities {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .capability-item {
+            background: rgba(255,255,255,0.15);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        /* Legend */
+        .legend {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .legend-title {
+            font-size: 1.1rem;
+            color: #1a1a2e;
+            margin-bottom: 16px;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        /* Arrow animations */
+        .arrow-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 16px;
+            padding: 0 10px;
+        }
+
+        .data-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: #667eea;
+            animation: pulse 2s infinite;
+        }
+
+        .data-flow.reverse {
+            flex-direction: row-reverse;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .arrow-right {
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            position: relative;
+        }
+
+        .arrow-right::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -4px;
+            border: 5px solid transparent;
+            border-left: 8px solid #764ba2;
+        }
+
+        .arrow-left {
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, #764ba2, #667eea);
+            position: relative;
+        }
+
+        .arrow-left::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: -4px;
+            border: 5px solid transparent;
+            border-right: 8px solid #764ba2;
+        }
+
+        /* Key Concepts Section */
+        .concepts-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .concepts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .concept-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .concept-title {
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .concept-text {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 0.8rem;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Shopify ↔ SAP S/4 HANA Integration Architecture</h1>
+        <p class="subtitle">Data flow and object mapping for B2B commerce integrations</p>
+
+        <!-- Main Diagram -->
+        <div class="diagram-container">
+            <!-- Shopify -->
+            <div class="system-box shopify-box">
+                <div class="system-header">
+                    <div class="system-logo">Shopify</div>
+                    <div>
+                        <div class="system-title">Shopify Plus</div>
+                        <div class="system-subtitle">Commerce Platform</div>
+                    </div>
+                </div>
+
+                <div class="object-group">
+                    <div class="group-title">B2B Objects</div>
+                    <div class="object-list">
+                        <div class="object-item">
+                            <div class="object-icon">🏢</div>
+                            Companies
+                            <span class="b2b-badge">B2B</span>
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📍</div>
+                            Company Locations
+                            <span class="b2b-badge">B2B</span>
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">👤</div>
+                            Company Contacts
+                            <span class="b2b-badge">B2B</span>
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📋</div>
+                            Catalogs
+                            <span class="b2b-badge">B2B</span>
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">💰</div>
+                            Price Lists
+                            <span class="b2b-badge">B2B</span>
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📅</div>
+                            Payment Terms
+                            <span class="b2b-badge">B2B</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="object-group">
+                    <div class="group-title">Core Commerce Objects</div>
+                    <div class="object-list">
+                        <div class="object-item">
+                            <div class="object-icon">📦</div>
+                            Products / Variants
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📊</div>
+                            Inventory Levels
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">🛒</div>
+                            Orders
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📝</div>
+                            Draft Orders
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">🚚</div>
+                            Fulfillments
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">👥</div>
+                            Customers
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrows Left -->
+            <div class="arrow-container">
+                <div class="data-flow">
+                    <span>Orders</span>
+                    <div class="arrow-right"></div>
+                </div>
+                <div class="data-flow">
+                    <span>Companies</span>
+                    <div class="arrow-right"></div>
+                </div>
+                <div class="data-flow reverse">
+                    <span>Products</span>
+                    <div class="arrow-left"></div>
+                </div>
+                <div class="data-flow reverse">
+                    <span>Inventory</span>
+                    <div class="arrow-left"></div>
+                </div>
+                <div class="data-flow reverse">
+                    <span>Pricing</span>
+                    <div class="arrow-left"></div>
+                </div>
+            </div>
+
+            <!-- Middleware -->
+            <div class="system-box middleware-box">
+                <div class="system-header">
+                    <div class="system-logo">iPaaS</div>
+                    <div>
+                        <div class="system-title">Middleware</div>
+                        <div class="system-subtitle">Integration Layer</div>
+                    </div>
+                </div>
+
+                <div class="object-group">
+                    <div class="group-title">Core Functions</div>
+                    <div class="middleware-capabilities">
+                        <div class="capability-item">🔄 Data Transformation</div>
+                        <div class="capability-item">🗺️ Object Mapping</div>
+                        <div class="capability-item">📬 Message Queuing</div>
+                        <div class="capability-item">⚡ Event Processing</div>
+                        <div class="capability-item">🔁 Retry Logic</div>
+                        <div class="capability-item">❌ Error Handling</div>
+                        <div class="capability-item">📝 Logging</div>
+                        <div class="capability-item">🔐 Authentication</div>
+                    </div>
+                </div>
+
+                <div class="object-group">
+                    <div class="group-title">Sync Patterns</div>
+                    <div class="object-list">
+                        <div class="object-item">
+                            <div class="object-icon">⚡</div>
+                            Real-time (Webhooks)
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">⏰</div>
+                            Scheduled Batch
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">🔃</div>
+                            Delta Sync
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📥</div>
+                            On-Demand Pull
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrows Right -->
+            <div class="arrow-container">
+                <div class="data-flow">
+                    <span>Sales Orders</span>
+                    <div class="arrow-right"></div>
+                </div>
+                <div class="data-flow">
+                    <span>Customers</span>
+                    <div class="arrow-right"></div>
+                </div>
+                <div class="data-flow reverse">
+                    <span>Materials</span>
+                    <div class="arrow-left"></div>
+                </div>
+                <div class="data-flow reverse">
+                    <span>ATP</span>
+                    <div class="arrow-left"></div>
+                </div>
+                <div class="data-flow reverse">
+                    <span>Conditions</span>
+                    <div class="arrow-left"></div>
+                </div>
+            </div>
+
+            <!-- SAP -->
+            <div class="system-box sap-box">
+                <div class="system-header">
+                    <div class="system-logo">SAP</div>
+                    <div>
+                        <div class="system-title">SAP S/4 HANA</div>
+                        <div class="system-subtitle">ERP System</div>
+                    </div>
+                </div>
+
+                <div class="object-group">
+                    <div class="group-title">Master Data</div>
+                    <div class="object-list">
+                        <div class="object-item">
+                            <div class="object-icon">🏭</div>
+                            Business Partners
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📦</div>
+                            Materials (Products)
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">💵</div>
+                            Pricing Conditions
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">🏪</div>
+                            Plants / Locations
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">💳</div>
+                            Credit Management
+                        </div>
+                    </div>
+                </div>
+
+                <div class="object-group">
+                    <div class="group-title">Transactional Data</div>
+                    <div class="object-list">
+                        <div class="object-item">
+                            <div class="object-icon">📑</div>
+                            Sales Orders
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">📊</div>
+                            ATP / Inventory
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">🚛</div>
+                            Deliveries
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">🧾</div>
+                            Invoices
+                        </div>
+                        <div class="object-item">
+                            <div class="object-icon">↩️</div>
+                            Returns
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow Details -->
+        <div class="flow-section">
+            <h2 class="flow-title">Data Flow Mappings</h2>
+            <div class="flow-grid">
+                <div class="flow-card">
+                    <div class="flow-card-header">
+                        <span class="flow-direction flow-to-sap">SAP → Shopify</span>
+                        <span class="flow-card-title">Product / Catalog Sync</span>
+                    </div>
+                    <div class="flow-card-content">
+                        Product master data flows from SAP to Shopify. Includes pricing, descriptions, and availability.
+                    </div>
+                    <div class="flow-mapping">
+                        <div class="mapping-row">
+                            <span class="mapping-target">Material</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Product</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-target">Material Variants</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Variants</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-target">Pricing Conditions</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Price Lists</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-card-header">
+                        <span class="flow-direction flow-to-sap">SAP → Shopify</span>
+                        <span class="flow-card-title">Inventory Sync</span>
+                    </div>
+                    <div class="flow-card-content">
+                        Real-time or scheduled ATP (Available-to-Promise) quantities sync to Shopify inventory levels.
+                    </div>
+                    <div class="flow-mapping">
+                        <div class="mapping-row">
+                            <span class="mapping-target">ATP Quantity</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Inventory Level</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-target">Plant</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Location</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-card-header">
+                        <span class="flow-direction flow-to-shopify">Shopify → SAP</span>
+                        <span class="flow-card-title">Order Sync</span>
+                    </div>
+                    <div class="flow-card-content">
+                        Orders placed in Shopify are sent to SAP for fulfillment, invoicing, and financial posting.
+                    </div>
+                    <div class="flow-mapping">
+                        <div class="mapping-row">
+                            <span class="mapping-source">Order</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-target">Sales Order</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-source">Line Items</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-target">Order Items</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-source">Shipping Address</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-target">Ship-To Partner</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-card-header">
+                        <span class="flow-direction flow-bidirectional">Bidirectional</span>
+                        <span class="flow-card-title">Company / Customer Sync</span>
+                    </div>
+                    <div class="flow-card-content">
+                        B2B companies and contacts sync between systems. SAP is typically master for existing customers.
+                    </div>
+                    <div class="flow-mapping">
+                        <div class="mapping-row">
+                            <span class="mapping-source">Company</span>
+                            <span class="mapping-arrow">↔</span>
+                            <span class="mapping-target">Business Partner</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-source">Company Location</span>
+                            <span class="mapping-arrow">↔</span>
+                            <span class="mapping-target">Partner Address</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-source">Company Contact</span>
+                            <span class="mapping-arrow">↔</span>
+                            <span class="mapping-target">Contact Person</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-card-header">
+                        <span class="flow-direction flow-to-sap">SAP → Shopify</span>
+                        <span class="flow-card-title">Fulfillment Updates</span>
+                    </div>
+                    <div class="flow-card-content">
+                        Shipment confirmations and tracking info flow back to Shopify to update order status.
+                    </div>
+                    <div class="flow-mapping">
+                        <div class="mapping-row">
+                            <span class="mapping-target">Delivery</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Fulfillment</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-target">Tracking Number</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Tracking Info</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-card-header">
+                        <span class="flow-direction flow-to-sap">SAP → Shopify</span>
+                        <span class="flow-card-title">B2B Pricing & Terms</span>
+                    </div>
+                    <div class="flow-card-content">
+                        Customer-specific pricing, payment terms, and credit limits from SAP configure Shopify B2B settings.
+                    </div>
+                    <div class="flow-mapping">
+                        <div class="mapping-row">
+                            <span class="mapping-target">Condition Records</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Price Lists</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-target">Payment Terms</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Payment Terms</span>
+                        </div>
+                        <div class="mapping-row">
+                            <span class="mapping-target">Credit Limit</span>
+                            <span class="mapping-arrow">→</span>
+                            <span class="mapping-source">Spending Limit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Integration Concepts -->
+        <div class="concepts-section">
+            <h2 class="flow-title">Key Integration Concepts</h2>
+            <div class="concepts-grid">
+                <div class="concept-card">
+                    <div class="concept-title">🔑 External IDs</div>
+                    <div class="concept-text">Every synced object stores a reference ID from the other system. Shopify uses metafields; SAP uses custom fields. Essential for update operations and deduplication.</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-title">📡 Webhooks vs Polling</div>
+                    <div class="concept-text">Shopify webhooks push changes instantly. SAP typically requires polling via OData/RFC APIs. Middleware normalizes these patterns into a unified event stream.</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-title">⚖️ System of Record</div>
+                    <div class="concept-text">Determine which system "owns" each data type. Typically: SAP owns products, pricing, inventory. Shopify owns orders, cart data, customer preferences.</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-title">🔄 Idempotency</div>
+                    <div class="concept-text">All operations must be safely repeatable. Use unique transaction IDs and upsert logic to handle retries without creating duplicates.</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-title">⏱️ Near Real-Time vs Batch</div>
+                    <div class="concept-text">Orders typically sync in near real-time (seconds). Inventory may be near real-time or batched. Product catalog updates are usually scheduled batches.</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-title">🛡️ Error Handling</div>
+                    <div class="concept-text">Failed syncs go to dead-letter queues. Middleware provides alerting, retry mechanisms, and manual intervention workflows for resolution.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <h3 class="legend-title">Legend</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #96bf48;"></div>
+                    Shopify Platform
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                    Middleware / iPaaS
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #0070f3;"></div>
+                    SAP S/4 HANA
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    B2B-Specific Object
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e3f2fd; border: 1px solid #1565c0;"></div>
+                    Flow: SAP → Shopify
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e8f5e9; border: 1px solid #2e7d32;"></div>
+                    Flow: Shopify → SAP
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #fff3e0; border: 1px solid #ef6c00;"></div>
+                    Bidirectional Flow
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Shopify ↔ SAP S/4 HANA Integration Reference • For internal training purposes</p>
+        </div>
+    </div>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

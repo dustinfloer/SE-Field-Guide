@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopify ↔ NetSuite Order Sync</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e27;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #e0e6f0;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    text-align: center; padding: 10px 0 6px;
+    background: rgba(10,14,39,0.95);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+  .header h1 { font-size: 17px; font-weight: 600; color: #fff; letter-spacing: 0.5px; }
+  .header .subtitle { font-size: 10px; color: #7b8ab8; margin-top: 1px; }
+  .badge {
+    display: inline-block;
+    background: rgba(90,49,244,0.2); border: 1px solid rgba(90,49,244,0.4);
+    color: #a78bfa; font-size: 8px; padding: 2px 10px;
+    border-radius: 12px; margin-top: 3px; letter-spacing: 0.5px;
+  }
+
+  /* 3-Panel Layout */
+  .panels {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .panel-left, .panel-right {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .panel-left::-webkit-scrollbar, .panel-right::-webkit-scrollbar { width: 3px; }
+  .panel-left::-webkit-scrollbar-thumb, .panel-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+  /* Middle API Panel */
+  .panel-middle {
+    width: 260px;
+    flex-shrink: 0;
+    background: rgba(8,10,30,0.95);
+    border-left: 1px solid rgba(139,92,246,0.15);
+    border-right: 1px solid rgba(139,92,246,0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .api-panel-header {
+    padding: 10px 14px;
+    background: rgba(139,92,246,0.06);
+    border-bottom: 1px solid rgba(139,92,246,0.15);
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .api-panel-header .api-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff; font-weight: 700;
+  }
+  .api-panel-header h3 { font-size: 12px; font-weight: 600; color: #a78bfa; }
+  .api-panel-header .api-sub { font-size: 9px; color: #5a6a8a; }
+
+  .api-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .api-log::-webkit-scrollbar { width: 3px; }
+  .api-log::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.2); border-radius: 2px; }
+
+  /* API Event Items */
+  .api-event {
+    margin-bottom: 6px;
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .api-event.visible { opacity: 1; transform: translateY(0); }
+
+  .api-event-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    font-size: 9px;
+  }
+  .api-event.from-shopify .api-event-header { background: rgba(80,200,120,0.08); }
+  .api-event.from-netsuite .api-event-header { background: rgba(59,130,246,0.08); }
+  .api-event.middleware .api-event-header { background: rgba(139,92,246,0.08); }
+  .api-event.success .api-event-header { background: rgba(80,200,120,0.1); }
+
+  .api-dir {
+    font-size: 10px; font-weight: 800;
+    width: 18px; text-align: center;
+  }
+  .api-dir.right { color: #60a5fa; }
+  .api-dir.left { color: #50c878; }
+  .api-dir.sync { color: #a78bfa; }
+  .api-dir.ok { color: #50c878; }
+
+  .api-event-title { font-weight: 700; color: #e0e6f0; flex: 1; }
+  .api-event-status {
+    font-size: 7px; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .api-event-status.running { background: rgba(250,200,50,0.15); color: #fac832; animation: blink-status 0.8s infinite; }
+  .api-event-status.done { background: rgba(80,200,120,0.15); color: #50c878; }
+  .api-event-status.pending { background: rgba(90,100,130,0.2); color: #5a6a8a; }
+
+  .api-event-body {
+    padding: 4px 10px 6px 34px;
+    font-size: 8px;
+    font-family: 'SF Mono', monospace;
+    color: #5a6a8a;
+    line-height: 1.5;
+  }
+  .api-event-body .endpoint { color: #a78bfa; }
+  .api-event-body .payload { color: #7b8ab8; }
+  .api-event-body .response { color: #50c878; }
+
+  .api-event-border {
+    height: 1px;
+    background: rgba(139,92,246,0.08);
+    margin: 0 10px;
+  }
+
+  /* Separator line between event groups */
+  .api-separator {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .api-separator.visible { opacity: 1; }
+  .api-separator-line { flex: 1; height: 1px; background: rgba(139,92,246,0.15); }
+  .api-separator-label {
+    font-size: 8px; font-weight: 700; color: #7c3aed;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  /* System Labels */
+  .sys-label {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .sys-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 10px; color: #fff;
+  }
+  .shopify-green { background: linear-gradient(135deg, #5bbf3a, #95bf47); }
+  .netsuite-blue { background: linear-gradient(135deg, #1a5fb4, #3b82f6); }
+  .sys-label h2 { font-size: 13px; font-weight: 600; }
+  .sys-tag {
+    font-size: 8px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; letter-spacing: 0.3px;
+  }
+  .panel-left .sys-tag { background: rgba(80,200,120,0.12); color: #50c878; }
+  .panel-right .sys-tag { background: rgba(59,130,246,0.12); color: #60a5fa; }
+
+  /* Order Cards */
+  .card {
+    background: rgba(15,20,45,0.9);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .panel-left .card { border: 1px solid rgba(80,200,120,0.12); }
+  .panel-right .card { border: 1px solid rgba(59,130,246,0.12); }
+
+  .card-head {
+    padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .panel-left .card-head { background: rgba(80,200,120,0.03); }
+  .panel-right .card-head { background: rgba(59,130,246,0.03); }
+
+  .order-num { font-size: 14px; font-weight: 700; }
+  .panel-left .order-num { color: #95bf47; }
+  .panel-right .order-num { color: #60a5fa; }
+  .order-date { font-size: 9px; color: #5a6a8a; }
+
+  .status-pill {
+    font-size: 9px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 700; letter-spacing: 0.3px;
+    transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  .pill-yellow { background: rgba(250,200,50,0.15); color: #fac832; border: 1px solid rgba(250,200,50,0.3); }
+  .pill-blue { background: rgba(100,160,250,0.15); color: #64a0fa; border: 1px solid rgba(100,160,250,0.3); }
+  .pill-green { background: rgba(80,200,120,0.15); color: #50c878; border: 1px solid rgba(80,200,120,0.3); }
+  .pill-purple { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+
+  .card-body { padding: 10px 14px; }
+
+  .section-title {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #5a6a8a; margin-bottom: 6px; margin-top: 10px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0;
+  }
+  .info-key { font-size: 10px; color: #7b8ab8; }
+  .info-val { font-size: 10px; color: #c0c8dc; font-weight: 600; }
+  .val-green { color: #50c878 !important; }
+  .val-blue { color: #60a5fa !important; }
+  .val-yellow { color: #fac832 !important; }
+  .val-purple { color: #a78bfa !important; }
+  .val-muted { color: #5a6a8a !important; }
+
+  /* Line Items */
+  .line-tbl { width: 100%; border-collapse: collapse; }
+  .line-tbl th {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #5a6a8a; padding: 4px 6px;
+    text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .line-tbl th:nth-child(3), .line-tbl th:nth-child(4) { text-align: right; }
+  .line-tbl td {
+    font-size: 10px; padding: 5px 6px; color: #c0c8dc;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+  }
+  .line-tbl td:nth-child(3), .line-tbl td:nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+  .sku { font-family: 'SF Mono', monospace; font-size: 8px; color: #7b8ab8; }
+
+  .total-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 6px 2px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin-top: 4px;
+  }
+  .total-label { font-size: 11px; font-weight: 700; color: #8a95b0; }
+  .total-amt { font-size: 14px; font-weight: 800; }
+  .panel-left .total-amt { color: #95bf47; }
+  .panel-right .total-amt { color: #60a5fa; }
+
+  /* Inventory Table */
+  .inv-tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .inv-tbl th {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #5a6a8a; padding: 4px 6px;
+    text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .inv-tbl th:nth-child(2), .inv-tbl th:nth-child(3) { text-align: right; }
+  .inv-tbl td {
+    font-size: 10px; padding: 4px 6px; color: #c0c8dc;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+    transition: all 0.3s ease;
+  }
+  .inv-tbl td:nth-child(2), .inv-tbl td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .panel-left .inv-tbl td:nth-child(2) { color: #95bf47; }
+  .panel-left .inv-tbl td:nth-child(3) { color: #7b8ab8; }
+  .panel-right .inv-tbl td:nth-child(2) { color: #60a5fa; }
+  .panel-right .inv-tbl td:nth-child(3) { color: #7b8ab8; }
+
+  .qty-delta {
+    display: inline-block; font-size: 8px; font-weight: 700;
+    margin-left: 3px; opacity: 0; transition: opacity 0.3s;
+  }
+  .qty-delta.show { opacity: 1; }
+  .qty-delta.decrease { color: #ef4444; }
+
+  /* Payment Card */
+  .pay-card {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-top: 6px;
+  }
+  .pay-icon {
+    width: 28px; height: 18px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #1a1f71, #2d3fc7);
+  }
+  .pay-details { flex: 1; }
+  .pay-name { font-size: 10px; color: #c0c8dc; font-weight: 600; }
+  .pay-exp { font-size: 8px; color: #5a6a8a; }
+  .pay-amt { font-size: 11px; font-weight: 700; }
+
+  /* Action Buttons */
+  .action-bar {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    display: flex; gap: 8px;
+  }
+  .btn {
+    flex: 1; padding: 10px 16px;
+    border: none; border-radius: 8px;
+    color: #fff; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled {
+    opacity: 0.3; cursor: default;
+    transform: none !important; box-shadow: none !important;
+  }
+  .btn-green { background: linear-gradient(135deg, #5bbf3a, #95bf47); }
+  .btn-green:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(91,191,58,0.3); }
+  .btn-purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+  .btn-purple:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(139,92,246,0.3); }
+  .btn-success { background: linear-gradient(135deg, #10b981, #34d399) !important; }
+
+  /* Fulfillment Section */
+  .fulfill-section {
+    margin-top: 6px;
+  }
+  .fulfill-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 8px; border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(139,92,246,0.1);
+    margin-bottom: 3px;
+    transition: all 0.4s ease;
+  }
+  .fulfill-item .f-order { font-size: 10px; font-weight: 600; color: #c4b5fd; }
+  .fulfill-item .f-tracking { font-family: 'SF Mono', monospace; font-size: 8px; color: #7b8ab8; }
+  .fulfill-item .f-carrier { font-size: 9px; font-weight: 600; color: #a78bfa; }
+
+  /* Reset */
+  .reset-btn {
+    position: fixed; top: 8px; right: 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #7b8ab8; font-size: 9px; padding: 4px 12px;
+    border-radius: 6px; cursor: pointer;
+    transition: all 0.2s; z-index: 50;
+  }
+  .reset-btn:hover { background: rgba(255,255,255,0.1); color: #e0e6f0; }
+
+  /* Flash animation */
+  .field-flash { animation: fieldFlash 0.6s ease; }
+  @keyframes fieldFlash {
+    0% { background: rgba(80,200,120,0.25); }
+    100% { background: transparent; }
+  }
+  @keyframes blink-status {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Vertical packet pipes */
+  .pipe {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 3px;
+    background: rgba(139,92,246,0.08);
+    z-index: 40;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .pipe-left { left: 0; }
+  .pipe-right { right: 0; }
+  .packet {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    left: 50%; transform: translateX(-50%);
+    opacity: 0;
+  }
+  .packet.down { animation: pktDown var(--pkt-speed, 0.8s) var(--pkt-delay, 0s) ease forwards; }
+  .packet.up   { animation: pktUp   var(--pkt-speed, 0.8s) var(--pkt-delay, 0s) ease forwards; }
+  .packet-green  { background: #50c878; box-shadow: 0 0 6px rgba(80,200,120,0.7), 0 0 14px rgba(80,200,120,0.3); }
+  .packet-blue   { background: #60a5fa; box-shadow: 0 0 6px rgba(96,165,250,0.7), 0 0 14px rgba(96,165,250,0.3); }
+  .packet-purple { background: #a78bfa; box-shadow: 0 0 6px rgba(167,139,250,0.7), 0 0 14px rgba(167,139,250,0.3); }
+  @keyframes pktDown {
+    0%   { top: -10px; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  @keyframes pktUp {
+    0%   { bottom: -10px; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { bottom: 100%; opacity: 0; }
+  }
+
+  /* Idle state hint */
+  .api-idle {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; color: #3a3f5a;
+    text-align: center; padding: 20px;
+  }
+  .api-idle-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.3; }
+  .api-idle-text { font-size: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Shopify ↔ NetSuite Order Sync</h1>
+  <div class="subtitle">Payment capture, fulfillment &amp; inventory synchronization</div>
+  <div class="badge">INTERACTIVE SIMULATION • SE DEMO</div>
+</div>
+<button class="reset-btn" onclick="resetDemo()">↻ Reset</button>
+
+<div class="panels">
+
+  <!-- ═══ SHOPIFY PANEL ═══ -->
+  <div class="panel-left">
+    <div class="sys-label">
+      <div class="sys-logo shopify-green">S</div>
+      <div><h2>Shopify Admin</h2><span class="sys-tag">ORDER MANAGEMENT</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="order-num">#SH-1042</div>
+          <div class="order-date">March 12, 2026 • 2:34 PM EST</div>
+        </div>
+        <span id="sh-status" class="status-pill pill-blue">AUTHORIZED</span>
+      </div>
+      <div class="card-body">
+        <div class="section-title">Customer</div>
+        <div class="info-row"><span class="info-key">Company</span><span class="info-val">Meridian Outdoors Co.</span></div>
+        <div class="info-row"><span class="info-key">Contact</span><span class="info-val">Sarah Chen</span></div>
+        <div class="info-row"><span class="info-key">Email</span><span class="info-val val-muted">sarah@meridianoutdoors.com</span></div>
+
+        <div class="section-title">Line Items</div>
+        <table class="line-tbl">
+          <thead><tr><th>Product</th><th>SKU</th><th>Qty</th><th>Total</th></tr></thead>
+          <tbody>
+            <tr><td>Summit Pro Tent — 4P</td><td><span class="sku">TENT-SP4</span></td><td style="text-align:right">12</td><td>$4,788.00</td></tr>
+            <tr><td>Trail Blaze Sleeping Bag</td><td><span class="sku">SB-TB-REG</span></td><td style="text-align:right">24</td><td>$3,576.00</td></tr>
+            <tr><td>Basecamp Stove Kit</td><td><span class="sku">STOVE-BC</span></td><td style="text-align:right">18</td><td>$1,782.00</td></tr>
+          </tbody>
+        </table>
+        <div class="total-row">
+          <span class="total-label">Order Total</span>
+          <span class="total-amt">$10,146.00</span>
+        </div>
+
+        <div class="section-title">Payment</div>
+        <div class="info-row"><span class="info-key">Status</span><span id="sh-pay" class="info-val val-yellow">Authorized</span></div>
+        <div class="info-row"><span class="info-key">Terms</span><span class="info-val">Net 30</span></div>
+        <div class="pay-card">
+          <div class="pay-icon">VISA</div>
+          <div class="pay-details"><div class="pay-name">Visa ending in 4242</div><div class="pay-exp">Exp: 09/27</div></div>
+          <div id="sh-pay-amt" class="pay-amt val-yellow">$10,146.00</div>
+        </div>
+
+        <div class="section-title">Fulfillment</div>
+        <div class="info-row"><span class="info-key">Status</span><span id="sh-fulfill" class="info-val val-yellow">Unfulfilled</span></div>
+        <div id="sh-fulfill-details" class="fulfill-section" style="display:none;">
+          <div class="fulfill-item">
+            <div><div class="f-order">Fulfillment #1042-F1</div><div id="sh-tracking" class="f-tracking">—</div></div>
+            <div class="f-carrier" id="sh-carrier">—</div>
+          </div>
+        </div>
+
+        <div class="section-title">Inventory (Shopify)</div>
+        <table class="inv-tbl">
+          <thead><tr><th>SKU</th><th>Available</th><th>Committed</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sku">TENT-SP4</span></td><td id="sh-inv-1">248</td><td id="sh-com-1">12</td></tr>
+            <tr><td><span class="sku">SB-TB-REG</span></td><td id="sh-inv-2">512</td><td id="sh-com-2">24</td></tr>
+            <tr><td><span class="sku">STOVE-BC</span></td><td id="sh-inv-3">185</td><td id="sh-com-3">18</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="action-bar">
+        <button id="btnPay" class="btn btn-green" onclick="capturePayment()">Capture Payment</button>
+        <button id="btnFulfill" class="btn btn-purple" onclick="fulfillOrder()" disabled="">Fulfill Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ API FLOW PANEL ═══ -->
+  <div class="panel-middle">
+    <div class="api-panel-header">
+      <div class="api-icon">API</div>
+      <div><h3>Integration Bus</h3><div class="api-sub">Webhook &amp; REST API Events</div></div>
+    </div>
+    <div class="pipe pipe-left" id="pipeLeft"></div>
+    <div class="pipe pipe-right" id="pipeRight"></div>
+    <div class="api-log" id="apiLog">
+      <div class="api-idle" id="apiIdle">
+        <div class="api-idle-icon">⚡</div>
+        <div class="api-idle-text">Waiting for events...<br>Click <strong>Capture Payment</strong> to begin</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ NETSUITE PANEL ═══ -->
+  <div class="panel-right">
+    <div class="sys-label">
+      <div class="sys-logo netsuite-blue">NS</div>
+      <div><h2>NetSuite ERP</h2><span class="sys-tag">SALES ORDER</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="order-num">SO-78291</div>
+          <div class="order-date">Synced from Shopify • #SH-1042</div>
+        </div>
+        <span id="ns-status" class="status-pill pill-yellow">PENDING PAYMENT</span>
+      </div>
+      <div class="card-body">
+        <div class="section-title">Customer Record</div>
+        <div class="info-row"><span class="info-key">Customer</span><span class="info-val">Meridian Outdoors Co.</span></div>
+        <div class="info-row"><span class="info-key">NS Customer ID</span><span class="info-val val-blue">CUST-4821</span></div>
+        <div class="info-row"><span class="info-key">Subsidiary</span><span class="info-val">US Operations</span></div>
+        <div class="info-row"><span class="info-key">Terms</span><span class="info-val">Net 30</span></div>
+
+        <div class="section-title">Order Lines</div>
+        <table class="line-tbl">
+          <thead><tr><th>Item</th><th>Internal ID</th><th>Qty</th><th>Amount</th></tr></thead>
+          <tbody>
+            <tr><td>Summit Pro Tent — 4P</td><td><span class="sku">ITM-9201</span></td><td style="text-align:right">12</td><td>$4,788.00</td></tr>
+            <tr><td>Trail Blaze Sleeping Bag</td><td><span class="sku">ITM-9202</span></td><td style="text-align:right">24</td><td>$3,576.00</td></tr>
+            <tr><td>Basecamp Stove Kit</td><td><span class="sku">ITM-9203</span></td><td style="text-align:right">18</td><td>$1,782.00</td></tr>
+          </tbody>
+        </table>
+        <div class="total-row">
+          <span class="total-label">Order Total</span>
+          <span class="total-amt">$10,146.00</span>
+        </div>
+
+        <div class="section-title">Payment Details</div>
+        <div class="info-row"><span class="info-key">Payment Status</span><span id="ns-pay" class="info-val val-yellow">Pending</span></div>
+        <div class="info-row"><span class="info-key">Payment Method</span><span id="ns-pay-method" class="info-val val-muted">—</span></div>
+        <div class="info-row"><span class="info-key">Transaction Ref</span><span id="ns-pay-ref" class="info-val val-muted">—</span></div>
+        <div class="info-row"><span class="info-key">Payment Date</span><span id="ns-pay-date" class="info-val val-muted">—</span></div>
+        <div class="info-row"><span class="info-key">Amount Applied</span><span id="ns-pay-applied" class="info-val val-muted">$0.00</span></div>
+        <div class="info-row"><span class="info-key">Balance Due</span><span id="ns-balance" class="info-val val-yellow">$10,146.00</span></div>
+
+        <div class="section-title">Fulfillment</div>
+        <div class="info-row"><span class="info-key">Fulfillment Status</span><span id="ns-fulfill" class="info-val val-yellow">Pending Fulfillment</span></div>
+        <div id="ns-fulfill-details" style="display:none;">
+          <div class="info-row"><span class="info-key">Item Fulfillment</span><span id="ns-if-num" class="info-val val-purple">—</span></div>
+          <div class="info-row"><span class="info-key">Carrier</span><span id="ns-carrier" class="info-val val-muted">—</span></div>
+          <div class="info-row"><span class="info-key">Tracking #</span><span id="ns-tracking" class="info-val val-muted">—</span></div>
+          <div class="info-row"><span class="info-key">Ship Date</span><span id="ns-ship-date" class="info-val val-muted">—</span></div>
+        </div>
+
+        <div class="section-title">GL Impact</div>
+        <div class="info-row"><span class="info-key">Journal Entry</span><span id="ns-gl" class="info-val val-muted">—</span></div>
+        <div class="info-row"><span class="info-key">AR Account</span><span class="info-val">1200 • Accounts Receivable</span></div>
+        <div class="info-row"><span class="info-key">Revenue Account</span><span class="info-val">4000 • Product Revenue</span></div>
+
+        <div class="section-title">Inventory (NetSuite)</div>
+        <table class="inv-tbl">
+          <thead><tr><th>Internal ID</th><th>On Hand</th><th>Committed</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sku">ITM-9201</span></td><td id="ns-inv-1">248</td><td id="ns-com-1">12</td></tr>
+            <tr><td><span class="sku">ITM-9202</span></td><td id="ns-inv-2">512</td><td id="ns-com-2">24</td></tr>
+            <tr><td><span class="sku">ITM-9203</span></td><td id="ns-inv-3">185</td><td id="ns-com-3">18</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="">
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let running = false;
+
+// ═══ ANIMATED PACKETS ═══
+// pipe: 'left' or 'right' — which border of the API panel
+// direction: 'down' (Shopify→NetSuite) or 'up' (NetSuite→Shopify)
+// color: 'green', 'blue', 'purple'
+function sendPacket(pipe, direction, color, speed = 0.8, delay = 0) {
+  const pipeEl = document.getElementById(pipe === 'left' ? 'pipeLeft' : 'pipeRight');
+  const p = document.createElement('div');
+  p.className = `packet ${direction} packet-${color}`;
+  p.style.setProperty('--pkt-speed', `${speed}s`);
+  p.style.setProperty('--pkt-delay', `${delay}s`);
+  pipeEl.appendChild(p);
+  setTimeout(() => p.remove(), (speed + delay) * 1000 + 100);
+}
+
+// Fire a burst of packets on both pipes
+// direction: 'down' = Shopify→NS, 'up' = NS→Shopify
+function firePipes(direction = 'down', color = 'green', count = 4, speed = 0.8) {
+  for (let i = 0; i < count; i++) {
+    sendPacket('left', direction, color, speed + Math.random() * 0.3, i * 0.1);
+    sendPacket('right', direction, color, speed + Math.random() * 0.3, i * 0.1 + 0.05);
+  }
+}
+
+function flash(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('field-flash');
+  void el.offsetWidth;
+  el.classList.add('field-flash');
+}
+
+function addApiEvent({ dir, dirLabel, title, body, status = 'done', type = 'middleware' }) {
+  const idle = document.getElementById('apiIdle');
+  if (idle) idle.remove();
+
+  const log = document.getElementById('apiLog');
+  const ev = document.createElement('div');
+  ev.className = `api-event ${type}`;
+
+  let statusClass = status === 'running' ? 'running' : status === 'done' ? 'done' : 'pending';
+  let statusText = status === 'running' ? 'RUNNING' : status === 'done' ? '200 OK' : 'PENDING';
+
+  ev.innerHTML = `
+    <div class="api-event-header">
+      <span class="api-dir ${dir}">${dirLabel}</span>
+      <span class="api-event-title">${title}</span>
+      <span class="api-event-status ${statusClass}">${statusText}</span>
+    </div>
+    ${body ? `<div class="api-event-body">${body}</div>` : ''}
+  `;
+  log.appendChild(ev);
+  requestAnimationFrame(() => {
+    ev.classList.add('visible');
+    log.scrollTop = log.scrollHeight;
+  });
+  return ev;
+}
+
+function updateEventStatus(ev, status, text) {
+  const badge = ev.querySelector('.api-event-status');
+  badge.className = `api-event-status ${status}`;
+  badge.textContent = text || (status === 'done' ? '200 OK' : status.toUpperCase());
+  if (status === 'done') {
+    ev.classList.remove('from-shopify', 'from-netsuite', 'middleware');
+    ev.classList.add('success');
+  }
+}
+
+function addSeparator(label) {
+  const log = document.getElementById('apiLog');
+  const sep = document.createElement('div');
+  sep.className = 'api-separator';
+  sep.innerHTML = `<div class="api-separator-line"></div><span class="api-separator-label">${label}</span><div class="api-separator-line"></div>`;
+  log.appendChild(sep);
+  requestAnimationFrame(() => sep.classList.add('visible'));
+}
+
+function updateInv(prefix, idx, newAvail, newCommit) {
+  const availEl = document.getElementById(`${prefix}-inv-${idx}`);
+  const commitEl = document.getElementById(`${prefix}-com-${idx}`);
+  const oldAvail = parseInt(availEl.textContent);
+  const oldCommit = parseInt(commitEl.textContent);
+
+  availEl.textContent = newAvail;
+  flash(`${prefix}-inv-${idx}`);
+
+  if (newCommit !== undefined) {
+    commitEl.textContent = newCommit;
+    flash(`${prefix}-com-${idx}`);
+  }
+}
+
+// ═══ CAPTURE PAYMENT ═══
+async function capturePayment() {
+  if (running) return;
+  running = true;
+  document.getElementById('btnPay').disabled = true;
+  document.getElementById('btnPay').textContent = 'Processing...';
+
+  // Shopify updates
+  await sleep(400);
+  document.getElementById('sh-status').textContent = 'PAID';
+  document.getElementById('sh-status').className = 'status-pill pill-green';
+  document.getElementById('sh-pay').textContent = 'Paid';
+  document.getElementById('sh-pay').className = 'info-val val-green';
+  document.getElementById('sh-pay-amt').className = 'pay-amt val-green';
+  document.getElementById('btnPay').textContent = 'Payment Captured ✓';
+  document.getElementById('btnPay').classList.add('btn-success');
+
+  // API Events
+  await sleep(500);
+  firePipes('down', 'green', 4, 0.8);
+  const ev1 = addApiEvent({
+    dir: 'right', dirLabel: '→',
+    title: 'Webhook: orders/paid',
+    body: '<span class="endpoint">POST /webhook/shopify/orders-paid</span><br><span class="payload">{ order_id: "SH-1042", amount: 10146.00, currency: "USD" }</span>',
+    status: 'running', type: 'from-shopify'
+  });
+  await sleep(800);
+  updateEventStatus(ev1, 'done', 'SENT');
+
+  await sleep(300);
+  firePipes('down', 'purple', 3, 0.7);
+  const ev2 = addApiEvent({
+    dir: 'sync', dirLabel: '⇄',
+    title: 'Transform: Shopify → NetSuite',
+    body: '<span class="payload">Map payment_status → custbody_payment, generate TXN ref</span>',
+    status: 'running', type: 'middleware'
+  });
+  await sleep(900);
+  updateEventStatus(ev2, 'done', 'MAPPED');
+
+  await sleep(300);
+  firePipes('down', 'green', 5, 1.0);
+  const ev3 = addApiEvent({
+    dir: 'right', dirLabel: '→',
+    title: 'PUT /salesOrder/SO-78291/payment',
+    body: '<span class="endpoint">NetSuite SuiteScript 2.0 RESTlet</span><br><span class="payload">{ status: "paidInFull", method: "Visa 4242", ref: "TXN-SH1042-9F3A" }</span>',
+    status: 'running', type: 'from-shopify'
+  });
+
+  // NetSuite updates cascade
+  await sleep(600);
+  document.getElementById('ns-pay').textContent = 'Paid in Full';
+  document.getElementById('ns-pay').className = 'info-val val-green';
+  flash('ns-pay');
+  await sleep(250);
+  document.getElementById('ns-pay-method').textContent = 'Visa •••• 4242';
+  document.getElementById('ns-pay-method').className = 'info-val';
+  flash('ns-pay-method');
+  await sleep(200);
+  document.getElementById('ns-pay-ref').textContent = 'TXN-SH1042-9F3A';
+  document.getElementById('ns-pay-ref').className = 'info-val val-purple';
+  flash('ns-pay-ref');
+  await sleep(200);
+  document.getElementById('ns-pay-date').textContent = 'Mar 12, 2026 2:35 PM';
+  document.getElementById('ns-pay-date').className = 'info-val';
+  flash('ns-pay-date');
+  await sleep(200);
+  document.getElementById('ns-pay-applied').textContent = '$10,146.00';
+  document.getElementById('ns-pay-applied').className = 'info-val val-green';
+  flash('ns-pay-applied');
+  await sleep(200);
+  document.getElementById('ns-balance').textContent = '$0.00';
+  document.getElementById('ns-balance').className = 'info-val val-green';
+  flash('ns-balance');
+  await sleep(200);
+  document.getElementById('ns-gl').textContent = 'JE-20260312-4821';
+  document.getElementById('ns-gl').className = 'info-val val-blue';
+  flash('ns-gl');
+
+  updateEventStatus(ev3, 'done');
+
+  await sleep(300);
+  document.getElementById('ns-status').textContent = 'PAID';
+  document.getElementById('ns-status').className = 'status-pill pill-green';
+
+  firePipes('up', 'blue', 3, 0.9);
+  const ev4 = addApiEvent({
+    dir: 'ok', dirLabel: '✓',
+    title: 'Payment sync complete',
+    body: '<span class="response">SO-78291 updated • JE-20260312-4821 posted • 2.4s</span>',
+    status: 'done', type: 'success'
+  });
+
+  // Enable fulfill button
+  await sleep(500);
+  document.getElementById('btnFulfill').disabled = false;
+  running = false;
+}
+
+// ═══ FULFILL ORDER ═══
+async function fulfillOrder() {
+  if (running) return;
+  running = true;
+  document.getElementById('btnFulfill').disabled = true;
+  document.getElementById('btnFulfill').textContent = 'Fulfilling...';
+
+  addSeparator('FULFILLMENT FLOW');
+
+  // Shopify fulfillment update
+  await sleep(400);
+  document.getElementById('sh-fulfill').textContent = 'Fulfilled';
+  document.getElementById('sh-fulfill').className = 'info-val val-purple';
+  document.getElementById('sh-fulfill-details').style.display = 'block';
+  document.getElementById('sh-tracking').textContent = '1Z999AA10123456784';
+  document.getElementById('sh-carrier').textContent = 'UPS Ground';
+  document.getElementById('sh-status').textContent = 'FULFILLED';
+  document.getElementById('sh-status').className = 'status-pill pill-purple';
+  document.getElementById('btnFulfill').textContent = 'Fulfilled ✓';
+  document.getElementById('btnFulfill').classList.add('btn-success');
+
+  // API: Fulfillment webhook
+  await sleep(500);
+  firePipes('down', 'green', 4, 0.8);
+  const f1 = addApiEvent({
+    dir: 'right', dirLabel: '→',
+    title: 'Webhook: fulfillments/create',
+    body: '<span class="endpoint">POST /webhook/shopify/fulfillments</span><br><span class="payload">{ order: "SH-1042", tracking: "1Z999AA10123456784", carrier: "UPS" }</span>',
+    status: 'running', type: 'from-shopify'
+  });
+  await sleep(800);
+  updateEventStatus(f1, 'done', 'SENT');
+
+  // API: Transform
+  await sleep(300);
+  firePipes('down', 'purple', 3, 0.7);
+  const f2 = addApiEvent({
+    dir: 'sync', dirLabel: '⇄',
+    title: 'Transform: Create Item Fulfillment',
+    body: '<span class="payload">Map fulfillment → itemfulfillment record, attach tracking</span>',
+    status: 'running', type: 'middleware'
+  });
+  await sleep(800);
+  updateEventStatus(f2, 'done', 'MAPPED');
+
+  // API: NetSuite fulfillment
+  await sleep(300);
+  firePipes('down', 'green', 5, 1.0);
+  const f3 = addApiEvent({
+    dir: 'right', dirLabel: '→',
+    title: 'POST /itemFulfillment',
+    body: '<span class="endpoint">NetSuite SuiteScript 2.0 RESTlet</span><br><span class="payload">{ salesOrder: "SO-78291", carrier: "UPS", tracking: "1Z999AA..." }</span>',
+    status: 'running', type: 'from-shopify'
+  });
+
+  // NetSuite fulfillment updates
+  await sleep(600);
+  document.getElementById('ns-fulfill').textContent = 'Fulfilled';
+  document.getElementById('ns-fulfill').className = 'info-val val-purple';
+  flash('ns-fulfill');
+  document.getElementById('ns-fulfill-details').style.display = 'block';
+  await sleep(200);
+  document.getElementById('ns-if-num').textContent = 'IF-78291-001';
+  flash('ns-if-num');
+  await sleep(200);
+  document.getElementById('ns-carrier').textContent = 'UPS Ground';
+  document.getElementById('ns-carrier').className = 'info-val';
+  flash('ns-carrier');
+  await sleep(200);
+  document.getElementById('ns-tracking').textContent = '1Z999AA10123456784';
+  document.getElementById('ns-tracking').className = 'info-val val-purple';
+  flash('ns-tracking');
+  await sleep(200);
+  document.getElementById('ns-ship-date').textContent = 'Mar 12, 2026 2:36 PM';
+  document.getElementById('ns-ship-date').className = 'info-val';
+  flash('ns-ship-date');
+
+  document.getElementById('ns-status').textContent = 'FULFILLED';
+  document.getElementById('ns-status').className = 'status-pill pill-purple';
+
+  updateEventStatus(f3, 'done');
+
+  await sleep(300);
+  firePipes('up', 'blue', 3, 0.9);
+  const f4 = addApiEvent({
+    dir: 'ok', dirLabel: '✓',
+    title: 'Fulfillment sync complete',
+    body: '<span class="response">IF-78291-001 created • tracking attached • 1.8s</span>',
+    status: 'done', type: 'success'
+  });
+
+  // ─── INVENTORY ADJUSTMENT ───
+  await sleep(600);
+  addSeparator('INVENTORY ADJUSTMENT');
+
+  await sleep(400);
+  firePipes('down', 'green', 4, 0.8);
+  const i1 = addApiEvent({
+    dir: 'right', dirLabel: '→',
+    title: 'Webhook: inventory_levels/adjust',
+    body: '<span class="endpoint">POST /webhook/shopify/inventory</span><br><span class="payload">{ adjustments: [TENT-SP4: -12, SB-TB: -24, STOVE-BC: -18] }</span>',
+    status: 'running', type: 'from-shopify'
+  });
+
+  // Shopify inventory update
+  await sleep(500);
+  updateInv('sh', 1, 236, 0);
+  await sleep(150);
+  updateInv('sh', 2, 488, 0);
+  await sleep(150);
+  updateInv('sh', 3, 167, 0);
+
+  updateEventStatus(i1, 'done', 'SENT');
+
+  await sleep(300);
+  firePipes('down', 'purple', 3, 0.7);
+  const i2 = addApiEvent({
+    dir: 'sync', dirLabel: '⇄',
+    title: 'Transform: Inventory Adjustment',
+    body: '<span class="payload">Map Shopify locations → NetSuite bins, calculate deltas</span>',
+    status: 'running', type: 'middleware'
+  });
+  await sleep(700);
+  updateEventStatus(i2, 'done', 'MAPPED');
+
+  await sleep(300);
+  firePipes('down', 'green', 5, 1.0);
+  const i3 = addApiEvent({
+    dir: 'right', dirLabel: '→',
+    title: 'POST /inventoryAdjustment',
+    body: '<span class="endpoint">NetSuite SuiteScript 2.0 RESTlet</span><br><span class="payload">{ items: [9201: -12, 9202: -24, 9203: -18], memo: "SH-1042 fulfilled" }</span>',
+    status: 'running', type: 'from-shopify'
+  });
+
+  // NetSuite inventory update
+  await sleep(500);
+  updateInv('ns', 1, 236, 0);
+  await sleep(150);
+  updateInv('ns', 2, 488, 0);
+  await sleep(150);
+  updateInv('ns', 3, 167, 0);
+
+  updateEventStatus(i3, 'done');
+
+  await sleep(300);
+  firePipes('up', 'blue', 3, 0.9);
+  addApiEvent({
+    dir: 'ok', dirLabel: '✓',
+    title: 'Inventory sync complete',
+    body: '<span class="response">3 items adjusted • Shopify ↔ NetSuite in sync • 1.2s</span>',
+    status: 'done', type: 'success'
+  });
+
+  await sleep(500);
+  addSeparator('ALL SYNCS COMPLETE');
+
+  running = false;
+}
+
+// ═══ RESET ═══
+function resetDemo() {
+  running = false;
+
+  // Shopify
+  document.getElementById('sh-status').textContent = 'AUTHORIZED';
+  document.getElementById('sh-status').className = 'status-pill pill-blue';
+  document.getElementById('sh-pay').textContent = 'Authorized';
+  document.getElementById('sh-pay').className = 'info-val val-yellow';
+  document.getElementById('sh-pay-amt').className = 'pay-amt val-yellow';
+  document.getElementById('sh-fulfill').textContent = 'Unfulfilled';
+  document.getElementById('sh-fulfill').className = 'info-val val-yellow';
+  document.getElementById('sh-fulfill-details').style.display = 'none';
+  ['sh-inv-1','sh-inv-2','sh-inv-3'].forEach((id, i) => {
+    document.getElementById(id).textContent = [248, 512, 185][i];
+  });
+  ['sh-com-1','sh-com-2','sh-com-3'].forEach((id, i) => {
+    document.getElementById(id).textContent = [12, 24, 18][i];
+  });
+
+  const btnPay = document.getElementById('btnPay');
+  btnPay.disabled = false;
+  btnPay.textContent = 'Capture Payment';
+  btnPay.classList.remove('btn-success');
+
+  const btnFulfill = document.getElementById('btnFulfill');
+  btnFulfill.disabled = true;
+  btnFulfill.textContent = 'Fulfill Order';
+  btnFulfill.classList.remove('btn-success');
+
+  // NetSuite
+  document.getElementById('ns-status').textContent = 'PENDING PAYMENT';
+  document.getElementById('ns-status').className = 'status-pill pill-yellow';
+  document.getElementById('ns-pay').textContent = 'Pending';
+  document.getElementById('ns-pay').className = 'info-val val-yellow';
+  document.getElementById('ns-pay-method').textContent = '—';
+  document.getElementById('ns-pay-method').className = 'info-val val-muted';
+  document.getElementById('ns-pay-ref').textContent = '—';
+  document.getElementById('ns-pay-ref').className = 'info-val val-muted';
+  document.getElementById('ns-pay-date').textContent = '—';
+  document.getElementById('ns-pay-date').className = 'info-val val-muted';
+  document.getElementById('ns-pay-applied').textContent = '$0.00';
+  document.getElementById('ns-pay-applied').className = 'info-val val-muted';
+  document.getElementById('ns-balance').textContent = '$10,146.00';
+  document.getElementById('ns-balance').className = 'info-val val-yellow';
+  document.getElementById('ns-gl').textContent = '—';
+  document.getElementById('ns-gl').className = 'info-val val-muted';
+  document.getElementById('ns-fulfill').textContent = 'Pending Fulfillment';
+  document.getElementById('ns-fulfill').className = 'info-val val-yellow';
+  document.getElementById('ns-fulfill-details').style.display = 'none';
+  ['ns-inv-1','ns-inv-2','ns-inv-3'].forEach((id, i) => {
+    document.getElementById(id).textContent = [248, 512, 185][i];
+  });
+  ['ns-com-1','ns-com-2','ns-com-3'].forEach((id, i) => {
+    document.getElementById(id).textContent = [12, 24, 18][i];
+  });
+
+  // Clear packets
+  document.getElementById('pipeLeft').innerHTML = '';
+  document.getElementById('pipeRight').innerHTML = '';
+
+  // API log
+  document.getElementById('apiLog').innerHTML = `
+    <div class="api-idle" id="apiIdle">
+      <div class="api-idle-icon">&#9889;</div>
+      <div class="api-idle-text">Waiting for events...<br>Click <strong>Capture Payment</strong> to begin</div>
+    </div>
+  `;
+}
+</script>
+<script nonce="" src="source-viewer.js"></script></body></html>

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acme Wholesale — Payment Flow Simulation</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #1e1e1e;
+    --surface-2: #272727;
+    --border: #3a3a3a;
+    --text: #f0f0f0;
+    --text-muted: #aaa;
+    --green: #96bf48;
+    --green-dim: rgba(150,191,72,0.12);
+    --orange: #f5a623;
+    --orange-dim: rgba(245,166,35,0.12);
+    --blue: #5c9eff;
+    --blue-dim: rgba(92,158,255,0.12);
+    --red: #ff6b6b;
+    --red-dim: rgba(255,107,107,0.12);
+    --purple: #b57bee;
+    --purple-dim: rgba(181,123,238,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 24px 40px 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,10,0.95);
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(20px);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .header-brand { font-size: 12px; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 1px; }
+  .header-title { font-size: 20px; font-weight: 700; }
+  .header-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .header-badge {
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    background: var(--green-dim); color: var(--green); border: 1px solid rgba(150,191,72,0.3);
+  }
+
+  /* PATH TABS */
+  .path-tabs {
+    display: flex; gap: 4px; padding-bottom: 0;
+  }
+  .path-tab {
+    padding: 10px 20px; border-radius: 8px 8px 0 0;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid transparent; border-bottom: none;
+    transition: all 0.2s; color: var(--text-muted);
+    background: transparent;
+  }
+  .path-tab:hover { color: var(--text); background: var(--surface); }
+  .path-tab.active {
+    color: var(--text); background: var(--surface);
+    border-color: var(--border);
+  }
+  .path-tab .tab-dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; margin-right: 8px;
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: grid; grid-template-columns: 280px 1fr;
+    height: calc(100vh - 120px);
+  }
+
+  /* TIMELINE SIDEBAR */
+  .timeline {
+    border-right: 1px solid var(--border);
+    padding: 28px 24px;
+    overflow-y: auto;
+  }
+  .timeline-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .timeline-steps { display: flex; flex-direction: column; gap: 0; }
+  .t-step {
+    display: flex; gap: 16px; align-items: flex-start;
+    cursor: pointer; padding: 10px 8px; border-radius: 8px;
+    transition: background 0.15s; position: relative;
+  }
+  .t-step:hover { background: var(--surface); }
+  .t-step.active { background: var(--surface); }
+  .t-step-left { display: flex; flex-direction: column; align-items: center; }
+  .t-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+    border: 2px solid var(--border); background: var(--surface);
+    color: var(--text-muted); transition: all 0.3s;
+  }
+  .t-step.active .t-dot {
+    border-color: var(--active-color, var(--green));
+    background: var(--active-dim, var(--green-dim));
+    color: var(--active-color, var(--green));
+  }
+  .t-step.done .t-dot {
+    border-color: var(--active-color, var(--green));
+    background: var(--active-color, var(--green));
+    color: #000;
+  }
+  .t-step.done .t-dot::after { content: '✓'; }
+  .t-connector {
+    width: 2px; flex: 1; min-height: 16px;
+    background: var(--border); margin: 2px 0;
+  }
+  .t-step.done + .t-step .t-connector,
+  .t-connector.done { background: var(--active-color, var(--green)); opacity: 0.4; }
+  .t-content { flex: 1; padding-top: 4px; }
+  .t-title { font-size: 13px; font-weight: 500; line-height: 1.3; }
+  .t-step.active .t-title { color: var(--text); }
+  .t-step:not(.active) .t-title { color: var(--text-muted); }
+  .t-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* CONTENT AREA */
+  .content {
+    display: grid; grid-template-rows: 1fr 1fr;
+    overflow: hidden;
+  }
+
+  /* SYSTEM PANEL */
+  .panel {
+    padding: 28px 36px;
+    border-bottom: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  .panel-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .panel-label.system { color: var(--blue); }
+  .panel-label.bank { color: var(--green); }
+
+  .step-header {
+    display: flex; align-items: flex-start; gap: 16px;
+    margin-bottom: 20px;
+  }
+  .step-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .step-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+  /* STATUS CHIPS */
+  .status-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .chip {
+    font-size: 12px; font-weight: 600; padding: 5px 12px;
+    border-radius: 20px; display: flex; align-items: center; gap: 6px;
+  }
+  .chip-label { font-size: 10px; font-weight: 500; color: var(--text-muted); margin-right: 2px; }
+  .chip.green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(150,191,72,0.25); }
+  .chip.blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(92,158,255,0.25); }
+  .chip.orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(245,166,35,0.25); }
+  .chip.red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,107,107,0.25); }
+  .chip.muted { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+  .chip.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(181,123,238,0.25); }
+
+  /* API CALL */
+  .api-block {
+    background: var(--surface-2); border-radius: 8px;
+    padding: 14px 16px; border-left: 3px solid var(--blue);
+    margin-bottom: 16px;
+  }
+  .api-block .api-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--blue); margin-bottom: 6px;
+  }
+  .api-block code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px; color: var(--text); display: block; line-height: 1.5;
+  }
+  .api-block .api-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+  .no-api {
+    font-size: 13px; color: var(--text-muted);
+    padding: 10px 0; font-style: italic;
+  }
+
+  /* BANK VIEW */
+  .bank-statement {
+    background: var(--surface-2); border-radius: 10px;
+    overflow: hidden; max-width: 480px;
+  }
+  .bank-header {
+    background: #1a2a1a; padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .bank-name { font-size: 12px; font-weight: 600; color: var(--green); }
+  .bank-balance { font-size: 18px; font-weight: 700; }
+  .bank-balance-label { font-size: 10px; color: var(--text-muted); }
+  .bank-rows { }
+  .bank-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    transition: all 0.4s;
+  }
+  .bank-row:last-child { border-bottom: none; }
+  .bank-row-left { display: flex; align-items: center; gap: 10px; }
+  .bank-row-icon { font-size: 18px; }
+  .bank-row-title { font-size: 13px; font-weight: 500; }
+  .bank-row-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .bank-row-amount { font-size: 14px; font-weight: 600; }
+  .bank-row-amount.hold { color: var(--orange); }
+  .bank-row-amount.charge { color: var(--red); }
+  .bank-row-amount.released { color: var(--text-muted); text-decoration: line-through; }
+  .bank-row-amount.none { color: var(--text-muted); font-style: italic; font-weight: 400; font-size: 12px; }
+  .bank-empty {
+    padding: 20px 16px; font-size: 13px; color: var(--text-muted);
+    font-style: italic; text-align: center;
+  }
+  .bank-note {
+    padding: 10px 16px; font-size: 12px; color: var(--text-muted);
+    background: var(--surface); border-top: 1px solid var(--border);
+  }
+
+  /* NAVIGATION */
+  .nav-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 16px 40px;
+    background: rgba(10,10,10,0.95); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 50;
+  }
+  .nav-btn {
+    padding: 10px 24px; border-radius: 8px; font-size: 14px;
+    font-weight: 500; cursor: pointer; transition: all 0.2s;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font-family: inherit;
+  }
+  .nav-btn:hover:not(:disabled) { border-color: var(--active-color, var(--green)); color: var(--active-color, var(--green)); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .nav-btn.primary {
+    background: var(--active-color, var(--green));
+    border-color: var(--active-color, var(--green));
+    color: #000; font-weight: 600;
+  }
+  .nav-btn.primary:hover:not(:disabled) { opacity: 0.9; color: #000; }
+  .nav-progress { font-size: 13px; color: var(--text-muted); }
+  .nav-progress strong { color: var(--text); }
+
+  /* ANIMATIONS */
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+
+  /* PATH INTRO */
+  .path-intro {
+    background: var(--surface); border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+  .path-intro-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; }
+  .path-intro-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .path-intro-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+  .path-intro-tags { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .path-tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 4px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted);
+  }
+  .path-tag.highlight { background: var(--active-dim); border-color: var(--active-color); color: var(--active-color); }
+
+  .path-selector-screen {
+    padding: 40px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;
+    max-width: 1000px; margin: 0 auto;
+  }
+  .path-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .path-card:hover { border-color: #555; transform: translateY(-2px); }
+  .path-card-num { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+  .path-card-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .path-card-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .path-card-tags { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .path-card-tag { font-size: 12px; color: var(--text-muted); }
+  .path-card-tag::before { content: '→ '; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-brand">B2B Payment Flows</div>
+      <div class="header-title">Payment Flow Simulation</div>
+      <div class="header-sub">Interactive walkthrough of payment authorization, capture, and timing</div>
+    </div>
+    <div class="header-badge">Shopify Payments</div>
+  </div>
+  <div class="path-tabs" id="pathTabs">
+    <div class="path-tab" data-path="vault" onclick="selectPath('vault')">
+      <span class="tab-dot" style="background:#5c9eff"></span>Path 1 — Vault + Due on Fulfillment
+    </div>
+    <div class="path-tab" data-path="auth" onclick="selectPath('auth')">
+      <span class="tab-dot" style="background:#f5a623"></span>Path 2 — Auth at Checkout
+    </div>
+    <div class="path-tab" data-path="net" onclick="selectPath('net')">
+      <span class="tab-dot" style="background:#96bf48"></span>Path 3 — Net Terms
+    </div>
+  </div>
+</div>
+
+<div class="main" id="main">
+  <!-- TIMELINE -->
+  <div class="timeline" id="timeline">
+    <div class="timeline-label">Steps</div>
+    <div class="timeline-steps" id="timelineSteps"></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <div class="panel" id="systemPanel">
+      <div class="panel-label system">Shopify + ERP</div>
+      <div id="systemContent"></div>
+    </div>
+    <div class="panel" id="bankPanel">
+      <div class="panel-label bank">Customer's Bank</div>
+      <div id="bankContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="prevStep()" disabled>← Back</button>
+  <div class="nav-progress" id="navProgress"></div>
+  <button class="nav-btn primary" id="nextBtn" onclick="nextStep()">Next Step →</button>
+</div>
+
+<script>
+const paths = {
+
+  vault: {
+    label: 'Path 1 — Due on Fulfillment (Vault + Charge at Ship)',
+    subtitle: 'Replicates a typical Authorize.net CIM workflow',
+    color: '#5c9eff',
+    dim: 'rgba(92,158,255,0.12)',
+    desc: 'Company Location has "Due on Fulfillment" terms. Card MUST be saved to the location profile. At vaulting, Shopify Payments sends a $0 verification to the processor (Stripe) to confirm the card is valid — functionally equivalent to Auth.net CIM\'s $0/$0.01 validation. No authorization hold is placed (order shows "unauthorized"). At fulfillment, ERP adds freight then charges the vaulted card via API. Card Account Updater (CAU) automatically refreshes card details if the issuer reports changes between vaulting and collection.',
+    tags: [
+      {label: '$0 card verification at vaulting — same as Auth.net CIM', highlight: true},
+      {label: 'No authorization hold — charge happens at fulfillment'},
+      {label: 'Card Account Updater keeps vaulted cards current'},
+      {label: 'Requires Shopify Payments + Shopify Plus'},
+    ],
+    steps: [
+      {
+        title: 'Customer places order',
+        time: 'Day 0 — Checkout',
+        icon: '🛒',
+        what: 'Customer checks out on the B2B storefront. This Company Location has "Due on Fulfillment" terms — the card MUST be saved to the location profile. At vaulting, Shopify Payments sends a $0 verification to the processor (Stripe) to confirm the card is valid and active. This is functionally equivalent to Auth.net CIM\'s $0/$0.01 validation. If verification fails, the card is not saved. No authorization hold is placed — the order shows as "unauthorized."',
+        orderStatus: 'Unfulfilled', financialStatus: 'Unauthorized', api: null,
+        apiNote: '$0 verification sent to processor at vaulting time (CreditCardVerifiedVault flow). Confirms: card is real, not expired, issuer accepts it. Does NOT reserve funds. Card Account Updater (CAU) will auto-refresh card details if the issuer reports changes later. Source: Shopify Payments Platform — Card Vaulting API guide',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '🏪', title: 'Acme Wholesale Order', sub: '$0 verification passed — card saved, no hold', amount: 'No hold', style: 'none' }
+          ],
+          note: '✅ Card verified as valid via $0 check (same as Auth.net CIM). No funds reserved — balance unaffected. Card Account Updater keeps card details current between now and fulfillment.'
+        }
+      },
+      {
+        title: 'ERP processes order + adds freight',
+        time: 'Day 0–30 — Fulfillment',
+        icon: '📦',
+        what: 'ERP receives the order, picks and packs items. Cartonization runs and calculates freight ($80, capped per business rules). ERP calls the Order Editing API to add the freight line. Order total increases from $1,000 to $1,080. Because no auth exists, there is zero constraint on the new total — freight can be any amount.',
+        orderStatus: 'Unfulfilled', financialStatus: 'Unauthorized',
+        api: 'orderEditBegin → orderEditAddShippingLine\n→ orderEditCommit',
+        apiNote: 'Freight pushed as a shipping line. No auth to constrain the amount. Source: shopify.dev (Order Editing API)',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '🏪', title: 'Acme Wholesale Order', sub: 'Freight added — $1,080 total', amount: 'No hold', style: 'none' }
+          ],
+          note: 'No change to the customer\'s card. No funds held at any point.'
+        }
+      },
+      {
+        title: 'ERP charges vaulted card via API',
+        time: 'At fulfillment',
+        icon: '💳',
+        what: 'ERP\'s integration calls orderCreateMandatePayment with the mandate ID from the order\'s paymentCollectionDetails.vaultedPaymentMethods. With autoCapture: true, Shopify Payments processes a single auth + capture for $1,080. Any amount can be charged — even above the order total if needed as a buffer. The card can be charged regardless of when fulfillment happens — there is no auth window because no auth was placed at checkout.',
+        orderStatus: 'Unfulfilled', financialStatus: 'Paid',
+        api: 'orderCreateMandatePayment(\n  id: "gid://shopify/Order/...",\n  mandateId: "gid://shopify/PaymentMandate/...",\n  idempotencyKey: "unique-key",\n  amount: { amount: 1080.00, currencyCode: USD },\n  autoCapture: true\n)',
+        apiNote: 'autoCapture: true = single auth + capture. Any amount accepted (even above order total). Requires: Plus + Shopify Payments + write_payment_mandate scope. Source: B2B Field Learnings & Solutions Guide + shopify.dev',
+        bank: {
+          balance: '$11,320.00',
+          rows: [
+            { icon: '✅', title: 'Acme Wholesale — Order #1042', sub: 'Products + freight — settled', amount: '−$1,080.00', style: 'charge' }
+          ],
+          note: 'Single charge for the exact final amount including freight.'
+        }
+      },
+      {
+        title: 'ERP fulfills order',
+        time: 'At or after payment',
+        icon: '📤',
+        what: 'ERP marks the order as fulfilled in Shopify via API. If payment was authorized (autoCapture: false) instead of captured in Step 3, complete fulfillment will trigger auto-capture of the authorized funds. Otherwise, the order is already paid and fulfillment simply closes it out.',
+        orderStatus: 'Fulfilled', financialStatus: 'Paid',
+        api: 'fulfillmentCreateV2(\n  fulfillment: {\n    lineItemsByFulfillmentOrder: [...]\n  }\n)',
+        apiNote: 'If auth-only was used in Step 3 (autoCapture: false), complete fulfillment auto-captures the funds. Source: B2B Field Learnings & Solutions Guide',
+        bank: {
+          balance: '$11,320.00',
+          rows: [
+            { icon: '✅', title: 'Acme Wholesale — Order #1042', sub: 'Settled — products + freight', amount: '−$1,080.00', style: 'charge' }
+          ],
+          note: '⚠️ The $0 verification at checkout confirmed the card was valid at that moment. But between vaulting and collection, the card could be cancelled, hit its limit, or be flagged — this risk exists in ANY deferred payment model, including a typical Auth.net CIM flow. Mitigations: Card Account Updater auto-refreshes card details. Fallback: orderInvoiceSend to email a payment link.'
+        }
+      }
+    ]
+  },
+
+  auth: {
+    label: 'Path 2 — Auth at Checkout (No Terms + Manual Capture)',
+    subtitle: 'Adds fund validation at order creation',
+    color: '#f5a623',
+    dim: 'rgba(245,166,35,0.12)',
+    desc: 'For CC-only customers where Beth wants fund validation: set the Company Location to "No Terms" with store payment capture set to manual. Card is authorized at checkout for up to 30 days automatically (Visa/MC/Amex). The merchant ships same/next day, so capture within 7 days avoids the extended auth surcharge. Freight is added via Order Editing, then the order is captured.',
+    tags: [
+      {label: 'Fund validation at order creation', highlight: true},
+      {label: 'Auth window: auto-assigned up to 30 days (Visa/MC/Amex)'},
+      {label: 'Standard fees if captured within 7 days; +1.75% after day 7'},
+      {label: 'Requires Shopify Payments + Plus'},
+    ],
+    steps: [
+      {
+        title: 'Customer places order',
+        time: 'Day 0 — Checkout',
+        icon: '🛒',
+        what: 'Company Location has "No Terms" set. Store payment capture is set to manual. Customer checks out — Shopify Payments places an authorization hold for the product total ($1,000). The auth window is automatically assigned at the maximum for the card network (e.g. 30 days for Visa). Card does NOT need to be saved to the location profile when no terms are set — different cards can be used.',
+        orderStatus: 'Unfulfilled', financialStatus: 'Authorized',
+        api: 'Standard checkout → auth hold placed\nManual capture mode ON',
+        apiNote: 'Auth is automatically given the longest possible window for the card network. Visa/MC/Amex = up to 30 days. Capture within 7 days = standard fees. After 7 days = +1.75%. No configuration needed. Source: B2B Field Learnings & Solutions Guide + help.shopify.com/en/manual/payments/payment-authorization',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '⏳', title: 'Acme Wholesale — Pending', sub: 'Authorization hold — Day 0', amount: '[$1,000.00]', style: 'hold' }
+          ],
+          note: '✅ Fund validation achieved. $1,000 is reserved. The merchant knows the card is valid with sufficient funds.'
+        }
+      },
+      {
+        title: 'ERP processes order + adds freight',
+        time: 'Day 0–1 — Same/next day fulfillment',
+        icon: '📦',
+        what: 'ERP receives the order, picks and packs. Shipping system calculates freight ($80, capped per business rules). ERP calls the Order Editing API to add freight. Order total is now $1,080. The original auth is for $1,000 — you cannot capture more than the authorized amount.',
+        orderStatus: 'Unfulfilled', financialStatus: 'Authorized',
+        api: 'orderEditBegin → orderEditAddShippingLine\n→ orderEditCommit',
+        apiNote: 'Order total now exceeds the auth amount ($1,080 > $1,000). Cannot capture $1,080 against a $1,000 auth. Must void and re-charge, or use orderCreateMandatePayment for the difference.',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '⏳', title: 'Acme Wholesale — Pending', sub: 'Auth $1,000 — order total now $1,080', amount: '[$1,000.00]', style: 'hold' }
+          ],
+          note: 'Auth hold still active for $1,000. Freight pushed the order total above the auth amount.'
+        }
+      },
+      {
+        title: 'ERP voids auth + charges correct total',
+        time: 'Day 0–1 — At fulfillment',
+        icon: '🔄',
+        what: 'ERP voids the original $1,000 auth via transactionVoid (must happen before any partial capture). Then immediately calls orderCreateMandatePayment with autoCapture: true for the full $1,080. This creates a brand-new auth + capture as a single transaction. The void releases the hold; the new charge replaces it.',
+        orderStatus: 'Unfulfilled', financialStatus: 'Paid',
+        api: 'transactionVoid(\n  parentTransactionId: "[auth_txn_id]"\n)\n\norderCreateMandatePayment(\n  id: "gid://shopify/Order/...",\n  mandateId: "gid://shopify/PaymentMandate/...",\n  amount: { amount: 1080.00, currencyCode: USD },\n  idempotencyKey: "unique-key",\n  autoCapture: true\n)',
+        apiNote: '⚠️ Void must happen BEFORE any partial capture. Once an auth has at least one capture, it cannot be voided. Any authorized amounts must be voided before using orderCreateMandatePayment. Source: B2B Field Learnings & Solutions Guide',
+        bank: {
+          balance: '$11,320.00',
+          rows: [
+            { icon: '↩️', title: 'Original auth voided', sub: '$1,000 hold released', amount: '[$1,000.00]', style: 'released' },
+            { icon: '✅', title: 'Acme Wholesale — Order #1042', sub: 'Products + freight — settled', amount: '−$1,080.00', style: 'charge' }
+          ],
+          note: 'Hold released, then single charge for $1,080. Customer sees one clean transaction for the correct total.'
+        }
+      },
+      {
+        title: 'Order fulfilled + complete',
+        time: 'Day 0–1 — Settlement',
+        icon: '✅',
+        what: 'ERP marks order as fulfilled. Payment already collected. Single charge of $1,080 — products + freight combined. Fund validation occurred at checkout, freight was added cleanly, and the customer was charged the correct amount once. All within the 7-day standard fee window.',
+        orderStatus: 'Fulfilled', financialStatus: 'Paid', api: null, apiNote: null,
+        bank: {
+          balance: '$11,320.00',
+          rows: [
+            { icon: '✅', title: 'Acme Wholesale — Order #1042', sub: 'Settled — products + freight', amount: '−$1,080.00', style: 'charge' }
+          ],
+          note: '✅ Fund validation at checkout. ✅ Correct total including freight. ✅ Single charge. ✅ Within 7-day standard fee window (The merchant ships same/next day).'
+        }
+      }
+    ]
+  },
+
+  net: {
+    label: 'Path 3 — Net Terms (Net 30/45/60/90)',
+    subtitle: 'Invoice-based collection — no authorization at any point',
+    color: '#96bf48',
+    dim: 'rgba(150,191,72,0.12)',
+    desc: 'Company Location has Net 30 (or 45/60/90) terms. Card MUST be saved to the location profile when any terms are set. No authorization at checkout — order shows "payment pending." ERP fulfills and adds freight, The merchant sends an invoice, then collects payment via API or admin when terms are due. Customer can also self-pay at any time by clicking "Pay now."',
+    tags: [
+      {label: 'Native Shopify B2B payment terms', highlight: true},
+      {label: 'No auth at checkout — order shows "payment pending"'},
+      {label: 'Card must be saved to location when terms are set'},
+      {label: 'Card vaulting requires Shopify Payments'},
+    ],
+    steps: [
+      {
+        title: 'Customer places order',
+        time: 'Day 0 — Checkout',
+        icon: '🛒',
+        what: 'Customer checks out on the B2B storefront. This Company Location has Net 30 terms. Because terms are set, the card MUST be saved to the location profile. At vaulting, Shopify Payments sends a $0 verification to confirm the card is valid — same as Auth.net CIM. No authorization hold runs. The order shows "payment pending." The customer can pay early at any time by clicking "Pay now" in their account.',
+        orderStatus: 'Unfulfilled', financialStatus: 'Payment pending',
+        api: 'Payment terms: Net 30\nCard vaulted to Company Location (required)',
+        apiNote: 'When any payment terms are set, card must be saved to the profile. No auth transaction created. Order status: "payment pending." Customer can pay early via account portal. Source: B2B Field Learnings & Solutions Guide + help.shopify.com/en/manual/b2b/payment-terms',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '📋', title: 'Acme Wholesale — Net 30', sub: 'No charge — payment due in 30 days', amount: 'No hold', style: 'none' }
+          ],
+          note: 'No hold placed. Balance fully available. Customer has 30 days before payment is due.'
+        }
+      },
+      {
+        title: 'ERP fulfills order + adds freight',
+        time: 'Day 1–14 — Fulfillment',
+        icon: '📦',
+        what: 'ERP receives and fulfills the order. Cartonization runs, freight calculated ($80, capped per business rules). ERP calls the Order Editing API to add the freight line. Order total updates to $1,080. No auth exists to constrain this. ERP marks the order as fulfilled via API.',
+        orderStatus: 'Fulfilled', financialStatus: 'Payment pending',
+        api: 'orderEditBegin → orderEditAddShippingLine\n→ orderEditCommit\n\nfulfillmentCreateV2(...)',
+        apiNote: 'Freight added, order fulfilled. No payment action yet. Source: shopify.dev (Order Editing API)',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '📋', title: 'Acme Wholesale — Net 30', sub: 'Shipped — $1,080 due Day 30', amount: 'No hold', style: 'none' }
+          ],
+          note: 'No change to the customer\'s card. Order fulfilled, payment still pending.'
+        }
+      },
+      {
+        title: 'The merchant sends invoice',
+        time: 'At or after fulfillment',
+        icon: '📄',
+        what: 'Invoices are NOT sent automatically. The merchant sends the invoice via Admin (Orders → Collect payment → Send invoice) or via API (orderInvoiceSend). The invoice includes a "Pay Now" link where the customer can pay with their saved card or a new payment method. ERP can automate this as part of the fulfillment workflow.',
+        orderStatus: 'Fulfilled', financialStatus: 'Payment pending',
+        api: 'orderInvoiceSend(\n  id: "gid://shopify/Order/...",\n  email: {\n    subject: "Invoice — Acme Wholesale",\n    customMessage: "Your order has shipped."\n  }\n)',
+        apiNote: 'Invoices are NOT auto-generated. Must be triggered by merchant or API. Invoice email contains a checkout link for self-service payment. Source: shopify.dev (orderInvoiceSend) + help.shopify.com (deferred payments)',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '📧', title: 'Invoice received', sub: '$1,080 due by Day 30', amount: 'No hold', style: 'none' }
+          ],
+          note: 'Customer receives email with payment link. No hold on funds — trust-based until collection.'
+        }
+      },
+      {
+        title: 'Payment collected',
+        time: 'Day 30 (or early via "Pay now")',
+        icon: '💳',
+        what: 'Three collection paths: (1) API — ERP calls orderCreateMandatePayment with autoCapture: true to charge the vaulted card for $1,080. (2) Admin — The merchant clicks Collect payment → selects vaulted card → Charge. (3) Customer self-service — customer clicks "Pay now" in their account. Payment is never auto-captured when terms expire.',
+        orderStatus: 'Fulfilled', financialStatus: 'Paid',
+        api: 'API (recommended for automation):\norderCreateMandatePayment(\n  id: "gid://shopify/Order/...",\n  mandateId: "gid://shopify/PaymentMandate/...",\n  amount: { amount: 1080.00, currencyCode: USD },\n  idempotencyKey: "unique-key",\n  autoCapture: true\n)\n\nOr: Admin → Collect payment → Charge card\nOr: Customer clicks "Pay now"',
+        apiNote: 'Payment is NOT auto-captured when terms expire. Must be triggered explicitly. Customers can also delete saved cards without risk — the card associated with the order can still be charged. Source: B2B Field Learnings & Solutions Guide',
+        bank: {
+          balance: '$11,320.00',
+          rows: [
+            { icon: '✅', title: 'Acme Wholesale — Invoice #1042', sub: 'Net 30 — settled', amount: '−$1,080.00', style: 'charge' }
+          ],
+          note: 'Single charge for the correct amount. Products + freight in one transaction.'
+        }
+      },
+      {
+        title: 'Overdue handling (if unpaid)',
+        time: 'Day 30+ — Dunning',
+        icon: '🔔',
+        what: 'If unpaid by Day 30, the order status changes to "Overdue." The merchant can configure up to 5 payment reminders in Settings → Notifications (up to 30 days after due date). Shopify Flow automates reminders via the "Payment schedule is due" trigger. The merchant can still charge the vaulted card at any time — the customer can also still pay via their account.',
+        orderStatus: 'Fulfilled', financialStatus: 'Overdue',
+        api: 'Shopify Flow:\n  Trigger: "Payment schedule is due"\n  Action: "Send payment reminder"\n\nAdmin: Settings → Notifications →\n  Payment reminders (up to 5, up to 30 days after due)',
+        apiNote: 'Customer can still pay after due date. Order shows "Overdue" in their account. The merchant can charge vaulted card any time via API or admin. Source: help.shopify.com (payment reminders + Shopify Flow)',
+        bank: {
+          balance: '$12,400.00',
+          rows: [
+            { icon: '⏰', title: 'Acme Wholesale — Overdue', sub: 'Payment reminder sent', amount: 'Unpaid', style: 'none' }
+          ],
+          note: '⚠️ No fund validation at order creation — same risk as Path 1. Reminders + ability to charge saved card reduce late payment risk.'
+        }
+      }
+    ]
+  }
+};
+
+let currentPath = 'vault';
+let currentStep = 0;
+
+function selectPath(pathKey) {
+  currentPath = pathKey;
+  currentStep = 0;
+  const p = paths[pathKey];
+
+  // update CSS var for active color
+  document.documentElement.style.setProperty('--active-color', p.color);
+  document.documentElement.style.setProperty('--active-dim', p.dim);
+
+  // update tabs
+  document.querySelectorAll('.path-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.path === pathKey);
+  });
+
+  renderTimeline();
+  renderStep();
+  updateNav();
+}
+
+function renderTimeline() {
+  const p = paths[currentPath];
+  const el = document.getElementById('timelineSteps');
+  el.innerHTML = p.steps.map((s, i) => `
+    <div class="t-step ${i < currentStep ? 'done' : ''} ${i === currentStep ? 'active' : ''}" onclick="goToStep(${i})">
+      <div class="t-step-left">
+        <div class="t-dot">${i < currentStep ? '' : i + 1}</div>
+        ${i < p.steps.length - 1 ? `<div class="t-connector ${i < currentStep ? 'done' : ''}"></div>` : ''}
+      </div>
+      <div class="t-content">
+        <div class="t-title">${s.title}</div>
+        <div class="t-time">${s.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStep() {
+  const p = paths[currentPath];
+  const s = p.steps[currentStep];
+
+  // System panel
+  const statusColor = {
+    'Authorized': 'blue', 'Paid': 'green', 'Pending': 'muted',
+    'Payment pending': 'muted', 'Unauthorized': 'orange',
+    'Open': 'muted', 'Unfulfilled': 'muted', 'Fulfilled': 'green',
+    'Voided': 'orange', 'Overdue': 'red', 'Overdue → Paid': 'green',
+    'Partially Paid → Paid': 'green'
+  };
+  const sysHtml = `
+    <div class="fade-in">
+      <div class="step-header">
+        <div class="step-icon" style="background:${p.dim}">${s.icon}</div>
+        <div>
+          <div class="step-title">${s.title}</div>
+          <div class="step-desc">${s.what}</div>
+        </div>
+      </div>
+      <div class="status-row">
+        <div class="chip ${statusColor[s.orderStatus] || 'muted'}">
+          <span class="chip-label">Order</span>${s.orderStatus}
+        </div>
+        <div class="chip ${statusColor[s.financialStatus] || 'muted'}">
+          <span class="chip-label">Payment</span>${s.financialStatus}
+        </div>
+      </div>
+      ${s.api ? `
+        <div class="api-block">
+          <div class="api-label">API Call</div>
+          <code>${s.api}</code>
+          ${s.apiNote ? `<div class="api-note">${s.apiNote}</div>` : ''}
+        </div>
+      ` : s.apiNote ? `
+        <div class="api-block">
+          <div class="api-label">Notes</div>
+          <div class="api-note">${s.apiNote}</div>
+        </div>
+      ` : `<div class="no-api">No API call at this step.</div>`}
+    </div>
+  `;
+
+  // Bank panel
+  const b = s.bank;
+  const bankHtml = `
+    <div class="fade-in">
+      <div class="bank-statement">
+        <div class="bank-header">
+          <div>
+            <div class="bank-name">Customer Bank Account</div>
+            <div class="bank-balance-label">Available balance</div>
+          </div>
+          <div class="bank-balance">${b.balance}</div>
+        </div>
+        <div class="bank-rows">
+          ${b.rows.length ? b.rows.map(r => `
+            <div class="bank-row">
+              <div class="bank-row-left">
+                <div class="bank-row-icon">${r.icon}</div>
+                <div>
+                  <div class="bank-row-title">${r.title}</div>
+                  <div class="bank-row-sub">${r.sub}</div>
+                </div>
+              </div>
+              <div class="bank-row-amount ${r.style}">${r.amount}</div>
+            </div>
+          `).join('') : `<div class="bank-empty">No recent activity</div>`}
+        </div>
+        ${b.note ? `<div class="bank-note">${b.note}</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('systemContent').innerHTML = sysHtml;
+  document.getElementById('bankContent').innerHTML = bankHtml;
+}
+
+function updateNav() {
+  const p = paths[currentPath];
+  document.getElementById('prevBtn').disabled = currentStep === 0;
+  document.getElementById('nextBtn').disabled = currentStep === p.steps.length - 1;
+  document.getElementById('navProgress').innerHTML = `
+    <strong>${currentPath === 'vault' ? 'Path 1' : currentPath === 'auth' ? 'Path 2' : 'Path 3'}</strong>
+    &nbsp;·&nbsp; Step <strong>${currentStep + 1}</strong> of <strong>${p.steps.length}</strong>
+  `;
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.textContent = currentStep === p.steps.length - 1 ? '✓ Complete' : 'Next Step →';
+  nextBtn.disabled = currentStep === p.steps.length - 1;
+}
+
+function nextStep() {
+  const p = paths[currentPath];
+  if (currentStep < p.steps.length - 1) {
+    currentStep++;
+    renderTimeline();
+    renderStep();
+    updateNav();
+  }
+}
+
+function prevStep() {
+  if (currentStep > 0) {
+    currentStep--;
+    renderTimeline();
+    renderStep();
+    updateNav();
+  }
+}
+
+function goToStep(i) {
+  currentStep = i;
+  renderTimeline();
+  renderStep();
+  updateNav();
+}
+
+// Init
+selectPath('vault');
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

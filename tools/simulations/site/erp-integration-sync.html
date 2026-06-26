@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Integration Sync — Shopify ↔ ERP</title>
+<style>
+  :root {
+    --green: #008060;
+    --green-light: #5eead4;
+    --green-dark: #004c3f;
+    --erp-color: #d4760a;
+    --erp-light: #f0c674;
+    --blue: #7c9eff;
+    --red: #ff6b6b;
+    --purple: #c084fc;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
+    --pink: #f472b6;
+    --lime: #a3e635;
+    --amber: #fbbf24;
+    --surface: #1e1e2e;
+    --surface-raised: #262637;
+    --bg: #13131f;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --border: #333;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .header-left h1 { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .header-left p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+  .header-badges { display: flex; gap: 8px; }
+  .header-badge {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 6px;
+  }
+  .badge-realtime { background: rgba(94,234,212,.12); color: var(--green-light); border: 1px solid rgba(94,234,212,.25); }
+  .badge-se { background: rgba(124,158,255,.12); color: var(--blue); border: 1px solid rgba(124,158,255,.25); }
+
+  .main { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+
+  .panel {
+    flex: 1; display: flex; flex-direction: column; min-width: 0;
+    border-right: 1px solid var(--border);
+  }
+  .panel:last-child { border-right: none; }
+
+  .panel-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+
+  .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; }
+  .panel-shopify .panel-title { color: var(--green-light); }
+  .panel-middleware .panel-title { color: var(--purple); }
+  .panel-erp .panel-title { color: var(--erp-light); }
+
+  .panel-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #4ade80;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+  .panel-body { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #444 transparent; }
+
+  .inv-model { padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .inv-model-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;
+  }
+
+  .qty-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .qty-cell { background: var(--surface-raised); border-radius: 8px; padding: 8px; text-align: center; }
+  .qty-cell-wide { grid-column: span 3; background: var(--surface); border: 1px solid var(--border); }
+
+  .qty-name {
+    font-size: 9px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 3px;
+  }
+  .qty-val {
+    font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;
+    font-family: var(--mono); line-height: 1.1;
+  }
+  .qty-val-available { color: var(--green-light); }
+  .qty-val-committed { color: var(--erp-light); }
+  .qty-val-on-hand { color: var(--blue); }
+  .qty-val-erp { color: var(--erp-light); }
+
+  .qty-formula { font-size: 11px; font-family: var(--mono); color: var(--text-muted); padding: 4px 0; }
+  .qty-formula span { font-weight: 700; }
+  .qty-formula .f-avail { color: var(--green-light); }
+  .qty-formula .f-on-hand { color: var(--blue); }
+  .qty-formula .f-committed { color: var(--erp-light); }
+
+  .location-tag {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10px;
+    color: var(--text-muted); background: var(--surface-raised);
+    padding: 3px 8px; border-radius: 4px; margin-top: 6px;
+  }
+  .location-tag svg { width: 11px; height: 11px; fill: var(--text-muted); }
+
+  .console { font-family: var(--mono); font-size: 11.5px; line-height: 1.6; padding: 6px 0; }
+
+  .console-entry {
+    padding: 2px 16px; opacity: 0; transform: translateY(-4px);
+    animation: fadeIn 0.3s forwards; display: flex; align-items: flex-start;
+    gap: 6px; white-space: nowrap;
+  }
+  .console-entry:hover { background: rgba(255,255,255,.03); }
+
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .ce-time { color: #555; flex-shrink: 0; min-width: 65px; font-size: 10.5px; }
+
+  .ce-tag {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 1px 5px; border-radius: 3px; flex-shrink: 0; min-width: 64px; text-align: center;
+  }
+  .ce-tag-webhook { background: rgba(94,234,212,.15); color: var(--green-light); }
+  .ce-tag-graphql { background: rgba(124,158,255,.15); color: var(--blue); }
+  .ce-tag-rest { background: rgba(192,132,252,.15); color: var(--purple); }
+  .ce-tag-event { background: rgba(240,198,116,.15); color: var(--erp-light); }
+  .ce-tag-system { background: rgba(255,255,255,.08); color: var(--text-muted); }
+  .ce-tag-error { background: rgba(255,107,107,.15); color: var(--red); }
+  .ce-tag-fulfill { background: rgba(244,114,182,.15); color: var(--pink); }
+  .ce-tag-payment { background: rgba(163,230,53,.15); color: var(--lime); }
+  .ce-tag-auth { background: rgba(251,191,36,.15); color: var(--amber); }
+  .ce-tag-return { background: rgba(34,211,238,.15); color: var(--cyan); }
+
+  .ce-msg { color: #ccc; }
+  .ce-msg .hl-green { color: var(--green-light); }
+  .ce-msg .hl-blue { color: var(--blue); }
+  .ce-msg .hl-yellow { color: var(--erp-light); }
+  .ce-msg .hl-purple { color: var(--purple); }
+  .ce-msg .hl-red { color: var(--red); }
+  .ce-msg .hl-orange { color: var(--orange); }
+  .ce-msg .hl-cyan { color: var(--cyan); }
+  .ce-msg .hl-pink { color: var(--pink); }
+  .ce-msg .hl-lime { color: var(--lime); }
+  .ce-msg .hl-amber { color: var(--amber); }
+  .ce-msg .hl-muted { color: #666; }
+  .ce-msg .hl-white { color: #fff; font-weight: 600; }
+
+  .ce-status { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+  .ce-status-200 { background: rgba(94,234,212,.15); color: var(--green-light); }
+  .ce-status-201 { background: rgba(94,234,212,.15); color: var(--green-light); }
+  .ce-status-429 { background: rgba(255,107,107,.15); color: var(--red); }
+
+  .payload-block {
+    margin: 2px 16px 4px 87px; background: var(--surface-raised);
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+    font-family: var(--mono); font-size: 10.5px; line-height: 1.45; color: #aaa;
+    opacity: 0; animation: fadeIn 0.4s 0.1s forwards; overflow-x: auto; max-width: calc(100% - 103px);
+  }
+  .payload-block .key { color: var(--purple); }
+  .payload-block .str { color: var(--green-light); }
+  .payload-block .num { color: var(--erp-light); }
+  .payload-block .bool { color: var(--blue); }
+
+  .panel-middleware { max-width: 300px; min-width: 260px; }
+
+  .pipeline-visual {
+    padding: 14px 16px; display: flex; flex-direction: column;
+    align-items: center; gap: 0; flex-shrink: 0; border-bottom: 1px solid var(--border);
+  }
+
+  .track-container { display: flex; gap: 24px; width: 100%; justify-content: center; }
+  .track { display: flex; flex-direction: column; align-items: center; gap: 0; flex: 1; max-width: 100px; }
+  .track-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; margin-bottom: 8px; text-align: center; line-height: 1.3;
+  }
+  .track-label-right { color: var(--green-light); }
+  .track-label-left { color: var(--blue); }
+
+  .track-pipe {
+    width: 3px; height: 200px; background: #2a2a3e; border-radius: 2px;
+    position: relative; overflow: hidden;
+  }
+
+  .pv-node {
+    background: var(--surface-raised); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; text-align: center; width: 100%;
+    transition: border-color .3s, box-shadow .3s; margin-bottom: 4px;
+  }
+  .pv-node.active-green { border-color: var(--green-light); box-shadow: 0 0 14px rgba(94,234,212,.15); }
+  .pv-node.active-blue { border-color: var(--blue); box-shadow: 0 0 14px rgba(124,158,255,.15); }
+  .pv-node.active-yellow { border-color: var(--erp-light); box-shadow: 0 0 14px rgba(240,198,116,.15); }
+  .pv-node.active-orange { border-color: var(--orange); box-shadow: 0 0 14px rgba(251,146,60,.15); }
+  .pv-node.active-cyan { border-color: var(--cyan); box-shadow: 0 0 14px rgba(34,211,238,.15); }
+  .pv-node.active-pink { border-color: var(--pink); box-shadow: 0 0 14px rgba(244,114,182,.15); }
+  .pv-node.active-lime { border-color: var(--lime); box-shadow: 0 0 14px rgba(163,230,53,.15); }
+  .pv-node.active-amber { border-color: var(--amber); box-shadow: 0 0 14px rgba(251,191,36,.15); }
+
+  .pv-node-label { font-size: 12px; font-weight: 700; color: #fff; }
+  .pv-node-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+  .pv-connector { width: 2px; height: 10px; background: var(--border); }
+
+  .track-packet {
+    position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    left: 50%; transform: translateX(-50%); opacity: 0;
+  }
+  .track-packet-green { background: var(--green-light); box-shadow: 0 0 8px rgba(94,234,212,.5); }
+  .track-packet-blue { background: var(--blue); box-shadow: 0 0 8px rgba(124,158,255,.5); }
+  .track-packet-orange { background: var(--orange); box-shadow: 0 0 8px rgba(251,146,60,.5); }
+  .track-packet-cyan { background: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,.5); }
+  .track-packet-pink { background: var(--pink); box-shadow: 0 0 8px rgba(244,114,182,.5); }
+  .track-packet-lime { background: var(--lime); box-shadow: 0 0 8px rgba(163,230,53,.5); }
+  .track-packet-amber { background: var(--amber); box-shadow: 0 0 8px rgba(251,191,36,.5); }
+
+  @keyframes tpDown {
+    0% { top: -10px; opacity: 0; }
+    12% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { top: 200px; opacity: 0; }
+  }
+  @keyframes tpUp {
+    0% { bottom: -10px; opacity: 0; }
+    12% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { bottom: 200px; opacity: 0; }
+  }
+
+  .metrics-bar { padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+  .metric { background: var(--surface-raised); border-radius: 6px; padding: 6px 8px; }
+  .metric-label {
+    font-size: 8px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-muted);
+  }
+  .metric-val {
+    font-size: 15px; font-weight: 800; font-family: var(--mono); color: #fff; margin-top: 1px;
+  }
+  .metric-val-green { color: var(--green-light); }
+
+  .legend-bar {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+    padding: 7px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .ld-green { background: var(--green-light); }
+  .ld-amber { background: var(--amber); }
+  .ld-lime { background: var(--lime); }
+  .ld-pink { background: var(--pink); }
+  .ld-blue { background: var(--blue); }
+  .ld-cyan { background: var(--cyan); }
+
+  .controls {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 28px; border-top: 1px solid var(--border); flex-shrink: 0;
+    background: var(--surface);
+  }
+  .controls-left { display: flex; align-items: center; gap: 12px; }
+
+  .status-text {
+    font-size: 12px; color: var(--text-muted); font-family: var(--mono); min-width: 360px;
+  }
+  .status-text .hl { font-weight: 600; }
+  .status-text .hl-green { color: var(--green-light); }
+  .status-text .hl-blue { color: var(--blue); }
+  .status-text .hl-amber { color: var(--amber); }
+  .status-text .hl-lime { color: var(--lime); }
+  .status-text .hl-pink { color: var(--pink); }
+  .status-text .hl-cyan { color: var(--cyan); }
+
+  .controls-right { display: flex; gap: 10px; }
+
+  .btn {
+    padding: 7px 18px; border: 1px solid var(--border); background: var(--surface-raised);
+    color: #ccc; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .btn:hover { background: #333; color: #fff; }
+  .btn:disabled { opacity: .3; cursor: default; }
+  .btn-primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+
+  .inv-flash { animation: flash 0.35s ease; }
+  @keyframes flash { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+  .speed-control { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .speed-control select {
+    background: var(--surface-raised); color: #ccc; border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: inherit; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Full Integration Sync — Order Lifecycle</h1>
+    <p>Order · Auth · Capture · Fulfillment · Inventory &nbsp;·&nbsp; Shopify Admin API ↔ Middleware ↔ ERP</p>
+  </div>
+  <div class="header-badges">
+    <div class="header-badge badge-realtime">Real-Time</div>
+    <div class="header-badge badge-se">SE Demo</div>
+  </div>
+</header>
+
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-dot ld-green"></div> Order creation</div>
+  <div class="legend-item"><div class="legend-dot ld-amber"></div> Payment auth</div>
+  <div class="legend-item"><div class="legend-dot ld-pink"></div> Fulfillment</div>
+  <div class="legend-item"><div class="legend-dot ld-lime"></div> Payment capture</div>
+  <div class="legend-item"><div class="legend-dot ld-blue"></div> Inventory sync</div>
+  <div class="legend-item"><div class="legend-dot ld-cyan"></div> Return / restock</div>
+</div>
+
+<div class="main">
+  <!-- Shopify Panel -->
+  <div class="panel panel-shopify">
+    <div class="panel-header">
+      <div class="panel-title">Shopify (Storefront + Admin)</div>
+      <div class="panel-status"><div class="status-dot"></div> Admin API 2025-01</div>
+    </div>
+    <div class="inv-model">
+      <div class="inv-model-title">InventoryLevel — Primary Location</div>
+      <div class="qty-grid">
+        <div class="qty-cell">
+          <div class="qty-name">on_hand</div>
+          <div class="qty-val qty-val-on-hand" id="s-on-hand">100</div>
+        </div>
+        <div class="qty-cell">
+          <div class="qty-name">committed</div>
+          <div class="qty-val qty-val-committed" id="s-committed">0</div>
+        </div>
+        <div class="qty-cell">
+          <div class="qty-name">available</div>
+          <div class="qty-val qty-val-available" id="s-available">100</div>
+        </div>
+        <div class="qty-cell qty-cell-wide">
+          <div class="qty-formula">
+            <span class="f-avail">available</span> = <span class="f-on-hand">on_hand</span> − <span class="f-committed">committed</span> − reserved
+          </div>
+        </div>
+      </div>
+      <div class="location-tag">
+        <svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 00-6-6zm0 8a2 2 0 110-4 2 2 0 010 4z"/></svg>
+        gid://shopify/Location/7281903 · US-East Warehouse
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="console" id="shopify-console"></div>
+    </div>
+  </div>
+
+  <!-- Middleware Panel -->
+  <div class="panel panel-middleware">
+    <div class="panel-header">
+      <div class="panel-title">Integration Layer</div>
+      <div class="panel-status"><div class="status-dot"></div> Middleware</div>
+    </div>
+    <div class="pipeline-visual">
+      <div class="pv-node" id="node-shopify">
+        <div class="pv-node-label">Shopify</div>
+        <div class="pv-node-sub">Webhook subscriber</div>
+      </div>
+      <div class="pv-connector"></div>
+
+      <div class="track-container">
+        <div class="track">
+          <div class="track-label track-label-right">To ERP ▼</div>
+          <div class="track-pipe" id="pipe-down"></div>
+        </div>
+        <div class="track">
+          <div class="track-label track-label-left">▲ To Shopify</div>
+          <div class="track-pipe" id="pipe-up"></div>
+        </div>
+      </div>
+
+      <div class="pv-connector"></div>
+      <div class="pv-node" id="node-middleware">
+        <div class="pv-node-label">iPaaS / Middleware</div>
+        <div class="pv-node-sub">Transform · Map · Route</div>
+      </div>
+      <div class="pv-connector"></div>
+
+      <div class="track-container">
+        <div class="track">
+          <div class="track-label track-label-right">Mapped ▼</div>
+          <div class="track-pipe" id="pipe-erp-down"></div>
+        </div>
+        <div class="track">
+          <div class="track-label track-label-left">▲ Events</div>
+          <div class="track-pipe" id="pipe-erp-up"></div>
+        </div>
+      </div>
+
+      <div class="pv-connector"></div>
+      <div class="pv-node" id="node-erp">
+        <div class="pv-node-label">ERP</div>
+        <div class="pv-node-sub">Sales Orders · Inventory</div>
+      </div>
+    </div>
+
+    <div class="metrics-bar">
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Orders</div>
+          <div class="metric-val" id="m-orders">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Fulfilled</div>
+          <div class="metric-val" id="m-fulfill">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Payments</div>
+          <div class="metric-val" id="m-payments">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Inv Syncs</div>
+          <div class="metric-val" id="m-inv">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">API Calls</div>
+          <div class="metric-val" id="m-api">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Avg Latency</div>
+          <div class="metric-val metric-val-green" id="m-latency">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ERP Panel -->
+  <div class="panel panel-erp">
+    <div class="panel-header">
+      <div class="panel-title">ERP (Source of Truth: Inventory)</div>
+      <div class="panel-status"><div class="status-dot"></div> API v2</div>
+    </div>
+    <div class="inv-model">
+      <div class="inv-model-title">Item Record — Inventory Detail</div>
+      <div class="qty-grid">
+        <div class="qty-cell">
+          <div class="qty-name">On Hand</div>
+          <div class="qty-val qty-val-erp" id="erp-on-hand">100</div>
+        </div>
+        <div class="qty-cell">
+          <div class="qty-name">Committed</div>
+          <div class="qty-val qty-val-committed" id="erp-committed">0</div>
+        </div>
+        <div class="qty-cell">
+          <div class="qty-name">Available</div>
+          <div class="qty-val qty-val-erp" id="erp-available">100</div>
+        </div>
+      </div>
+      <div class="location-tag">
+        <svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 00-6-6zm0 8a2 2 0 110-4 2 2 0 010 4z"/></svg>
+        Location ID: WH-001 · US-East Warehouse
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="console" id="erp-console"></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="controls-left">
+    <div class="status-text" id="status">Ready — press Start to begin full lifecycle simulation</div>
+    <div class="speed-control">
+      <label for="speed">Speed:</label>
+      <select id="speed">
+        <option value="1.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="0.6">1.5×</option>
+        <option value="0.35">3×</option>
+      </select>
+    </div>
+  </div>
+  <div class="controls-right">
+    <button class="btn btn-primary" id="startBtn" onclick="startDemo()">Start Simulation</button>
+    <button class="btn" id="pauseBtn" onclick="togglePause()" disabled>Pause</button>
+    <button class="btn" id="resetBtn" onclick="resetDemo()" disabled>Reset</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const S = {
+  shopify: { onHand: 100, committed: 0, available: 100 },
+  erp: { onHand: 100, committed: 0, available: 100 },
+  orders: 0, fulfillments: 0, payments: 0, invSyncs: 0, apiCalls: 0,
+  orderNum: 0,
+  placedOrders: [],
+  latencies: [], running: false, paused: false, pauseResolve: null, timeouts: []
+};
+
+const $ = id => document.getElementById(id);
+const el = {
+  sOnHand: $('s-on-hand'), sCommitted: $('s-committed'), sAvailable: $('s-available'),
+  erpOnHand: $('erp-on-hand'), erpCommitted: $('erp-committed'), erpAvailable: $('erp-available'),
+  sConsole: $('shopify-console'), erpConsole: $('erp-console'),
+  mOrders: $('m-orders'), mFulfill: $('m-fulfill'), mPayments: $('m-payments'),
+  mInv: $('m-inv'), mApi: $('m-api'), mLatency: $('m-latency'),
+  status: $('status'),
+};
+
+function speedMult() { return parseFloat($('speed').value); }
+
+function delay(ms) {
+  return new Promise(r => {
+    const t = setTimeout(() => {
+      if (S.paused) { S.pauseResolve = r; } else { r(); }
+    }, ms * speedMult());
+    S.timeouts.push(t);
+  });
+}
+
+function togglePause() {
+  if (!S.running) return;
+  S.paused = !S.paused;
+  const btn = $('pauseBtn');
+  if (S.paused) {
+    btn.textContent = 'Resume'; btn.classList.add('btn-primary');
+  } else {
+    btn.textContent = 'Pause'; btn.classList.remove('btn-primary');
+    if (S.pauseResolve) { S.pauseResolve(); S.pauseResolve = null; }
+  }
+}
+
+function ts() {
+  const d = new Date();
+  return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+}
+
+function flash(e) { e.classList.remove('inv-flash'); void e.offsetWidth; e.classList.add('inv-flash'); }
+
+function updateShopify() {
+  S.shopify.available = S.shopify.onHand - S.shopify.committed;
+  el.sOnHand.textContent = S.shopify.onHand;
+  el.sCommitted.textContent = S.shopify.committed;
+  el.sAvailable.textContent = S.shopify.available;
+  flash(el.sAvailable);
+}
+
+function updateErp() {
+  S.erp.available = S.erp.onHand - S.erp.committed;
+  el.erpOnHand.textContent = S.erp.onHand;
+  el.erpCommitted.textContent = S.erp.committed;
+  el.erpAvailable.textContent = S.erp.available;
+  flash(el.erpAvailable);
+}
+
+function updateMetrics() {
+  el.mOrders.textContent = S.orders;
+  el.mFulfill.textContent = S.fulfillments;
+  el.mPayments.textContent = S.payments;
+  el.mInv.textContent = S.invSyncs;
+  el.mApi.textContent = S.apiCalls;
+  if (S.latencies.length) {
+    el.mLatency.textContent = Math.round(S.latencies.reduce((a,b) => a+b) / S.latencies.length) + 'ms';
+  }
+}
+
+function addApi(lat) { S.apiCalls++; if (lat) S.latencies.push(lat); updateMetrics(); }
+
+function logEntry(container, tag, tagClass, msg, payload) {
+  const entry = document.createElement('div');
+  entry.className = 'console-entry';
+  entry.innerHTML = `<span class="ce-time">${ts()}</span><span class="ce-tag ${tagClass}">${tag}</span><span class="ce-msg">${msg}</span>`;
+  container.prepend(entry);
+  if (payload) {
+    const block = document.createElement('div');
+    block.className = 'payload-block';
+    block.innerHTML = payload;
+    container.prepend(block);
+    container.prepend(entry);
+  }
+  container.scrollTop = 0;
+}
+
+const allNodeClasses = ['active-green','active-blue','active-yellow','active-orange','active-cyan','active-pink','active-lime','active-amber'];
+function hlNode(id, cls) { $(id).classList.add(cls); }
+function clearNodes() {
+  ['node-shopify','node-middleware','node-erp'].forEach(id => {
+    allNodeClasses.forEach(c => $(id).classList.remove(c));
+  });
+}
+
+function sendPacket(pipeId, direction, color) {
+  const pipe = $(pipeId);
+  const p = document.createElement('div');
+  p.className = 'track-packet track-packet-' + color;
+  pipe.appendChild(p);
+  p.style.animation = (direction === 'down' ? 'tpDown' : 'tpUp') + ' 0.7s ease forwards';
+  setTimeout(() => p.remove(), 800);
+}
+
+// Send data DOWN: Shopify → Middleware → ERP
+async function flowDown(color) {
+  sendPacket('pipe-down', 'down', color);
+  await delay(300);
+  hlNode('node-middleware', 'active-' + color);
+  await delay(300);
+  sendPacket('pipe-erp-down', 'down', color);
+  await delay(300);
+  hlNode('node-erp', 'active-' + (color === 'green' || color === 'lime' || color === 'amber' ? 'yellow' : color));
+}
+
+// Send data UP: ERP → Middleware → Shopify
+async function flowUp(color) {
+  sendPacket('pipe-erp-up', 'up', color);
+  await delay(300);
+  hlNode('node-middleware', 'active-' + color);
+  await delay(300);
+  sendPacket('pipe-up', 'up', color);
+  await delay(300);
+  hlNode('node-shopify', 'active-' + color);
+}
+
+function setStatus(html) { el.status.innerHTML = html; }
+
+function fmtPayload(obj, indent) {
+  indent = indent || 0;
+  const pad = '  '.repeat(indent), pad1 = '  '.repeat(indent + 1);
+  if (Array.isArray(obj)) {
+    return '[\n' + obj.map(v => pad1 + fmtVal(v, indent+1)).join(',\n') + '\n' + pad + ']';
+  }
+  const lines = Object.entries(obj).map(([k,v]) =>
+    pad1 + `<span class="key">"${k}"</span>: ${fmtVal(v, indent+1)}`
+  );
+  return '{\n' + lines.join(',\n') + '\n' + pad + '}';
+}
+
+function fmtVal(v, indent) {
+  indent = indent || 0;
+  if (v === null) return '<span class="bool">null</span>';
+  if (typeof v === 'boolean') return `<span class="bool">${v}</span>`;
+  if (typeof v === 'number') return `<span class="num">${v}</span>`;
+  if (typeof v === 'string') return `<span class="str">"${v}"</span>`;
+  if (typeof v === 'object') return fmtPayload(v, indent);
+  return String(v);
+}
+
+function randAuth() { return 'auth_' + Math.random().toString(36).slice(2, 14); }
+function randTracking() { return '1Z' + Math.random().toString(36).slice(2, 10).toUpperCase(); }
+
+// ═══════════════════════════════════════
+// OPERATIONS
+// ═══════════════════════════════════════
+
+// ── 1. ORDER CREATION: Customer checkout → Shopify webhook → middleware → ERP Sales Order ──
+async function createOrder(qty, sku) {
+  S.orderNum++;
+  S.orders++;
+  sku = sku || 'SKU-4821';
+  const name = '#ORD-10' + String(S.orderNum).padStart(2, '0');
+  const orderId = 5200000000 + S.orderNum;
+  const authCode = randAuth();
+  const amount = (qty * 24.99).toFixed(2);
+  const lat1 = 35 + Math.floor(Math.random() * 50);
+
+  S.placedOrders.push({ name, qty, sku, orderId, amount: parseFloat(amount), authCode, fulfilled: false, captured: false });
+
+  // Shopify: order created + inventory committed
+  hlNode('node-shopify', 'active-green');
+  S.shopify.committed += qty;
+  updateShopify();
+  addApi(lat1);
+
+  logEntry(el.sConsole, 'WEBHOOK', 'ce-tag-webhook',
+    `<span class="hl-green">orders/create</span> → ${name} &nbsp;<span class="hl-muted">${qty} × ${sku} · $${amount}</span>`,
+    fmtPayload({
+      topic: "orders/create",
+      order_id: orderId,
+      name: name,
+      financial_status: "authorized",
+      line_items: [{ sku: sku, quantity: qty, price: "24.99", requires_shipping: true }],
+      inventory_behaviour: "decrement_obeying_policy",
+      payment_gateway_names: ["shopify_payments"]
+    })
+  );
+
+  logEntry(el.sConsole, 'SYSTEM', 'ce-tag-system',
+    `committed <span class="hl-yellow">+${qty}</span> → available = <span class="hl-green">${S.shopify.available}</span> &nbsp;<span class="hl-muted">(${lat1}ms)</span>`
+  );
+
+  // Flow down to ERP
+  await delay(400);
+  await flowDown('green');
+
+  const lat2 = 80 + Math.floor(Math.random() * 120);
+  addApi(lat2);
+
+  S.erp.committed += qty;
+  updateErp();
+
+  logEntry(el.erpConsole, 'EVENT', 'ce-tag-event',
+    `<span class="hl-yellow">SalesOrder.create</span> → ${name} mapped &nbsp;<span class="hl-muted">${qty} × ${sku} · $${amount}</span> &nbsp;<span class="hl-muted">(${lat2}ms)</span>`,
+    fmtPayload({
+      record_type: "sales_order",
+      external_id: name,
+      order_id: orderId,
+      status: "pending_fulfillment",
+      line_items: [{ sku: sku, quantity: qty, unit_price: 24.99 }],
+      payment_status: "authorized",
+      authorization_code: authCode
+    })
+  );
+
+  logEntry(el.erpConsole, 'SYSTEM', 'ce-tag-system',
+    `committed <span class="hl-yellow">+${qty}</span> → available = <span class="hl-yellow">${S.erp.available}</span>`
+  );
+
+  await delay(250);
+  clearNodes();
+  updateMetrics();
+  return name;
+}
+
+// ── 2. PAYMENT AUTHORIZATION: Checkout authorizes card → webhook shows auth details ──
+async function paymentAuth(orderName) {
+  const order = S.placedOrders.find(o => o.name === orderName);
+  if (!order) return;
+
+  hlNode('node-shopify', 'active-amber');
+  const lat = 45 + Math.floor(Math.random() * 40);
+  addApi(lat);
+
+  logEntry(el.sConsole, 'AUTH', 'ce-tag-auth',
+    `<span class="hl-amber">payment.authorization</span> → ${orderName} &nbsp;<span class="hl-muted">$${order.amount.toFixed(2)} authorized</span>`,
+    fmtPayload({
+      topic: "orders/updated",
+      order_id: order.orderId,
+      name: orderName,
+      financial_status: "authorized",
+      total_price: order.amount.toFixed(2),
+      transactions: [{
+        kind: "authorization",
+        gateway: "shopify_payments",
+        amount: order.amount.toFixed(2),
+        status: "success",
+        authorization: order.authCode,
+        created_at: new Date().toISOString()
+      }]
+    })
+  );
+
+  logEntry(el.sConsole, 'SYSTEM', 'ce-tag-system',
+    `${orderName} → financial_status: <span class="hl-amber">authorized</span> · funds held on card &nbsp;<span class="hl-muted">(${lat}ms)</span>`
+  );
+
+  // Flow auth status down to ERP
+  await delay(400);
+  await flowDown('amber');
+
+  const lat2 = 55 + Math.floor(Math.random() * 60);
+  addApi(lat2);
+
+  logEntry(el.erpConsole, 'EVENT', 'ce-tag-event',
+    `<span class="hl-yellow">PaymentAuth.received</span> → ${orderName} &nbsp;<span class="hl-muted">$${order.amount.toFixed(2)} · ${order.authCode}</span>`,
+    fmtPayload({
+      record_type: "payment_authorization",
+      order_ref: orderName,
+      amount: order.amount,
+      authorization_code: order.authCode,
+      gateway: "shopify_payments",
+      status: "authorized",
+      expiry: "7 days"
+    })
+  );
+
+  logEntry(el.erpConsole, 'SYSTEM', 'ce-tag-system',
+    `Sales Order ${orderName} → payment status: <span class="hl-amber">authorized</span> · ready to fulfill`
+  );
+
+  await delay(250);
+  clearNodes();
+}
+
+// ── 3. FULFILLMENT: ERP warehouse ships → tracking + status flows to Shopify ──
+async function fulfillOrder(orderName, carrier) {
+  const order = S.placedOrders.find(o => o.name === orderName && !o.fulfilled);
+  if (!order) return;
+  order.fulfilled = true;
+  S.fulfillments++;
+  carrier = carrier || 'UPS';
+  const tracking = randTracking();
+  const qty = order.qty;
+  const fulfillmentOrderId = 8800000 + S.fulfillments;
+
+  hlNode('node-erp', 'active-pink');
+  S.erp.onHand -= qty;
+  S.erp.committed -= qty;
+  updateErp();
+
+  logEntry(el.erpConsole, 'FULFILL', 'ce-tag-fulfill',
+    `<span class="hl-pink">Fulfillment.create</span> → ${orderName} &nbsp;<span class="hl-muted">${qty} units · ${carrier} · ${tracking}</span>`,
+    fmtPayload({
+      record_type: "fulfillment",
+      order_ref: orderName,
+      status: "shipped",
+      packages: [{ tracking_number: tracking, carrier: carrier, weight_kg: (qty * 0.23).toFixed(2) }],
+      shipped_date: new Date().toISOString().slice(0, 10)
+    })
+  );
+
+  logEntry(el.erpConsole, 'SYSTEM', 'ce-tag-system',
+    `on_hand <span class="hl-red">−${qty}</span>, committed <span class="hl-red">−${qty}</span> → available = <span class="hl-yellow">${S.erp.available}</span>`
+  );
+
+  // Flow fulfillment up to Shopify
+  await delay(400);
+  await flowUp('pink');
+
+  const lat = 90 + Math.floor(Math.random() * 80);
+  addApi(lat);
+
+  S.shopify.onHand -= qty;
+  S.shopify.committed -= qty;
+  updateShopify();
+
+  logEntry(el.sConsole, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">POST</span> → <span class="hl-white">fulfillmentCreateV2</span> &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat}ms</span>`,
+    fmtPayload({
+      fulfillment: {
+        lineItemsByFulfillmentOrder: [{
+          fulfillmentOrderId: "gid://shopify/FulfillmentOrder/" + fulfillmentOrderId
+        }],
+        trackingInfo: {
+          company: carrier,
+          number: tracking,
+          url: "https://www." + carrier.toLowerCase() + ".com/track?num=" + tracking
+        },
+        notifyCustomer: true
+      }
+    })
+  );
+
+  logEntry(el.sConsole, 'FULFILL', 'ce-tag-fulfill',
+    `${orderName} → <span class="hl-pink">fulfilled</span> · ${carrier} ${tracking} · customer notified`
+  );
+
+  logEntry(el.sConsole, 'SYSTEM', 'ce-tag-system',
+    `Inventory updated → on_hand=<span class="hl-blue">${S.shopify.onHand}</span> available=<span class="hl-green">${S.shopify.available}</span>`
+  );
+
+  await delay(250);
+  clearNodes();
+  updateMetrics();
+}
+
+// ── 4. PAYMENT CAPTURE: After fulfillment, capture the authorized payment ──
+async function capturePayment(orderName) {
+  const order = S.placedOrders.find(o => o.name === orderName && !o.captured);
+  if (!order) return;
+  order.captured = true;
+  S.payments++;
+
+  hlNode('node-shopify', 'active-lime');
+
+  const lat1 = 40 + Math.floor(Math.random() * 50);
+  addApi(lat1);
+
+  logEntry(el.sConsole, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">POST</span> → <span class="hl-white">orderCapture</span> &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat1}ms</span>`,
+    fmtPayload({
+      input: {
+        id: "gid://shopify/Order/" + order.orderId,
+        parentTransactionId: "gid://shopify/OrderTransaction/" + (7700000 + S.payments),
+        amount: order.amount.toFixed(2)
+      }
+    })
+  );
+
+  logEntry(el.sConsole, 'WEBHOOK', 'ce-tag-webhook',
+    `<span class="hl-green">orders/paid</span> → ${orderName} &nbsp;<span class="hl-muted">$${order.amount.toFixed(2)} captured via Shopify Payments</span>`,
+    fmtPayload({
+      topic: "orders/paid",
+      order_id: order.orderId,
+      name: orderName,
+      financial_status: "paid",
+      payment_gateway_names: ["shopify_payments"],
+      transactions: [{
+        kind: "capture",
+        gateway: "shopify_payments",
+        amount: order.amount.toFixed(2),
+        status: "success",
+        authorization: order.authCode,
+        parent_id: 7700000 + S.payments
+      }]
+    })
+  );
+
+  logEntry(el.sConsole, 'PAYMENT', 'ce-tag-payment',
+    `${orderName} → <span class="hl-lime">captured</span> $${order.amount.toFixed(2)} · auth ${order.authCode}`
+  );
+
+  // Flow capture status down to ERP
+  await delay(400);
+  await flowDown('lime');
+
+  const lat2 = 70 + Math.floor(Math.random() * 60);
+  addApi(lat2);
+
+  const invoiceNum = 'INV-' + (30000 + S.payments);
+
+  logEntry(el.erpConsole, 'PAYMENT', 'ce-tag-payment',
+    `<span class="hl-lime">Payment.create</span> → $${order.amount.toFixed(2)} applied to ${invoiceNum} &nbsp;<span class="hl-muted">(${lat2}ms)</span>`,
+    fmtPayload({
+      record_type: "customer_payment",
+      invoice_ref: invoiceNum,
+      order_ref: orderName,
+      amount: order.amount,
+      payment_method: "Credit Card",
+      gateway: "shopify_payments",
+      capture_ref: order.authCode,
+      status: "deposited"
+    })
+  );
+
+  logEntry(el.erpConsole, 'SYSTEM', 'ce-tag-system',
+    `Sales Order ${orderName} → payment: <span class="hl-lime">fully captured</span> · invoice ${invoiceNum} closed`
+  );
+
+  await delay(250);
+  clearNodes();
+  updateMetrics();
+}
+
+// ── 5. INVENTORY RESTOCK: PO received in ERP → push to Shopify ──
+async function inventoryRestock(qty, poNum) {
+  hlNode('node-erp', 'active-yellow');
+  S.erp.onHand += qty;
+  updateErp();
+
+  logEntry(el.erpConsole, 'EVENT', 'ce-tag-event',
+    `<span class="hl-yellow">ItemReceipt.create</span> → PO #${poNum} received: <span class="hl-yellow">+${qty}</span> units`,
+    fmtPayload({
+      record_type: "item_receipt",
+      purchase_order: poNum,
+      items: [{ sku: "SKU-4821", quantity_received: qty, location: "WH-001" }],
+      received_date: new Date().toISOString().slice(0, 10)
+    })
+  );
+
+  logEntry(el.erpConsole, 'SYSTEM', 'ce-tag-system',
+    `on_hand <span class="hl-green">+${qty}</span> → available = <span class="hl-yellow">${S.erp.available}</span>`
+  );
+
+  // Flow inventory update up to Shopify
+  await delay(500);
+  await flowUp('blue');
+
+  const lat = 80 + Math.floor(Math.random() * 70);
+  addApi(lat);
+  S.invSyncs++;
+
+  S.shopify.onHand += qty;
+  updateShopify();
+
+  logEntry(el.sConsole, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">POST</span> → <span class="hl-white">inventoryAdjustQuantities</span> &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat}ms</span>`,
+    fmtPayload({
+      input: {
+        reason: "received",
+        name: "on_hand",
+        referenceDocumentUri: "erp://po/" + poNum,
+        changes: [{
+          delta: qty,
+          inventoryItemId: "gid://shopify/InventoryItem/4482019",
+          locationId: "gid://shopify/Location/7281903"
+        }]
+      }
+    })
+  );
+
+  logEntry(el.sConsole, 'SYSTEM', 'ce-tag-system',
+    `PO receipt synced → on_hand=<span class="hl-blue">${S.shopify.onHand}</span> available=<span class="hl-green">${S.shopify.available}</span>`
+  );
+
+  await delay(250);
+  clearNodes();
+  updateMetrics();
+}
+
+// ── 6. RETURN: Customer return processed in ERP → inventory restocked to Shopify ──
+async function processReturn(qty, orderRef) {
+  hlNode('node-erp', 'active-cyan');
+  S.erp.onHand += qty;
+  updateErp();
+
+  logEntry(el.erpConsole, 'RETURN', 'ce-tag-return',
+    `<span class="hl-cyan">ReturnAuth.receive</span> → ${orderRef} &nbsp;<span class="hl-cyan">+${qty}</span> units restocked`,
+    fmtPayload({
+      record_type: "return_authorization",
+      original_order: orderRef,
+      items: [{ sku: "SKU-4821", quantity_returned: qty, condition: "resellable" }],
+      restock: true
+    })
+  );
+
+  logEntry(el.erpConsole, 'SYSTEM', 'ce-tag-system',
+    `on_hand <span class="hl-green">+${qty}</span> → available = <span class="hl-yellow">${S.erp.available}</span>`
+  );
+
+  // Flow return/restock up to Shopify
+  await delay(500);
+  await flowUp('cyan');
+
+  const lat = 70 + Math.floor(Math.random() * 60);
+  addApi(lat);
+  S.invSyncs++;
+
+  S.shopify.onHand += qty;
+  updateShopify();
+
+  logEntry(el.sConsole, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">POST</span> → <span class="hl-white">inventoryAdjustQuantities</span> reason=<span class="hl-cyan">"return"</span> &nbsp;<span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat}ms</span>`,
+    fmtPayload({
+      input: {
+        reason: "return",
+        name: "on_hand",
+        referenceDocumentUri: "erp://return/" + orderRef,
+        changes: [{
+          delta: qty,
+          inventoryItemId: "gid://shopify/InventoryItem/4482019",
+          locationId: "gid://shopify/Location/7281903"
+        }]
+      }
+    })
+  );
+
+  logEntry(el.sConsole, 'SYSTEM', 'ce-tag-system',
+    `Return restocked → on_hand=<span class="hl-blue">${S.shopify.onHand}</span> available=<span class="hl-green">${S.shopify.available}</span>`
+  );
+
+  await delay(250);
+  clearNodes();
+  updateMetrics();
+}
+
+// ── 7. RATE LIMIT: Burst hits API throttle → retry ──
+async function simulateRateLimit() {
+  hlNode('node-shopify', 'active-green');
+  addApi(200);
+
+  logEntry(el.sConsole, 'ERROR', 'ce-tag-error',
+    `<span class="hl-red">429 Too Many Requests</span> — throttled &nbsp;<span class="hl-muted">Retry-After: 1.0s · cost: 42/40 points</span>`
+  );
+
+  logEntry(el.sConsole, 'SYSTEM', 'ce-tag-system',
+    `<span class="hl-muted">Middleware backoff → exponential retry in 1.0s...</span>`
+  );
+
+  await delay(600);
+
+  const lat = 85 + Math.floor(Math.random() * 50);
+  addApi(lat);
+
+  logEntry(el.sConsole, 'GRAPHQL', 'ce-tag-graphql',
+    `<span class="hl-blue">Retry succeeded</span> → <span class="ce-status ce-status-200">200</span> &nbsp;<span class="hl-muted">${lat}ms · cost restored: 38/40</span>`
+  );
+
+  await delay(300);
+  clearNodes();
+}
+
+// ═══════════════════════════════════════
+// SIMULATION SCRIPT
+// ═══════════════════════════════════════
+async function startDemo() {
+  if (S.running) return;
+  S.running = true;
+  $('startBtn').disabled = true;
+  $('pauseBtn').disabled = false;
+  $('resetBtn').disabled = true;
+
+  setStatus('Initializing — both systems at <span class="hl hl-green">100</span> units, webhooks active');
+  await delay(1800);
+
+  // ── PHASE 1: Order Creation ──
+  setStatus('Phase 1: <span class="hl hl-green">Order Creation</span> — customers checkout, orders flow to ERP');
+  await delay(1400);
+
+  await createOrder(5);
+  await delay(800);
+  await createOrder(3);
+  await delay(800);
+  await createOrder(8);
+  await delay(600);
+
+  setStatus('3 orders created — committed=<span class="hl hl-green">' + S.shopify.committed + '</span> in both systems');
+  await delay(2000);
+
+  // ── PHASE 2: Payment Authorization ──
+  setStatus('Phase 2: <span class="hl hl-amber">Payment Authorization</span> — card funds held at checkout');
+  await delay(1400);
+
+  await paymentAuth('#ORD-1001');
+  await delay(800);
+  await paymentAuth('#ORD-1002');
+  await delay(800);
+  await paymentAuth('#ORD-1003');
+  await delay(600);
+
+  setStatus('All 3 orders authorized — funds held, ready to fulfill');
+  await delay(2000);
+
+  // ── PHASE 3: Fulfillment ──
+  setStatus('Phase 3: <span class="hl hl-pink">Fulfillment</span> — warehouse ships, tracking flows to Shopify');
+  await delay(1600);
+
+  await fulfillOrder('#ORD-1001', 'UPS');
+  await delay(900);
+  await fulfillOrder('#ORD-1002', 'FedEx');
+  await delay(900);
+  await fulfillOrder('#ORD-1003', 'USPS');
+  await delay(600);
+
+  setStatus('3 orders fulfilled — tracking numbers pushed to Shopify, customers notified');
+  await delay(2000);
+
+  // ── PHASE 4: Payment Capture ──
+  setStatus('Phase 4: <span class="hl hl-lime">Payment Capture</span> — post-fulfillment, auth converted to capture');
+  await delay(1600);
+
+  await capturePayment('#ORD-1001');
+  await delay(900);
+  await capturePayment('#ORD-1002');
+  await delay(900);
+  await capturePayment('#ORD-1003');
+  await delay(600);
+
+  setStatus('All payments captured — $' + S.placedOrders.reduce((s,o) => s + o.amount, 0).toFixed(2) + ' settled');
+  await delay(2000);
+
+  // ── PHASE 5: Rate Limit ──
+  setStatus('Phase 5: Burst sync hits <span class="hl hl-blue">API rate limit</span> — middleware handles backoff');
+  await delay(1200);
+
+  await simulateRateLimit();
+  await delay(1200);
+
+  // ── PHASE 6: Inventory Restock ──
+  setStatus('Phase 6: <span class="hl hl-blue">Inventory Restock</span> — PO received in warehouse, pushed to Shopify');
+  await delay(1400);
+
+  await inventoryRestock(50, 'PO-4412');
+  await delay(1200);
+
+  setStatus('50 units restocked → available=<span class="hl hl-green">' + S.shopify.available + '</span> across both systems');
+  await delay(2000);
+
+  // ── PHASE 7: New order with full rapid lifecycle ──
+  setStatus('Phase 7: <span class="hl hl-green">Rapid lifecycle</span> — order → auth → fulfill → capture in sequence');
+  await delay(1400);
+
+  await createOrder(2);
+  await delay(600);
+  await paymentAuth('#ORD-1004');
+  await delay(600);
+  await fulfillOrder('#ORD-1004', 'FedEx');
+  await delay(600);
+  await capturePayment('#ORD-1004');
+  await delay(1000);
+
+  setStatus('#ORD-1004 complete lifecycle in ' + Math.round(S.latencies.slice(-6).reduce((a,b) => a+b) / 6) + 'ms avg');
+  await delay(2000);
+
+  // ── PHASE 8: Return ──
+  setStatus('Phase 8: <span class="hl hl-cyan">Customer Return</span> — inventory restocked in both systems');
+  await delay(1400);
+
+  await processReturn(3, '#ORD-1001');
+  await delay(1200);
+
+  setStatus('Return processed — 3 units restocked → available=<span class="hl hl-green">' + S.shopify.available + '</span>');
+  await delay(2000);
+
+  // ── PHASE 9: Second restock ──
+  setStatus('Phase 9: Second PO receipt — <span class="hl hl-blue">+25 units</span> from supplier');
+  await delay(1400);
+
+  await inventoryRestock(25, 'PO-4413');
+  await delay(1200);
+
+  // ── Summary ──
+  setStatus(
+    'Complete — ' +
+    '<span class="hl hl-green">' + S.orders + '</span> orders, ' +
+    '<span class="hl hl-amber">' + S.orders + '</span> auth, ' +
+    '<span class="hl hl-pink">' + S.fulfillments + '</span> fulfilled, ' +
+    '<span class="hl hl-lime">' + S.payments + '</span> captured, ' +
+    '<span class="hl hl-blue">' + S.invSyncs + '</span> inv syncs, ' +
+    '<span class="hl hl-green">' + S.apiCalls + '</span> API calls'
+  );
+
+  $('pauseBtn').disabled = true;
+  $('resetBtn').disabled = false;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && S.running) { e.preventDefault(); togglePause(); }
+});
+
+function resetDemo() {
+  S.timeouts.forEach(t => clearTimeout(t));
+  S.timeouts = [];
+  S.running = false;
+  S.paused = false;
+  S.pauseResolve = null;
+  S.shopify = { onHand: 100, committed: 0, available: 100 };
+  S.erp = { onHand: 100, committed: 0, available: 100 };
+  S.orderNum = 0;
+  S.orders = 0; S.fulfillments = 0; S.payments = 0; S.invSyncs = 0; S.apiCalls = 0;
+  S.placedOrders = [];
+  S.latencies = [];
+
+  updateShopify(); updateErp(); updateMetrics();
+  el.mLatency.textContent = '—';
+  el.sConsole.innerHTML = ''; el.erpConsole.innerHTML = '';
+  clearNodes();
+  setStatus('Ready — press Start to begin full lifecycle simulation');
+  $('startBtn').disabled = false;
+  $('pauseBtn').disabled = true;
+  $('pauseBtn').textContent = 'Pause';
+  $('pauseBtn').classList.remove('btn-primary');
+  $('resetBtn').disabled = true;
+}
+</script>
+
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

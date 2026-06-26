@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite ↔ iPaaS ↔ Shopify B2B Integration Flow</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --surface: #121a2e;
+    --surface-2: #18233a;
+    --surface-3: #1e2b45;
+    --border: rgba(148, 163, 184, 0.18);
+    --border-strong: rgba(148, 163, 184, 0.34);
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --muted-2: #64748b;
+    --netsuite: #60a5fa;
+    --netsuite-dark: #1d4ed8;
+    --ipaas: #ec4899;
+    --ipaas-2: #a78bfa;
+    --shopify: #95bf47;
+    --shopify-2: #34d399;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+    --green: #34d399;
+    --red: #f87171;
+    --mono: "SF Mono", "Fira Code", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 12% -10%, rgba(96, 165, 250, 0.18), transparent 32rem),
+      radial-gradient(circle at 88% -8%, rgba(149, 191, 71, 0.16), transparent 30rem),
+      linear-gradient(180deg, #0b1020 0%, #090d18 100%);
+  }
+
+  button { font: inherit; }
+
+  .app-shell {
+    width: min(1440px, calc(100% - 28px));
+    margin: 0 auto;
+    padding: 16px 0 22px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 14px;
+  }
+
+  .title-block h1 {
+    color: #fff;
+    font-size: clamp(1.35rem, 2.4vw, 2rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+  }
+
+  .title-block p {
+    color: var(--muted);
+    font-size: 0.86rem;
+    margin-top: 0.35rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    color: #fce7f3;
+    background: rgba(236, 72, 153, 0.12);
+    border: 1px solid rgba(236, 72, 153, 0.28);
+    border-radius: 999px;
+    padding: 0.48rem 0.72rem;
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .control-btn {
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.045);
+    border-radius: 999px;
+    padding: 0.48rem 0.7rem;
+    font-size: 0.74rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .control-btn:hover {
+    color: #fff;
+    border-color: var(--border-strong);
+    background: rgba(255, 255, 255, 0.075);
+  }
+
+  .control-btn.active {
+    color: #0b170a;
+    border-color: transparent;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+  }
+
+  .progress {
+    height: 3px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.12);
+    margin-bottom: 14px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--netsuite), var(--ipaas), var(--shopify));
+    transition: width 0.45s ease;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(310px, 0.95fr) minmax(280px, 1fr);
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .column {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(18, 26, 46, 0.9), rgba(12, 18, 32, 0.78));
+    overflow: hidden;
+    min-height: 690px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  }
+
+  .column-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .system-logo {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    color: #fff;
+    font-size: 0.86rem;
+    font-weight: 950;
+    flex-shrink: 0;
+  }
+
+  .netsuite-col .system-logo { background: linear-gradient(135deg, #1d4ed8, #60a5fa); }
+  .ipaas-col .system-logo { background: linear-gradient(135deg, #db2777, #a78bfa); }
+  .shopify-col .system-logo { color: #0b170a; background: linear-gradient(135deg, #b6e36a, #34d399); }
+
+  .system-title h2 {
+    color: #fff;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .system-title p {
+    color: var(--muted);
+    font-size: 0.74rem;
+    margin-top: 0.18rem;
+  }
+
+  .column-body {
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    flex: 1;
+  }
+
+  .module {
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  }
+
+  .module.active {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.07), 0 16px 36px rgba(0, 0, 0, 0.18);
+  }
+
+  .netsuite-col .module.active { border-color: rgba(96, 165, 250, 0.42); background: rgba(96, 165, 250, 0.06); }
+  .ipaas-col .module.active { border-color: rgba(236, 72, 153, 0.42); background: rgba(236, 72, 153, 0.06); }
+  .shopify-col .module.active { border-color: rgba(149, 191, 71, 0.42); background: rgba(149, 191, 71, 0.06); }
+
+  .module-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.11);
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .module-head strong {
+    color: #e5edf8;
+    font-size: 0.78rem;
+  }
+
+  .module-head span {
+    color: var(--muted-2);
+    font-size: 0.66rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+  }
+
+  .module-content { padding: 11px 12px; }
+
+  .inventory-table {
+    display: grid;
+    gap: 6px;
+  }
+
+  .inv-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 8px 9px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.64);
+    border: 1px solid rgba(148, 163, 184, 0.08);
+  }
+
+  .inv-sku {
+    min-width: 0;
+  }
+
+  .inv-sku strong {
+    display: block;
+    color: #dbeafe;
+    font-size: 0.74rem;
+    line-height: 1.15;
+  }
+
+  .inv-sku span {
+    display: block;
+    color: var(--muted-2);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    margin-top: 2px;
+  }
+
+  .qty {
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 900;
+    min-width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .netsuite-col .qty { color: #93c5fd; }
+  .shopify-col .qty { color: #86efac; }
+
+  .delta {
+    min-width: 32px;
+    text-align: right;
+    color: var(--muted-2);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 850;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .delta.show { opacity: 1; }
+  .delta.down { color: var(--red); }
+  .delta.up { color: #93c5fd; }
+
+  .records {
+    display: grid;
+    gap: 8px;
+  }
+
+  .record-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 9px;
+    border: 1px solid rgba(148, 163, 184, 0.08);
+    background: rgba(15, 23, 42, 0.62);
+    border-radius: 12px;
+  }
+
+  .record-row strong {
+    display: block;
+    color: #e5edf8;
+    font-size: 0.74rem;
+  }
+
+  .record-row span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.66rem;
+    margin-top: 2px;
+  }
+
+  .record-pill {
+    flex-shrink: 0;
+    color: #dbeafe;
+    background: rgba(96, 165, 250, 0.11);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 999px;
+    padding: 0.24rem 0.45rem;
+    font-size: 0.64rem;
+    font-weight: 850;
+  }
+
+  .shopify-col .record-pill {
+    color: #d9f99d;
+    background: rgba(149, 191, 71, 0.11);
+    border-color: rgba(149, 191, 71, 0.2);
+  }
+
+  .order-card {
+    display: grid;
+    gap: 8px;
+  }
+
+  .order-row {
+    opacity: 0.32;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 9px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.08);
+    background: rgba(15, 23, 42, 0.62);
+    transition: all 0.25s ease;
+  }
+
+  .order-row.visible {
+    opacity: 1;
+    border-color: rgba(52, 211, 153, 0.24);
+    background: rgba(52, 211, 153, 0.055);
+  }
+
+  .order-row strong {
+    display: block;
+    color: #e5edf8;
+    font-size: 0.76rem;
+  }
+
+  .order-row span {
+    color: var(--muted);
+    font-size: 0.66rem;
+  }
+
+  .order-status {
+    border-radius: 999px;
+    padding: 0.25rem 0.48rem;
+    font-size: 0.64rem;
+    font-weight: 900;
+    white-space: nowrap;
+    color: #fef3c7;
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.22);
+  }
+
+  .order-status.done {
+    color: #d9f99d;
+    background: rgba(149, 191, 71, 0.12);
+    border-color: rgba(149, 191, 71, 0.24);
+  }
+
+  .stage-card {
+    border: 1px solid rgba(236, 72, 153, 0.22);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(236, 72, 153, 0.11), rgba(167, 139, 250, 0.07));
+    overflow: hidden;
+  }
+
+  .stage-top {
+    padding: 13px 14px;
+    border-bottom: 1px solid rgba(236, 72, 153, 0.12);
+  }
+
+  .stage-label {
+    color: #f9a8d4;
+    font-size: 0.66rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .stage-title {
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.25;
+    margin-top: 0.38rem;
+    min-height: 2.5rem;
+  }
+
+  .stage-copy {
+    color: #cbd5e1;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    margin-top: 0.35rem;
+    min-height: 2.2rem;
+  }
+
+  .stage-dots {
+    display: flex;
+    gap: 5px;
+    margin-top: 12px;
+  }
+
+  .stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    transition: all 0.25s ease;
+  }
+
+  .stage-dot.done { background: var(--green); }
+  .stage-dot.active { background: var(--ipaas); box-shadow: 0 0 14px rgba(236, 72, 153, 0.7); }
+
+  .flow-lanes {
+    position: relative;
+    padding: 28px 24px 12px;
+    display: grid;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .traffic-label {
+    position: absolute;
+    top: 9px;
+    z-index: 1;
+    color: var(--muted-2);
+    font-size: 0.55rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .traffic-label.ns { left: 22px; color: rgba(147, 197, 253, 0.75); }
+  .traffic-label.shop { right: 22px; color: rgba(217, 249, 157, 0.75); }
+
+  .traffic-rail {
+    position: absolute;
+    top: 28px;
+    bottom: 12px;
+    width: 2px;
+    border-radius: 999px;
+    opacity: 0.65;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .traffic-rail.ns {
+    left: 12px;
+    background: linear-gradient(180deg, transparent, rgba(96, 165, 250, 0.55), transparent);
+  }
+
+  .traffic-rail.shop {
+    right: 12px;
+    background: linear-gradient(180deg, transparent, rgba(149, 191, 71, 0.55), transparent);
+  }
+
+  .api-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .api-dot.ns {
+    left: 9px;
+    background: #60a5fa;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.95), 0 0 26px rgba(96, 165, 250, 0.28);
+  }
+
+  .api-dot.shop {
+    right: 9px;
+    background: #95bf47;
+    box-shadow: 0 0 12px rgba(149, 191, 71, 0.95), 0 0 26px rgba(149, 191, 71, 0.28);
+  }
+
+  .api-dot.down { animation: apiDotDown 1.05s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .api-dot.up { animation: apiDotUp 1.05s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  @keyframes apiDotDown {
+    0% { top: 28px; opacity: 0; transform: scale(0.65); }
+    14% { opacity: 1; transform: scale(1); }
+    84% { opacity: 1; }
+    100% { top: calc(100% - 20px); opacity: 0; transform: scale(0.65); }
+  }
+
+  @keyframes apiDotUp {
+    0% { top: calc(100% - 20px); opacity: 0; transform: scale(0.65); }
+    14% { opacity: 1; transform: scale(1); }
+    84% { opacity: 1; }
+    100% { top: 28px; opacity: 0; transform: scale(0.65); }
+  }
+
+  .lane {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    background: rgba(15, 23, 42, 0.65);
+    opacity: 0.45;
+    transition: all 0.25s ease;
+  }
+
+  .lane.active, .lane.done {
+    opacity: 1;
+  }
+
+  .lane.active {
+    border-color: rgba(236, 72, 153, 0.38);
+    background: rgba(236, 72, 153, 0.075);
+  }
+
+  .lane.done {
+    border-color: rgba(52, 211, 153, 0.22);
+    background: rgba(52, 211, 153, 0.045);
+  }
+
+  .lane-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: #fff;
+    background: linear-gradient(135deg, #db2777, #a78bfa);
+    font-size: 0.72rem;
+    font-weight: 950;
+  }
+
+  .lane strong {
+    display: block;
+    color: #fff;
+    font-size: 0.78rem;
+  }
+
+  .lane span {
+    color: var(--muted);
+    font-size: 0.66rem;
+  }
+
+  .lane-status {
+    color: var(--muted-2);
+    font-size: 0.64rem;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  .lane.done .lane-status { color: #86efac; }
+  .lane.active .lane-status { color: #f9a8d4; }
+
+  .payload {
+    margin: 0 12px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.13);
+    border-radius: 16px;
+    background: #0d1117;
+    overflow: hidden;
+  }
+
+  .payload-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 9px 11px;
+    background: rgba(255, 255, 255, 0.035);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .payload-title {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .dots { display: flex; gap: 5px; }
+  .dots i { display: block; width: 9px; height: 9px; border-radius: 50%; background: #ef4444; }
+  .dots i:nth-child(2) { background: #f59e0b; }
+  .dots i:nth-child(3) { background: #22c55e; }
+
+  pre {
+    min-height: 184px;
+    max-height: 184px;
+    overflow: auto;
+    padding: 11px;
+    color: #c9d1d9;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    line-height: 1.48;
+    white-space: pre-wrap;
+  }
+
+  pre::-webkit-scrollbar { width: 5px; }
+  pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+
+  .json-key { color: #d2a8ff; }
+  .json-str { color: #a5d6ff; }
+  .json-num { color: #79c0ff; }
+  .json-bool { color: #ff7b72; }
+
+  .console-card {
+    margin-top: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 20px;
+    background: rgba(8, 13, 24, 0.86);
+    overflow: hidden;
+  }
+
+  .console-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 13px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .rec {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .console-body {
+    height: 160px;
+    overflow: auto;
+    padding: 8px 0;
+    font-family: var(--mono);
+  }
+
+  .console-body::-webkit-scrollbar { width: 5px; }
+  .console-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+
+  .log-entry {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 3px 13px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: all 0.25s ease;
+    white-space: nowrap;
+  }
+
+  .log-entry.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .log-time { color: #4b5563; font-size: 0.64rem; min-width: 70px; }
+  .log-tag {
+    min-width: 58px;
+    text-align: center;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 0.6rem;
+    font-weight: 900;
+  }
+  .tag-ns { color: #bfdbfe; background: rgba(96, 165, 250, 0.12); }
+  .tag-ip { color: #f9a8d4; background: rgba(236, 72, 153, 0.12); }
+  .tag-sh { color: #d9f99d; background: rgba(149, 191, 71, 0.12); }
+  .log-msg { color: #cbd5e1; font-size: 0.68rem; overflow: hidden; text-overflow: ellipsis; }
+
+  @media (max-width: 1120px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .column { min-height: auto; }
+    header { align-items: flex-start; flex-direction: column; }
+    .header-actions { justify-content: flex-start; }
+  }
+
+  @media (max-width: 560px) {
+    .app-shell { width: min(100% - 20px, 1440px); }
+    .record-row, .order-row { grid-template-columns: 1fr; align-items: start; }
+    .lane { grid-template-columns: 38px minmax(0, 1fr); }
+    .lane-status { grid-column: 2; }
+  }
+</style>
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <div class="title-block">
+        <h1>NetSuite ↔ iPaaS ↔ Shopify B2B Integration Flow</h1>
+        <p>Aligned system view for inventory, B2B companies, price lists, order sync, fulfillment, and payment updates.</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Celigo / Boomi / Workato pattern</span>
+        <button class="control-btn active" id="playPauseBtn">Pause</button>
+        <button class="control-btn" id="replayBtn">Replay</button>
+      </div>
+    </header>
+
+    <div class="progress" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+    <section class="main-grid" aria-label="NetSuite to iPaaS to Shopify B2B integration simulation">
+      <article class="column netsuite-col">
+        <div class="column-header">
+          <div class="system-logo">NS</div>
+          <div class="system-title">
+            <h2>NetSuite</h2>
+            <p>ERP system of record</p>
+          </div>
+        </div>
+        <div class="column-body">
+          <div class="module" id="nsInventoryModule">
+            <div class="module-head"><strong>Inventory / Item Master</strong><span>ERP owned</span></div>
+            <div class="module-content inventory-table" id="nsInventory"></div>
+          </div>
+
+          <div class="module" id="nsRecordsModule">
+            <div class="module-head"><strong>Customers + Pricing</strong><span>master data</span></div>
+            <div class="module-content records">
+              <div class="record-row"><div><strong>Acme Industrial</strong><span>Customer · Net 30 · Northeast location</span></div><div class="record-pill">Customer</div></div>
+              <div class="record-row"><div><strong>Dealer Catalog A</strong><span>Contract pricing · volume breaks · restricted SKUs</span></div><div class="record-pill">Price list</div></div>
+              <div class="record-row"><div><strong>Warehouse: East DC</strong><span>Available-to-sell is calculated before publish</span></div><div class="record-pill">Location</div></div>
+            </div>
+          </div>
+
+          <div class="module" id="nsOrderModule">
+            <div class="module-head"><strong>Sales Order + Fulfillment</strong><span>downstream</span></div>
+            <div class="module-content order-card">
+              <div class="order-row" id="nsSalesOrder"><div><strong>SO-10482</strong><span>Created from Shopify B2B order #B2B-1009</span></div><div class="order-status" id="nsOrderStatus">waiting</div></div>
+              <div class="order-row" id="nsFulfillment"><div><strong>Fulfillment IF-7781</strong><span>Carrier + tracking pushed back through iPaaS</span></div><div class="order-status" id="nsFulfillStatus">waiting</div></div>
+              <div class="order-row" id="nsInvoice"><div><strong>Invoice INV-3321</strong><span>Payment captured / terms reconciled to AR</span></div><div class="order-status" id="nsInvoiceStatus">waiting</div></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="column ipaas-col">
+        <div class="column-header">
+          <div class="system-logo">IP</div>
+          <div class="system-title">
+            <h2>iPaaS Middleware</h2>
+            <p>Mapping, orchestration, retries</p>
+          </div>
+        </div>
+        <div class="column-body">
+          <div class="stage-card">
+            <div class="stage-top">
+              <div class="stage-label">Current stage</div>
+              <div class="stage-title" id="stageTitle">Initializing sync</div>
+              <div class="stage-copy" id="stageCopy">Preparing the B2B integration canvas.</div>
+              <div class="stage-dots" id="stageDots"></div>
+            </div>
+            <div class="flow-lanes" id="flowLanes"></div>
+            <div class="payload">
+              <div class="payload-head">
+                <div class="dots"><i></i><i></i><i></i></div>
+                <div class="payload-title" id="payloadTitle">payload.json</div>
+              </div>
+              <pre id="payloadBlock"></pre>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="column shopify-col">
+        <div class="column-header">
+          <div class="system-logo">S</div>
+          <div class="system-title">
+            <h2>Shopify Plus B2B</h2>
+            <p>Buyer-facing commerce channel</p>
+          </div>
+        </div>
+        <div class="column-body">
+          <div class="module" id="shInventoryModule">
+            <div class="module-head"><strong>Shopify Inventory</strong><span>available to sell</span></div>
+            <div class="module-content inventory-table" id="shInventory"></div>
+          </div>
+
+          <div class="module" id="shB2BModule">
+            <div class="module-head"><strong>Companies + Catalogs</strong><span>B2B config</span></div>
+            <div class="module-content records">
+              <div class="record-row"><div><strong>Acme Industrial</strong><span>Company + location created from NetSuite customer</span></div><div class="record-pill" id="companyPill">pending</div></div>
+              <div class="record-row"><div><strong>Dealer Catalog A</strong><span>Assigned price list, terms, and SKU restrictions</span></div><div class="record-pill" id="catalogPill">pending</div></div>
+              <div class="record-row"><div><strong>East DC Location</strong><span>Inventory location mapped for fulfillment promises</span></div><div class="record-pill" id="locationPill">pending</div></div>
+            </div>
+          </div>
+
+          <div class="module" id="shOrderModule">
+            <div class="module-head"><strong>B2B Order + Buyer View</strong><span>Shopify owned</span></div>
+            <div class="module-content order-card">
+              <div class="order-row" id="shOrder"><div><strong>#B2B-1009</strong><span>PO-44721 · Acme Industrial · Dealer Catalog A</span></div><div class="order-status" id="shOrderStatus">waiting</div></div>
+              <div class="order-row" id="shFulfillment"><div><strong>Tracking 1Z8932...</strong><span>Fulfillment update from NetSuite visible to buyer</span></div><div class="order-status" id="shFulfillStatus">waiting</div></div>
+              <div class="order-row" id="shPayment"><div><strong>Payment / Terms</strong><span>Captured payment or terms status remains tied to order</span></div><div class="order-status" id="shPaymentStatus">waiting</div></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="console-card" aria-label="API activity log">
+      <div class="console-head"><span class="rec"></span> API activity log · NetSuite RESTlet + iPaaS + Shopify Admin API</div>
+      <div class="console-body" id="consoleBody"></div>
+    </section>
+  </main>
+
+<script>
+const initialInventory = [
+  { sku: 'BOLT-100', name: 'Titanium Bolt Kit', ns: 420, sh: 0 },
+  { sku: 'PUMP-22', name: 'Hydraulic Pump', ns: 88, sh: 0 },
+  { sku: 'VALVE-7', name: 'Pressure Valve', ns: 156, sh: 0 }
+];
+
+const steps = [
+  {
+    title: 'NetSuite publishes B2B master data',
+    copy: 'Inventory, customer records, price lists, terms, and location data are extracted from NetSuite as the system of record.',
+    lane: 0,
+    active: ['nsInventoryModule', 'nsRecordsModule'],
+    payloadTitle: 'netsuite-export.json',
+    payload: {
+      source: 'NetSuite',
+      event: 'scheduled_export',
+      objects: ['items', 'inventory_levels', 'customers', 'price_levels', 'locations'],
+      customer: 'Acme Industrial',
+      terms: 'Net 30'
+    },
+    logs: [
+      ['NS', 'GET /restlet/items?updated_since=15m → 200'],
+      ['NS', 'GET /restlet/customers/acme-industrial → 200']
+    ]
+  },
+  {
+    title: 'iPaaS maps ERP records to Shopify B2B objects',
+    copy: 'Celigo transforms NetSuite customers into Shopify Companies, price levels into catalogs, and locations into inventory mappings.',
+    lane: 1,
+    active: ['nsRecordsModule'],
+    payloadTitle: 'mapping-rules.json',
+    payload: {
+      customer_to_company: 'NetSuite Customer → Shopify Company',
+      subsidiary_to_location: 'Northeast Subsidiary → Acme / East DC',
+      price_level_to_catalog: 'Dealer A → Dealer Catalog A',
+      inventory_rule: 'on_hand - committed - buffer'
+    },
+    logs: [
+      ['IP', 'Transform customer → company/location mapping'],
+      ['IP', 'Map price_level=Dealer A → catalog_gid=7891']
+    ]
+  },
+  {
+    title: 'Shopify receives companies, catalogs, and inventory',
+    copy: 'The B2B store is populated with company access, assigned catalogs, terms, and available-to-sell quantities.',
+    lane: 2,
+    active: ['shInventoryModule', 'shB2BModule'],
+    syncInventory: true,
+    activateB2B: true,
+    payloadTitle: 'shopify-admin-graphql.json',
+    payload: {
+      mutation: 'companyCreate + catalogContextUpdate + inventorySetQuantities',
+      company: 'Acme Industrial',
+      catalog: 'Dealer Catalog A',
+      inventory_policy: 'publish available-to-sell only'
+    },
+    logs: [
+      ['SH', 'mutation companyCreate(company: Acme Industrial) → 200'],
+      ['SH', 'mutation inventorySetQuantities(location: East DC) → 200']
+    ]
+  },
+  {
+    title: 'B2B buyer places an order in Shopify',
+    copy: 'The buyer checks out through Shopify B2B using company-specific pricing, PO number, and assigned terms.',
+    lane: 3,
+    active: ['shOrderModule', 'shInventoryModule'],
+    orderPlaced: true,
+    payloadTitle: 'orders-create-webhook.json',
+    payload: {
+      topic: 'orders/create',
+      order: '#B2B-1009',
+      company: 'Acme Industrial',
+      po_number: 'PO-44721',
+      lines: [{ sku: 'BOLT-100', qty: 24 }, { sku: 'VALVE-7', qty: 6 }]
+    },
+    logs: [
+      ['SH', 'Webhook orders/create #B2B-1009 queued'],
+      ['IP', 'Receive Shopify order payload → validate company/location']
+    ]
+  },
+  {
+    title: 'iPaaS creates the NetSuite Sales Order',
+    copy: 'The middleware converts Shopify line items, company, PO number, taxes, and terms into a NetSuite Sales Order.',
+    lane: 4,
+    active: ['nsOrderModule', 'shOrderModule'],
+    salesOrder: true,
+    payloadTitle: 'netsuite-sales-order.json',
+    payload: {
+      target: 'NetSuite SalesOrder',
+      external_id: 'shopify-#B2B-1009',
+      customer: 'Acme Industrial',
+      terms: 'Net 30',
+      lines: [{ item: 'BOLT-100', quantity: 24 }, { item: 'VALVE-7', quantity: 6 }]
+    },
+    logs: [
+      ['IP', 'Transform Shopify order → NetSuite SalesOrder schema'],
+      ['NS', 'POST /record/v1/salesOrder → 201 SO-10482']
+    ]
+  },
+  {
+    title: 'NetSuite fulfills and updates Shopify',
+    copy: 'Fulfillment is created in NetSuite and pushed back through the iPaaS so the buyer sees tracking in Shopify.',
+    lane: 5,
+    active: ['nsOrderModule', 'shOrderModule'],
+    fulfillment: true,
+    payloadTitle: 'fulfillment-update.json',
+    payload: {
+      source: 'NetSuite ItemFulfillment IF-7781',
+      order: 'SO-10482',
+      tracking_number: '1Z8932...',
+      carrier: 'UPS',
+      destination: 'Shopify fulfillmentCreateV2'
+    },
+    logs: [
+      ['NS', 'ItemFulfillment IF-7781 created for SO-10482'],
+      ['SH', 'mutation fulfillmentCreateV2(order: #B2B-1009) → 200']
+    ]
+  },
+  {
+    title: 'Payment / invoice status stays reconciled',
+    copy: 'Payment capture or Net Terms invoice status is synchronized so Shopify and NetSuite agree on the order financial state.',
+    lane: 6,
+    active: ['nsOrderModule', 'shOrderModule'],
+    payment: true,
+    payloadTitle: 'payment-reconciliation.json',
+    payload: {
+      order: '#B2B-1009',
+      netsuite_invoice: 'INV-3321',
+      payment_status: 'paid',
+      reconciliation_key: 'shopify_order_id + netsuite_sales_order_id'
+    },
+    logs: [
+      ['SH', 'orders/paid webhook #B2B-1009 → queued'],
+      ['NS', 'PATCH invoice INV-3321 paymentStatus=paid → 200']
+    ]
+  }
+];
+
+const lanes = [
+  ['EXT', 'Extract', 'NetSuite source records'],
+  ['MAP', 'Map', 'Normalize fields + references'],
+  ['LOAD', 'Load', 'Write Shopify B2B objects'],
+  ['ORD', 'Order', 'Capture buyer order'],
+  ['SO', 'Sales order', 'Create ERP transaction'],
+  ['FUL', 'Fulfillment', 'Sync tracking back'],
+  ['PAY', 'Payment', 'Reconcile finance state']
+];
+
+let currentStep = 0;
+let timer;
+let paused = false;
+let nsInventory = initialInventory.map(item => ({ ...item }));
+let shInventory = initialInventory.map(item => ({ ...item }));
+let logIndex = 0;
+
+const progressFill = document.getElementById('progressFill');
+const stageTitle = document.getElementById('stageTitle');
+const stageCopy = document.getElementById('stageCopy');
+const stageDots = document.getElementById('stageDots');
+const flowLanes = document.getElementById('flowLanes');
+const payloadBlock = document.getElementById('payloadBlock');
+const payloadTitle = document.getElementById('payloadTitle');
+const consoleBody = document.getElementById('consoleBody');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const replayBtn = document.getElementById('replayBtn');
+
+function init() {
+  stageDots.innerHTML = steps.map((_, i) => `<span class="stage-dot" data-dot="${i}"></span>`).join('');
+  flowLanes.innerHTML = `
+    <div class="traffic-label ns">NetSuite API</div>
+    <div class="traffic-label shop">Shopify API</div>
+    <div class="traffic-rail ns"></div>
+    <div class="traffic-rail shop"></div>
+  ` + lanes.map((lane, i) => `
+    <div class="lane" data-lane="${i}">
+      <div class="lane-icon">${lane[0]}</div>
+      <div><strong>${lane[1]}</strong><span>${lane[2]}</span></div>
+      <div class="lane-status">waiting</div>
+    </div>
+  `).join('');
+
+  playPauseBtn.addEventListener('click', togglePause);
+  replayBtn.addEventListener('click', replay);
+  renderInventory();
+  goTo(0);
+  startAuto();
+}
+
+function startAuto() {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (paused) return;
+    if (currentStep >= steps.length - 1) {
+      clearInterval(timer);
+      return;
+    }
+    goTo(currentStep + 1);
+  }, 3100);
+}
+
+function togglePause() {
+  paused = !paused;
+  playPauseBtn.textContent = paused ? 'Play' : 'Pause';
+  playPauseBtn.classList.toggle('active', !paused);
+}
+
+function replay() {
+  currentStep = 0;
+  paused = false;
+  playPauseBtn.textContent = 'Pause';
+  playPauseBtn.classList.add('active');
+  nsInventory = initialInventory.map(item => ({ ...item }));
+  shInventory = initialInventory.map(item => ({ ...item }));
+  logIndex = 0;
+  consoleBody.innerHTML = '';
+  resetRecords();
+  renderInventory();
+  goTo(0);
+  startAuto();
+}
+
+function resetRecords() {
+  ['companyPill', 'catalogPill', 'locationPill'].forEach(id => document.getElementById(id).textContent = 'pending');
+  ['shOrder', 'shFulfillment', 'shPayment', 'nsSalesOrder', 'nsFulfillment', 'nsInvoice'].forEach(id => document.getElementById(id).classList.remove('visible'));
+  ['shOrderStatus', 'shFulfillStatus', 'shPaymentStatus', 'nsOrderStatus', 'nsFulfillStatus', 'nsInvoiceStatus'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = 'waiting';
+    el.classList.remove('done');
+  });
+}
+
+function goTo(index) {
+  currentStep = index;
+  const step = steps[currentStep];
+  progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+  stageTitle.textContent = step.title;
+  stageCopy.textContent = step.copy;
+  payloadTitle.textContent = step.payloadTitle;
+  payloadBlock.innerHTML = syntax(JSON.stringify(step.payload, null, 2));
+
+  document.querySelectorAll('.stage-dot').forEach((dot, i) => {
+    dot.classList.toggle('done', i < currentStep);
+    dot.classList.toggle('active', i === currentStep);
+  });
+
+  document.querySelectorAll('.lane').forEach((lane, i) => {
+    lane.classList.toggle('done', i < step.lane);
+    lane.classList.toggle('active', i === step.lane);
+    lane.querySelector('.lane-status').textContent = i < step.lane ? 'done' : i === step.lane ? 'active' : 'waiting';
+  });
+
+  document.querySelectorAll('.module').forEach(module => module.classList.remove('active'));
+  (step.active || []).forEach(id => document.getElementById(id)?.classList.add('active'));
+
+  applyStepEffects(step);
+  triggerApiTraffic(currentStep);
+  (step.logs || []).forEach(([tag, msg], i) => setTimeout(() => addLog(tag, msg), i * 140));
+}
+
+function trafficForStep(index) {
+  const map = [
+    [{ rail: 'ns', dir: 'up', delay: 0 }],
+    [{ rail: 'ns', dir: 'down', delay: 0 }, { rail: 'shop', dir: 'down', delay: 220 }],
+    [{ rail: 'shop', dir: 'down', delay: 0 }],
+    [{ rail: 'shop', dir: 'up', delay: 0 }],
+    [{ rail: 'ns', dir: 'down', delay: 0 }],
+    [{ rail: 'ns', dir: 'up', delay: 0 }, { rail: 'shop', dir: 'down', delay: 300 }],
+    [{ rail: 'shop', dir: 'up', delay: 0 }, { rail: 'ns', dir: 'down', delay: 300 }]
+  ];
+  return map[index] || [];
+}
+
+function triggerApiTraffic(index) {
+  trafficForStep(index).forEach(config => {
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => spawnApiDot(config.rail, config.dir), config.delay + i * 115);
+    }
+  });
+}
+
+function spawnApiDot(rail, direction) {
+  const dot = document.createElement('span');
+  dot.className = `api-dot ${rail} ${direction}`;
+  flowLanes.appendChild(dot);
+  dot.addEventListener('animationend', () => dot.remove());
+}
+
+function applyStepEffects(step) {
+  if (step.syncInventory) {
+    shInventory = nsInventory.map(item => ({ ...item, sh: item.ns }));
+    ['companyPill', 'catalogPill', 'locationPill'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = 'synced';
+    });
+    renderInventory('up');
+  }
+
+  if (step.orderPlaced) {
+    shInventory = shInventory.map(item => {
+      if (item.sku === 'BOLT-100') return { ...item, sh: item.sh - 24, delta: '-24' };
+      if (item.sku === 'VALVE-7') return { ...item, sh: item.sh - 6, delta: '-6' };
+      return item;
+    });
+    showOrder('shOrder', 'shOrderStatus', 'created');
+    renderInventory('down');
+  }
+
+  if (step.salesOrder) {
+    nsInventory = nsInventory.map(item => {
+      if (item.sku === 'BOLT-100') return { ...item, ns: item.ns - 24, delta: '-24' };
+      if (item.sku === 'VALVE-7') return { ...item, ns: item.ns - 6, delta: '-6' };
+      return item;
+    });
+    showOrder('nsSalesOrder', 'nsOrderStatus', 'SO created');
+    renderInventory('down');
+  }
+
+  if (step.fulfillment) {
+    showOrder('nsFulfillment', 'nsFulfillStatus', 'fulfilled');
+    showOrder('shFulfillment', 'shFulfillStatus', 'tracking');
+  }
+
+  if (step.payment) {
+    showOrder('nsInvoice', 'nsInvoiceStatus', 'paid');
+    showOrder('shPayment', 'shPaymentStatus', 'paid');
+  }
+}
+
+function showOrder(rowId, statusId, label) {
+  const row = document.getElementById(rowId);
+  const status = document.getElementById(statusId);
+  row.classList.add('visible');
+  status.textContent = label;
+  status.classList.add('done');
+}
+
+function renderInventory(direction = '') {
+  document.getElementById('nsInventory').innerHTML = nsInventory.map(item => inventoryRow(item, 'ns', direction)).join('');
+  document.getElementById('shInventory').innerHTML = shInventory.map(item => inventoryRow(item, 'sh', direction)).join('');
+}
+
+function inventoryRow(item, key, direction) {
+  const qty = key === 'ns' ? item.ns : item.sh;
+  const delta = item.delta || '';
+  const deltaClass = delta.startsWith('-') ? 'down' : 'up';
+  return `
+    <div class="inv-row">
+      <div class="inv-sku"><strong>${escapeHTML(item.name)}</strong><span>${escapeHTML(item.sku)}</span></div>
+      <div class="qty">${qty}</div>
+      <div class="delta ${delta ? 'show' : ''} ${deltaClass}">${delta}</div>
+    </div>
+  `;
+}
+
+function addLog(tag, message) {
+  const entry = document.createElement('div');
+  const cls = tag === 'NS' ? 'tag-ns' : tag === 'SH' ? 'tag-sh' : 'tag-ip';
+  const now = new Date(Date.now() + logIndex * 1000);
+  const ts = now.toTimeString().slice(0, 8);
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${ts}.${String(logIndex * 137 % 1000).padStart(3, '0')}</span><span class="log-tag ${cls}">${tag}</span><span class="log-msg">${escapeHTML(message)}</span>`;
+  consoleBody.appendChild(entry);
+  requestAnimationFrame(() => entry.classList.add('visible'));
+  consoleBody.scrollTop = consoleBody.scrollHeight;
+  logIndex++;
+}
+
+function syntax(json) {
+  return escapeHTML(json)
+    .replace(/(&quot;[^&]+&quot;)(:)/g, '<span class="json-key">$1</span>$2')
+    .replace(/: (&quot;.*?&quot;)/g, ': <span class="json-str">$1</span>')
+    .replace(/\b(true|false|null)\b/g, '<span class="json-bool">$1</span>')
+    .replace(/\b(\d+\.?\d*)\b/g, '<span class="json-num">$1</span>');
+}
+
+function escapeHTML(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+init();
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UCP Agentic Commerce — Search to Checkout</title>
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #111827;
+    --surface-2: #151f32;
+    --surface-3: #1b2740;
+    --border: rgba(148, 163, 184, 0.18);
+    --border-strong: rgba(148, 163, 184, 0.32);
+    --text: #e2e8f0;
+    --text-strong: #f8fafc;
+    --muted: #94a3b8;
+    --muted-2: #64748b;
+    --shopify: #95bf47;
+    --green: #34d399;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { background: var(--bg); }
+
+  body {
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 16% -10%, rgba(96, 165, 250, 0.2), transparent 32rem),
+      radial-gradient(circle at 88% 0%, rgba(149, 191, 71, 0.16), transparent 30rem),
+      linear-gradient(180deg, #080c14 0%, #0a0f1b 100%);
+  }
+
+  button { font: inherit; }
+
+  .page {
+    width: min(1240px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 22px 0 40px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: 16px;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    width: fit-content;
+    color: #d9f99d;
+    background: rgba(149, 191, 71, 0.12);
+    border: 1px solid rgba(149, 191, 71, 0.26);
+    border-radius: 999px;
+    padding: 0.34rem 0.62rem;
+    font-size: 0.72rem;
+    font-weight: 850;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.75rem;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 14px rgba(52, 211, 153, 0.7);
+  }
+
+  h1 {
+    color: var(--text-strong);
+    font-size: clamp(2rem, 5vw, 4.2rem);
+    line-height: 0.96;
+    letter-spacing: -0.07em;
+    margin-bottom: 0.7rem;
+  }
+
+  .lede {
+    max-width: 760px;
+    color: #cbd5e1;
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  .scenario-group {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .scenario-btn,
+  .replay-btn {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    padding: 0.54rem 0.78rem;
+    font-size: 0.76rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .scenario-btn.active {
+    color: #0b170a;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+  }
+
+  .scenario-btn:hover:not(.active),
+  .replay-btn:hover {
+    color: var(--text-strong);
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .replay-btn {
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .progress {
+    height: 3px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.13);
+    margin-bottom: 16px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--shopify), var(--green), var(--blue));
+    transition: width 0.45s ease;
+  }
+
+  .sim-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(380px, 0.96fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.88), rgba(15, 23, 42, 0.74));
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .card-header h2 {
+    color: var(--text-strong);
+    font-size: 0.86rem;
+    letter-spacing: -0.01em;
+  }
+
+  .card-header span {
+    color: var(--muted-2);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .shopping-body {
+    padding: 16px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .chat {
+    display: grid;
+    gap: 10px;
+  }
+
+  .message {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    opacity: 0.28;
+    transform: translateY(7px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .message.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .message.user {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .message.user .avatar { order: 2; }
+  .message.user .bubble { order: 1; background: rgba(96, 165, 250, 0.12); border-color: rgba(96, 165, 250, 0.22); }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    color: white;
+    font-size: 0.68rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #6366f1, #a78bfa);
+  }
+
+  .avatar.agent { background: linear-gradient(135deg, #60a5fa, #22d3ee); color: #07111f; }
+  .avatar.shopify { background: linear-gradient(135deg, #95bf47, #34d399); color: #0b170a; }
+
+  .bubble {
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .bubble-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--muted);
+    font-size: 0.64rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 5px;
+  }
+
+  .bubble p {
+    color: #d1d5db;
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .ucp-pill {
+    color: #d9f99d;
+    background: rgba(149, 191, 71, 0.12);
+    border: 1px solid rgba(149, 191, 71, 0.24);
+    border-radius: 999px;
+    padding: 1px 6px;
+    font-size: 0.6rem;
+    font-weight: 900;
+  }
+
+  .section-title {
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    margin-bottom: 8px;
+  }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .product {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.13);
+    border-radius: 15px;
+    background: rgba(15, 23, 42, 0.64);
+    opacity: 0.28;
+    transition: all 0.3s ease;
+  }
+
+  .product.visible {
+    opacity: 1;
+    border-color: rgba(149, 191, 71, 0.3);
+    background: rgba(149, 191, 71, 0.06);
+  }
+
+  .product-img {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    font-size: 1.45rem;
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.22), rgba(167, 139, 250, 0.17));
+  }
+
+  .product h3 {
+    color: var(--text-strong);
+    font-size: 0.82rem;
+    line-height: 1.18;
+    margin-bottom: 2px;
+  }
+
+  .product p {
+    color: var(--muted);
+    font-size: 0.68rem;
+    line-height: 1.35;
+  }
+
+  .product strong {
+    display: inline-block;
+    color: #86efac;
+    font-size: 0.76rem;
+    margin-top: 3px;
+  }
+
+  .cart-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid rgba(149, 191, 71, 0.18);
+    border-radius: 18px;
+    background: rgba(149, 191, 71, 0.07);
+  }
+
+  .metric {
+    min-width: 0;
+  }
+
+  .metric span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.65rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .metric strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+
+  .checkout-shell {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    opacity: 0.35;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+  }
+
+  .checkout-shell.visible {
+    opacity: 1;
+    transform: translateY(0);
+    border-color: rgba(149, 191, 71, 0.24);
+  }
+
+  .checkout-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .checkout-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .checkout-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    color: #0b170a;
+    font-weight: 950;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+  }
+
+  .checkout-brand strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.82rem;
+  }
+
+  .checkout-brand span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.66rem;
+    margin-top: 1px;
+  }
+
+  .checkout-badge {
+    color: #d9f99d;
+    background: rgba(149, 191, 71, 0.12);
+    border: 1px solid rgba(149, 191, 71, 0.24);
+    border-radius: 999px;
+    padding: 0.32rem 0.5rem;
+    font-size: 0.66rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .checkout-rows {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .checkout-row {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.62);
+    opacity: 0.42;
+    transition: all 0.25s ease;
+  }
+
+  .checkout-row.active {
+    opacity: 1;
+    border-color: rgba(96, 165, 250, 0.44);
+    background: rgba(96, 165, 250, 0.09);
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.07);
+  }
+
+  .checkout-row.done {
+    opacity: 1;
+    border-color: rgba(52, 211, 153, 0.25);
+    background: rgba(52, 211, 153, 0.055);
+  }
+
+  .checkout-icon {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: var(--muted);
+    background: rgba(148, 163, 184, 0.12);
+    font-size: 0.72rem;
+    font-weight: 950;
+  }
+
+  .checkout-row.active .checkout-icon {
+    color: #0b170a;
+    background: linear-gradient(135deg, #93c5fd, #22d3ee);
+  }
+
+  .checkout-row.done .checkout-icon {
+    color: #0b170a;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+  }
+
+  .checkout-copy strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.78rem;
+    margin-bottom: 2px;
+  }
+
+  .checkout-copy span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.68rem;
+    line-height: 1.32;
+  }
+
+  .checkout-state {
+    color: var(--muted-2);
+    font-size: 0.65rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .checkout-row.active .checkout-state { color: #93c5fd; }
+  .checkout-row.done .checkout-state { color: #86efac; }
+
+  .checkout-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .checkout-total span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.64rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .checkout-total strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 1rem;
+    margin-top: 1px;
+  }
+
+  .checkout-action {
+    border: 0;
+    border-radius: 999px;
+    color: #0b170a;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+    padding: 0.62rem 0.9rem;
+    font-size: 0.76rem;
+    font-weight: 900;
+    white-space: nowrap;
+    opacity: 0.45;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  .checkout-shell.visible .checkout-action {
+    opacity: 1;
+  }
+
+  .checkout-action.pulse {
+    animation: actionPulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes actionPulse {
+    0%, 100% { transform: translateY(0); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.24); }
+    50% { transform: translateY(-1px); box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); }
+  }
+
+  .ucp-body {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .steps {
+    display: grid;
+    gap: 8px;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    width: 100%;
+    text-align: left;
+    border: 1px solid rgba(148, 163, 184, 0.13);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.62);
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .step:hover {
+    border-color: rgba(148, 163, 184, 0.28);
+  }
+
+  .step-number {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 950;
+  }
+
+  .step strong {
+    display: block;
+    color: #dbeafe;
+    font-size: 0.78rem;
+    margin-bottom: 2px;
+  }
+
+  .step span:last-child {
+    display: block;
+    color: var(--muted);
+    font-size: 0.67rem;
+    line-height: 1.3;
+  }
+
+  .step.done {
+    border-color: rgba(52, 211, 153, 0.24);
+    background: rgba(52, 211, 153, 0.055);
+  }
+
+  .step.done .step-number {
+    background: rgba(52, 211, 153, 0.16);
+    color: #86efac;
+  }
+
+  .step.active {
+    border-color: rgba(96, 165, 250, 0.48);
+    background: rgba(96, 165, 250, 0.1);
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.08);
+  }
+
+  .step.active .step-number {
+    color: #0b170a;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+  }
+
+  .details {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+
+  .active-card,
+  .payload-card {
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.66);
+    overflow: hidden;
+  }
+
+  .active-card {
+    padding: 14px;
+  }
+
+  .operation {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #bfdbfe;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 999px;
+    padding: 0.34rem 0.56rem;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.68rem;
+    font-weight: 850;
+    margin-bottom: 10px;
+  }
+
+  .active-card h3 {
+    color: var(--text-strong);
+    font-size: 0.98rem;
+    margin-bottom: 6px;
+  }
+
+  .active-card p {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .payload-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .payload-head span {
+    color: var(--muted);
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.72rem;
+  }
+
+  .dots { display: flex; gap: 5px; }
+  .dots i { display: block; width: 9px; height: 9px; border-radius: 50%; background: #ef4444; }
+  .dots i:nth-child(2) { background: #f59e0b; }
+  .dots i:nth-child(3) { background: #22c55e; }
+
+  pre {
+    min-height: 250px;
+    max-height: 360px;
+    overflow: auto;
+    padding: 12px;
+    color: #c9d1d9;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .json-key { color: #d2a8ff; }
+  .json-str { color: #a5d6ff; }
+  .json-num { color: #79c0ff; }
+  .json-bool { color: #ff7b72; }
+
+  .note {
+    color: var(--muted-2);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    padding: 0 2px;
+  }
+
+  @media (max-width: 1040px) {
+    .hero, .sim-layout, .ucp-body { grid-template-columns: 1fr; }
+    .controls { justify-content: flex-start; }
+  }
+
+  @media (max-width: 680px) {
+    .page { width: min(100% - 22px, 1240px); padding-top: 16px; }
+    .product-grid, .cart-summary { grid-template-columns: 1fr; }
+    .checkout-row { grid-template-columns: 28px minmax(0, 1fr); }
+    .checkout-state { grid-column: 2; }
+    .checkout-footer { align-items: flex-start; flex-direction: column; }
+    h1 { font-size: 2.35rem; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Universal Commerce Protocol</span>
+        <h1>UCP from search to checkout.</h1>
+        <p class="lede">A simplified view of how an AI agent uses UCP to discover products, build a cart, create checkout, complete payment, or hand off to the merchant when buyer input is required.</p>
+      </div>
+      <div class="controls">
+        <div class="scenario-group" aria-label="Checkout path">
+          <button class="scenario-btn active" data-scenario="direct">Direct checkout</button>
+          <button class="scenario-btn" data-scenario="handoff">Handoff needed</button>
+        </div>
+        <button class="replay-btn" id="replayBtn">Replay</button>
+      </div>
+    </section>
+
+    <div class="progress" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+    <section class="sim-layout">
+      <article class="card shopping-card">
+        <div class="card-header">
+          <h2>AI shopping surface</h2>
+          <span id="buyerStep">Step 1 of 9</span>
+        </div>
+        <div class="shopping-body">
+          <div class="chat">
+            <div class="message user" data-visible="0">
+              <div class="avatar">MW</div>
+              <div class="bubble">
+                <div class="bubble-label">Buyer</div>
+                <p>Find me a carry-on and backpack for a 5-day work trip. In stock, durable, delivered before Friday.</p>
+              </div>
+            </div>
+            <div class="message" data-visible="1">
+              <div class="avatar agent">AI</div>
+              <div class="bubble">
+                <div class="bubble-label">Agent <span class="ucp-pill">UCP</span></div>
+                <p>I’ll search eligible product data, check delivery promises, and build a cart you can approve.</p>
+              </div>
+            </div>
+            <div class="message" data-visible="2">
+              <div class="avatar shopify">S</div>
+              <div class="bubble">
+                <div class="bubble-label">Shopify</div>
+                <p>Here are products with structured details: variant, price, availability, delivery estimate, and checkout eligibility.</p>
+              </div>
+            </div>
+            <div class="message" data-visible="3">
+              <div class="avatar shopify">S</div>
+              <div class="bubble">
+                <div class="bubble-label">Checkout</div>
+                <p>Checkout session created. Shopify returns totals, delivery options, taxes, and supported payment handlers.</p>
+              </div>
+            </div>
+            <div class="message" data-visible="5" id="scenarioMessage">
+              <div class="avatar agent">AI</div>
+              <div class="bubble">
+                <div class="bubble-label">Checkout path</div>
+                <p id="scenarioText">Delivery is selected and Shop Pay is available. I can authorize payment and place the order.</p>
+              </div>
+            </div>
+            <div class="message" data-visible="7">
+              <div class="avatar agent">AI</div>
+              <div class="bubble">
+                <div class="bubble-label">Payment</div>
+                <p id="paymentText">Payment credential authorized. Submitting checkout completion now.</p>
+              </div>
+            </div>
+            <div class="message" data-visible="8">
+              <div class="avatar shopify">S</div>
+              <div class="bubble">
+                <div class="bubble-label">Order</div>
+                <p>Order created. UCP-shaped order updates can keep the agent informed for tracking and post-purchase questions.</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Search results</div>
+            <div class="product-grid">
+              <div class="product" data-product="0">
+                <div class="product-img">🧳</div>
+                <div>
+                  <h3>Metro Carry-On Pro</h3>
+                  <p>In stock · arrives Thu · Shopify merchant</p>
+                  <strong>$245</strong>
+                </div>
+              </div>
+              <div class="product" data-product="1">
+                <div class="product-img">🎒</div>
+                <div>
+                  <h3>All-Weather Commuter Pack</h3>
+                  <p>In stock · arrives Fri · Shopify merchant</p>
+                  <strong>$128</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Cart / checkout snapshot</div>
+            <div class="cart-summary">
+              <div class="metric"><span>Items</span><strong id="cartItems">0</strong></div>
+              <div class="metric"><span>Total</span><strong id="cartTotal">—</strong></div>
+              <div class="metric"><span>Payment</span><strong id="paymentHandler">—</strong></div>
+              <div class="metric"><span>Status</span><strong id="checkoutStatus">waiting</strong></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Checkout actually happening</div>
+            <div class="checkout-shell" id="checkoutShell">
+              <div class="checkout-top">
+                <div class="checkout-brand">
+                  <div class="checkout-logo">S</div>
+                  <div><strong>Shopify Checkout</strong><span id="checkoutMode">UCP session waiting</span></div>
+                </div>
+                <div class="checkout-badge" id="checkoutBadge">not started</div>
+              </div>
+              <div class="checkout-rows">
+                <div class="checkout-row" data-checkout="review">
+                  <div class="checkout-icon">1</div>
+                  <div class="checkout-copy"><strong>Review cart</strong><span id="reviewCopy">Line items and totals returned by checkout session.</span></div>
+                  <div class="checkout-state">waiting</div>
+                </div>
+                <div class="checkout-row" data-checkout="delivery">
+                  <div class="checkout-icon">2</div>
+                  <div class="checkout-copy"><strong>Delivery</strong><span id="deliveryCopy">Choose the delivery option that meets the buyer constraint.</span></div>
+                  <div class="checkout-state">waiting</div>
+                </div>
+                <div class="checkout-row" data-checkout="payment">
+                  <div class="checkout-icon">3</div>
+                  <div class="checkout-copy"><strong>Payment</strong><span id="paymentCopy">Negotiate and authorize a supported payment handler.</span></div>
+                  <div class="checkout-state">waiting</div>
+                </div>
+                <div class="checkout-row" data-checkout="place">
+                  <div class="checkout-icon">4</div>
+                  <div class="checkout-copy"><strong>Place order</strong><span id="placeCopy">Submit checkout completion and create the order.</span></div>
+                  <div class="checkout-state">waiting</div>
+                </div>
+              </div>
+              <div class="checkout-footer">
+                <div class="checkout-total"><span>Total</span><strong id="checkoutTotal">—</strong></div>
+                <button class="checkout-action" id="checkoutAction" type="button">Waiting for checkout</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card ucp-card">
+        <div class="card-header">
+          <h2>What UCP is doing</h2>
+          <span id="operationLabel">profile discovery</span>
+        </div>
+        <div class="ucp-body">
+          <div class="steps" id="steps"></div>
+          <div class="details">
+            <div class="active-card">
+              <div class="operation" id="operationPill">GET /.well-known/ucp</div>
+              <h3 id="detailTitle">Discover shared capabilities</h3>
+              <p id="detailCopy">The agent reads the merchant or platform profile to learn which versions, capabilities, endpoints, extensions, and payment handlers are supported.</p>
+            </div>
+            <div class="payload-card">
+              <div class="payload-head">
+                <div class="dots"><i></i><i></i><i></i></div>
+                <span id="payloadTitle">profile.json</span>
+              </div>
+              <pre id="payload"></pre>
+            </div>
+            <p class="note">Focus for demos: UCP gives agents a standard way to ask “what can you support?”, move cart and checkout state, and safely route to direct completion or merchant handoff.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+<script>
+const steps = [
+  {
+    label: 'Discover capabilities',
+    short: 'Merchant profile exposes supported UCP features.',
+    operation: 'GET /.well-known/ucp',
+    title: 'Discover shared capabilities',
+    copy: 'The agent reads a UCP profile to learn supported versions, endpoints, extensions, and payment handlers before it tries to transact.',
+    payloadTitle: 'profile.json',
+    payload: {
+      ucp: { version: '2026-04-08', endpoint: 'https://merchant.example/ucp/v1' },
+      capabilities: ['catalog.search', 'shopping.checkout', 'shopping.order', 'fulfillment.extension'],
+      payment_handlers: ['Shop Pay', 'Google Pay']
+    }
+  },
+  {
+    label: 'Search products',
+    short: 'Agent queries structured product data.',
+    operation: 'catalog.search',
+    title: 'Search eligible products',
+    copy: 'The agent searches product data using buyer intent and constraints like inventory, delivery timing, price, and checkout eligibility.',
+    payloadTitle: 'catalog-search.json',
+    payload: {
+      query: 'carry-on and backpack for 5-day work trip',
+      filters: { in_stock: true, delivery_by: 'Friday', checkout_eligible: true },
+      buyer_context: { country: 'US', currency: 'USD' }
+    }
+  },
+  {
+    label: 'Build cart',
+    short: 'Selected variants become a cart.',
+    operation: 'cart.add_lines',
+    title: 'Build a universal cart',
+    copy: 'The agent adds selected variants and buyer context to a cart. The cart can be converted into checkout when the buyer approves.',
+    payloadTitle: 'cart.json',
+    payload: {
+      line_items: [
+        { variant_id: 'carryon-pro-black', quantity: 1 },
+        { variant_id: 'commuter-pack-olive', quantity: 1 }
+      ],
+      attribution: { surface: 'agentic_search', agent: 'example.ai' }
+    }
+  },
+  {
+    label: 'Create checkout',
+    short: 'Merchant calculates totals and options.',
+    operation: 'checkout.create',
+    title: 'Create checkout session',
+    copy: 'Shopify creates the checkout session and returns the current cart state: totals, tax, delivery options, payment handlers, and next required inputs.',
+    payloadTitle: 'checkout.json',
+    payload: {
+      checkout_id: 'checkout_abc123',
+      totals: { subtotal: '373.00', tax: '30.77', total: '403.77' },
+      fulfillment_options: ['standard_arrives_fri', 'express_arrives_thu'],
+      payment_handlers: ['Shop Pay', 'Google Pay'],
+      status: 'incomplete'
+    }
+  },
+  {
+    label: 'Review checkout',
+    short: 'Agent confirms totals and cart state.',
+    operation: 'checkout.get',
+    title: 'Review checkout details',
+    copy: 'The buyer-facing checkout view is now available. The agent can summarize line items, total cost, taxes, delivery options, and merchant policies before completion.',
+    payloadTitle: 'checkout-review.json',
+    payload: {
+      checkout_id: 'checkout_abc123',
+      line_items: 2,
+      total: '403.77',
+      messages: ['Free shipping applied', 'Both items eligible for Friday delivery'],
+      status: 'incomplete'
+    }
+  },
+  {
+    label: 'Select delivery',
+    short: 'Delivery choice is applied to checkout.',
+    operation: 'checkout.update',
+    title: 'Select delivery option',
+    copy: 'UCP keeps checkout state moving. The selected delivery option is applied, or the buyer is handed off if the merchant needs explicit delivery-window input.',
+    payloadTitle: 'delivery-selection.json',
+    payload: {}
+  },
+  {
+    label: 'Authorize payment',
+    short: 'Payment handler is selected and authorized.',
+    operation: 'payment.authorize',
+    title: 'Authorize payment',
+    copy: 'The agent uses the negotiated payment handler. In direct checkout, it can authorize through Shop Pay; in handoff mode, the embedded checkout delegates payment to the host or buyer.',
+    payloadTitle: 'payment-authorization.json',
+    payload: {}
+  },
+  {
+    label: 'Complete checkout',
+    short: 'Checkout completion creates the order.',
+    operation: 'checkout.complete',
+    title: 'Complete checkout',
+    copy: 'With delivery and payment resolved, checkout is submitted. Shopify creates the order and returns the order reference to the agent surface.',
+    payloadTitle: 'checkout-complete.json',
+    payload: {}
+  },
+  {
+    label: 'Order confirmation',
+    short: 'Order state flows back to the agent.',
+    operation: 'order.webhook',
+    title: 'Confirm and track order',
+    copy: 'After purchase, order events and get-order calls keep the agent updated for tracking, returns, refunds, and post-purchase support.',
+    payloadTitle: 'order-event.json',
+    payload: {
+      order_id: 'order_1009',
+      checkout_id: 'checkout_abc123',
+      status: 'confirmed',
+      fulfillment: 'processing',
+      delivery_promise: 'arrives by Friday'
+    }
+  }
+];
+
+let currentStep = 0;
+let scenario = 'direct';
+let timer;
+
+const stepsEl = document.getElementById('steps');
+const progressFill = document.getElementById('progressFill');
+const operationLabel = document.getElementById('operationLabel');
+const operationPill = document.getElementById('operationPill');
+const detailTitle = document.getElementById('detailTitle');
+const detailCopy = document.getElementById('detailCopy');
+const payloadTitle = document.getElementById('payloadTitle');
+const payload = document.getElementById('payload');
+
+function init() {
+  stepsEl.innerHTML = steps.map((step, index) => `
+    <button class="step" type="button" data-step="${index}">
+      <span class="step-number">${index + 1}</span>
+      <span><strong>${escapeHTML(step.label)}</strong><span>${escapeHTML(step.short)}</span></span>
+    </button>
+  `).join('');
+
+  stepsEl.querySelectorAll('.step').forEach(button => {
+    button.addEventListener('click', () => {
+      clearInterval(timer);
+      goTo(Number(button.dataset.step));
+    });
+  });
+
+  document.querySelectorAll('.scenario-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      scenario = button.dataset.scenario;
+      document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.toggle('active', btn === button));
+      render();
+    });
+  });
+
+  document.getElementById('replayBtn').addEventListener('click', replay);
+  render();
+  startAuto();
+}
+
+function startAuto() {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (currentStep >= steps.length - 1) {
+      clearInterval(timer);
+      return;
+    }
+    goTo(currentStep + 1);
+  }, 2350);
+}
+
+function replay() {
+  currentStep = 0;
+  render();
+  startAuto();
+}
+
+function goTo(step) {
+  currentStep = Math.max(0, Math.min(steps.length - 1, step));
+  render();
+}
+
+function render() {
+  const step = steps[currentStep];
+  document.getElementById('buyerStep').textContent = `Step ${currentStep + 1} of ${steps.length}`;
+  progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+
+  document.querySelectorAll('.step').forEach((el, index) => {
+    el.classList.toggle('done', index < currentStep);
+    el.classList.toggle('active', index === currentStep);
+  });
+
+  document.querySelectorAll('.message').forEach(el => {
+    el.classList.toggle('visible', Number(el.dataset.visible) <= currentStep);
+  });
+
+  document.querySelectorAll('.product').forEach((el) => {
+    el.classList.toggle('visible', currentStep >= 1);
+  });
+
+  operationLabel.textContent = step.operation;
+  operationPill.textContent = step.operation;
+  detailTitle.textContent = step.title;
+  detailCopy.textContent = step.copy;
+  payloadTitle.textContent = step.payloadTitle;
+  payload.innerHTML = syntax(JSON.stringify(resolvePayload(step), null, 2));
+
+  updateCart();
+  updateScenario();
+  updateCheckoutExperience();
+}
+
+function resolvePayload(step) {
+  if (currentStep === 5) {
+    return scenario === 'direct'
+      ? {
+          checkout_id: 'checkout_abc123',
+          selected_fulfillment: 'express_arrives_thu',
+          delivery_promise: 'Thursday by 8pm',
+          status: 'incomplete'
+        }
+      : {
+          checkout_id: 'checkout_abc123',
+          status: 'requires_escalation',
+          reason: 'buyer must choose delivery window',
+          continue_url: 'https://merchant.example/checkout/abc123',
+          embedded_checkout: { delegate: ['fulfillment.address_change', 'window.open'] }
+        };
+  }
+
+  if (currentStep === 6) {
+    return scenario === 'direct'
+      ? {
+          checkout_id: 'checkout_abc123',
+          selected_payment_handler: 'Shop Pay',
+          payment_status: 'authorized',
+          mandate: 'buyer-approved-agent-checkout'
+        }
+      : {
+          checkout_id: 'checkout_abc123',
+          embedded_checkout: 'active',
+          buyer_selected_delivery: 'Friday AM window',
+          payment_delegation: 'host wallet payment sheet'
+        };
+  }
+
+  if (currentStep === 7) {
+    return scenario === 'direct'
+      ? {
+          checkout_id: 'checkout_abc123',
+          status: 'ready_for_complete',
+          action: 'complete_checkout',
+          result: 'order_1009'
+        }
+      : {
+          checkout_id: 'checkout_abc123',
+          status: 'completed_in_embedded_checkout',
+          continue_url: 'https://merchant.example/checkout/abc123',
+          result: 'order_1009'
+        };
+  }
+
+  return step.payload;
+}
+
+function updateCart() {
+  const hasCart = currentStep >= 2;
+  const hasCheckout = currentStep >= 3;
+  const reviewed = currentStep >= 4;
+  const delivery = currentStep >= 5;
+  const payment = currentStep >= 6;
+  const completed = currentStep >= 7;
+  const ordered = currentStep >= 8;
+
+  document.getElementById('cartItems').textContent = hasCart ? '2' : '0';
+  document.getElementById('cartTotal').textContent = hasCheckout ? '$403.77' : '—';
+  document.getElementById('paymentHandler').textContent = payment ? (scenario === 'direct' ? 'Shop Pay' : 'Host wallet') : (hasCheckout ? 'negotiating' : '—');
+
+  let status = 'waiting';
+  if (hasCart) status = 'cart built';
+  if (hasCheckout) status = 'checkout';
+  if (reviewed) status = 'reviewed';
+  if (delivery) status = scenario === 'direct' ? 'delivery set' : 'handoff';
+  if (payment) status = 'authorized';
+  if (completed) status = 'submitted';
+  if (ordered) status = 'ordered';
+  document.getElementById('checkoutStatus').textContent = status;
+}
+
+function updateScenario() {
+  document.getElementById('scenarioText').textContent = scenario === 'direct'
+    ? 'Delivery is selected and Shop Pay is available. I can authorize payment and place the order.'
+    : 'The merchant needs buyer input for a delivery window. I’ll open embedded checkout, let the buyer choose, then continue.';
+  document.getElementById('paymentText').textContent = scenario === 'direct'
+    ? 'Payment credential authorized. Submitting checkout completion now.'
+    : 'Buyer completed the embedded delivery and payment step. Checkout can now submit the order.';
+}
+
+function updateCheckoutExperience() {
+  const shell = document.getElementById('checkoutShell');
+  shell.classList.toggle('visible', currentStep >= 3);
+  document.getElementById('checkoutTotal').textContent = currentStep >= 3 ? '$403.77' : '—';
+
+  const badge = document.getElementById('checkoutBadge');
+  const mode = document.getElementById('checkoutMode');
+  const action = document.getElementById('checkoutAction');
+  action.classList.toggle('pulse', currentStep >= 6 && currentStep <= 7);
+
+  let badgeText = 'not started';
+  let modeText = 'UCP session waiting';
+  let actionText = 'Waiting for checkout';
+  if (currentStep >= 3) { badgeText = 'session created'; modeText = 'Checkout session checkout_abc123'; actionText = 'Review checkout'; }
+  if (currentStep >= 4) { badgeText = 'reviewing'; actionText = 'Continue to delivery'; }
+  if (currentStep >= 5) { badgeText = scenario === 'direct' ? 'delivery selected' : 'handoff active'; actionText = scenario === 'direct' ? 'Continue to payment' : 'Open embedded checkout'; }
+  if (currentStep >= 6) { badgeText = scenario === 'direct' ? 'payment authorized' : 'buyer completed input'; actionText = scenario === 'direct' ? 'Authorize Shop Pay' : 'Return from embedded checkout'; }
+  if (currentStep >= 7) { badgeText = 'submitting'; actionText = 'Place order'; }
+  if (currentStep >= 8) { badgeText = 'order created'; actionText = 'Order #1009 created'; }
+  badge.textContent = badgeText;
+  mode.textContent = modeText;
+  action.textContent = actionText;
+
+  const copy = {
+    review: currentStep >= 4 ? '2 items · tax calculated · free shipping applied.' : 'Line items and totals returned by checkout session.',
+    delivery: scenario === 'direct'
+      ? (currentStep >= 5 ? 'Express delivery selected: arrives Thursday by 8pm.' : 'Choose the delivery option that meets the buyer constraint.')
+      : (currentStep >= 5 ? 'Buyer chooses Friday AM delivery in embedded checkout.' : 'Merchant requires buyer input for delivery window.'),
+    payment: scenario === 'direct'
+      ? (currentStep >= 6 ? 'Shop Pay credential authorized for $403.77.' : 'Negotiate and authorize a supported payment handler.')
+      : (currentStep >= 6 ? 'Host wallet payment sheet returns authorized credential.' : 'Payment is delegated during embedded checkout.'),
+    place: currentStep >= 7 ? 'Checkout submitted. Shopify creates order_1009.' : 'Submit checkout completion and create the order.'
+  };
+  document.getElementById('reviewCopy').textContent = copy.review;
+  document.getElementById('deliveryCopy').textContent = copy.delivery;
+  document.getElementById('paymentCopy').textContent = copy.payment;
+  document.getElementById('placeCopy').textContent = copy.place;
+
+  setCheckoutRow('review', currentStep, 4);
+  setCheckoutRow('delivery', currentStep, 5);
+  setCheckoutRow('payment', currentStep, 6);
+  setCheckoutRow('place', currentStep, 7);
+}
+
+function setCheckoutRow(name, current, activeStep) {
+  const row = document.querySelector(`[data-checkout="${name}"]`);
+  row.classList.toggle('active', current === activeStep);
+  row.classList.toggle('done', current > activeStep);
+  const state = row.querySelector('.checkout-state');
+  state.textContent = current > activeStep ? 'done' : current === activeStep ? 'active' : 'waiting';
+}
+
+function syntax(json) {
+  return escapeHTML(json)
+    .replace(/(&quot;[^&]+&quot;)(:)/g, '<span class="json-key">$1</span>$2')
+    .replace(/: (&quot;.*?&quot;)/g, ': <span class="json-str">$1</span>')
+    .replace(/\b(true|false|null)\b/g, '<span class="json-bool">$1</span>')
+    .replace(/\b(\d+\.?\d*)\b/g, '<span class="json-num">$1</span>');
+}
+
+function escapeHTML(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+init();
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

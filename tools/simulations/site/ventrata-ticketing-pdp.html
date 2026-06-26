@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ventrata Ticketing PDP - Shopify Checkout Handoff</title>
+<style>
+  :root {
+    --bg: #080c14;
+    --bg-soft: #0c1220;
+    --surface: #111827;
+    --surface-2: #151f32;
+    --surface-3: #1b2740;
+    --border: rgba(148, 163, 184, 0.2);
+    --border-strong: rgba(148, 163, 184, 0.34);
+    --text: #e5edf7;
+    --text-strong: #f8fafc;
+    --muted: #94a3b8;
+    --muted-2: #64748b;
+    --shopify: #95bf47;
+    --shopify-bright: #34d399;
+    --ventrata: #38bdf8;
+    --middleware: #a78bfa;
+    --browser: #fbbf24;
+    --danger: #f87171;
+    --warn: #fb923c;
+    --ok: #34d399;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(56, 189, 248, 0.14), transparent 30rem),
+      radial-gradient(circle at 88% 8%, rgba(149, 191, 71, 0.12), transparent 28rem),
+      linear-gradient(180deg, #080c14 0%, #0a0f1b 48%, #070a11 100%);
+    color: var(--text);
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  .shell {
+    width: min(1480px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 18px 0 28px;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(8, 12, 20, 0.86);
+    backdrop-filter: blur(18px);
+  }
+
+  .topbar-inner {
+    width: min(1480px, calc(100% - 32px));
+    margin: 0 auto;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #08110a;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .brand-title {
+    color: var(--text-strong);
+    font-weight: 800;
+    line-height: 1.18;
+  }
+
+  .brand-subtitle {
+    color: var(--muted);
+    font-size: 0.76rem;
+    margin-top: 2px;
+  }
+
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .control-btn {
+    min-height: 36px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text);
+    padding: 0 12px;
+    font-size: 0.78rem;
+    font-weight: 760;
+  }
+
+  .control-btn:hover,
+  .control-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(148, 163, 184, 0.36);
+    outline: none;
+  }
+
+  .control-btn.primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+    color: #08110a;
+  }
+
+  .control-select {
+    min-height: 36px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 999px;
+    background: #0f172a;
+    color: var(--text);
+    padding: 0 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .status-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+  }
+
+  .status-card {
+    min-width: 0;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-md);
+    background: rgba(17, 24, 39, 0.68);
+    padding: 12px;
+  }
+
+  .status-card span {
+    display: block;
+    color: var(--muted-2);
+    font-size: 0.64rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 5px;
+  }
+
+  .status-card strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.88rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stage-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.76fr) minmax(520px, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .storefront,
+  .inspector {
+    min-width: 0;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.72);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(2, 6, 23, 0.42);
+  }
+
+  .panel-kicker {
+    color: var(--muted-2);
+    font-size: 0.64rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .panel-title {
+    color: var(--text-strong);
+    font-size: 0.96rem;
+    font-weight: 820;
+    margin-top: 3px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--muted);
+    padding: 0 10px;
+    font-size: 0.7rem;
+    font-weight: 760;
+    white-space: nowrap;
+  }
+
+  .pill::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--ok);
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.56);
+  }
+
+  .store-body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1fr);
+    min-height: 680px;
+  }
+
+  .product-media {
+    position: relative;
+    min-height: 680px;
+    border-right: 1px solid rgba(148, 163, 184, 0.14);
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.2), rgba(2, 6, 23, 0.86)),
+      linear-gradient(150deg, #111827 0%, #25344e 52%, #080c14 100%);
+    overflow: hidden;
+  }
+
+  .skyline {
+    position: absolute;
+    inset: auto 0 0;
+    height: 74%;
+  }
+
+  .skyline::before,
+  .skyline::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+  }
+
+  .skyline::before {
+    left: 42%;
+    width: 82px;
+    height: 380px;
+    transform: translateX(-50%);
+    background:
+      linear-gradient(90deg, transparent 18px, rgba(255,255,255,0.12) 18px 20px, transparent 20px 40px, rgba(255,255,255,0.1) 40px 42px, transparent 42px 62px),
+      linear-gradient(180deg, #d6dbe7 0%, #7f8ba2 34%, #334155 100%);
+    clip-path: polygon(43% 0, 57% 0, 57% 13%, 66% 13%, 66% 24%, 78% 24%, 78% 100%, 22% 100%, 22% 24%, 34% 24%, 34% 13%, 43% 13%);
+    opacity: 0.92;
+  }
+
+  .skyline::after {
+    left: -5%;
+    right: -5%;
+    height: 170px;
+    background:
+      linear-gradient(90deg, #182235 0 12%, transparent 12% 15%, #1f2b40 15% 24%, transparent 24% 28%, #121a2a 28% 41%, transparent 41% 45%, #1d293d 45% 60%, transparent 60% 64%, #142035 64% 80%, transparent 80% 83%, #1c2638 83% 100%);
+    opacity: 0.9;
+  }
+
+  .media-copy {
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    top: 22px;
+  }
+
+  .media-copy h1 {
+    margin: 8px 0 9px;
+    color: var(--text-strong);
+    font-size: clamp(1.5rem, 3vw, 2.3rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .media-copy p {
+    max-width: 360px;
+    margin: 0;
+    color: #cbd5e1;
+    font-size: 0.88rem;
+    line-height: 1.48;
+  }
+
+  .store-controls {
+    padding: 20px;
+    background: #0b101b;
+  }
+
+  .breadcrumb {
+    color: var(--muted-2);
+    font-size: 0.72rem;
+    font-weight: 740;
+    margin-bottom: 11px;
+  }
+
+  .product-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .rating {
+    color: #fde68a;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .meta-text {
+    color: var(--muted);
+    font-size: 0.76rem;
+  }
+
+  .selector-group {
+    margin-top: 18px;
+  }
+
+  .selector-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--text-strong);
+    font-size: 0.78rem;
+    font-weight: 820;
+    margin-bottom: 8px;
+  }
+
+  .selector-label span {
+    color: var(--muted-2);
+    font-size: 0.68rem;
+    font-weight: 760;
+  }
+
+  .date-grid,
+  .time-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .option-btn {
+    min-height: 54px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--text);
+    padding: 7px 8px;
+    text-align: left;
+    transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+  }
+
+  .option-btn:hover,
+  .option-btn:focus-visible {
+    border-color: rgba(56, 189, 248, 0.44);
+    background: rgba(56, 189, 248, 0.08);
+    outline: none;
+  }
+
+  .option-btn.active {
+    border-color: rgba(52, 211, 153, 0.6);
+    background: rgba(52, 211, 153, 0.12);
+  }
+
+  .option-btn.disabled {
+    opacity: 0.46;
+    cursor: not-allowed;
+  }
+
+  .option-top {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.78rem;
+    font-weight: 820;
+    line-height: 1.2;
+  }
+
+  .option-sub {
+    display: block;
+    color: var(--muted);
+    font-size: 0.66rem;
+    margin-top: 3px;
+    line-height: 1.18;
+  }
+
+  .quantity-card {
+    display: grid;
+    gap: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 10px;
+  }
+
+  .qty-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .qty-name {
+    color: var(--text-strong);
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .qty-price {
+    color: var(--muted);
+    font-size: 0.68rem;
+    margin-top: 2px;
+  }
+
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+  }
+
+  .stepper button {
+    width: 30px;
+    height: 30px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text);
+    font-size: 1rem;
+  }
+
+  .stepper button:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .stepper strong {
+    width: 34px;
+    text-align: center;
+    color: var(--text-strong);
+    font-size: 0.78rem;
+  }
+
+  .totals {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+    border: 1px solid rgba(52, 211, 153, 0.24);
+    border-radius: var(--radius-md);
+    background: rgba(52, 211, 153, 0.08);
+    padding: 12px;
+  }
+
+  .total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 0.76rem;
+  }
+
+  .total-row strong {
+    color: var(--text-strong);
+    font-size: 0.92rem;
+  }
+
+  .checkout-btn {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, #b6e36a, #34d399);
+    color: #08110a;
+    font-weight: 900;
+    margin-top: 12px;
+  }
+
+  .checkout-btn:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+  }
+
+  .state-note {
+    min-height: 56px;
+    margin-top: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: var(--radius-sm);
+    background: rgba(2, 6, 23, 0.36);
+    padding: 10px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .confidence {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .confidence-step {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.34;
+  }
+
+  .confidence-dot {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: var(--muted-2);
+    font-size: 0.62rem;
+    font-weight: 900;
+  }
+
+  .confidence-step.active .confidence-dot,
+  .confidence-step.done .confidence-dot {
+    border-color: rgba(52, 211, 153, 0.46);
+    background: rgba(52, 211, 153, 0.14);
+    color: #d9f99d;
+  }
+
+  .confidence-step strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.74rem;
+    margin-bottom: 2px;
+  }
+
+  .inspector-body {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 680px;
+  }
+
+  .flow-map {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(2, 6, 23, 0.2);
+  }
+
+  .flow-node {
+    min-width: 0;
+    min-height: 62px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 9px;
+  }
+
+  .flow-node.active {
+    border-color: rgba(52, 211, 153, 0.46);
+    background: rgba(52, 211, 153, 0.09);
+  }
+
+  .flow-node span {
+    display: block;
+    color: var(--muted-2);
+    font-size: 0.6rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+
+  .flow-node strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .inspector-grid {
+    display: grid;
+    grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .request-list {
+    min-height: 0;
+    border-right: 1px solid rgba(148, 163, 184, 0.14);
+    overflow: auto;
+  }
+
+  .request-list-head,
+  .request-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) 58px 58px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .request-list-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    min-height: 34px;
+    padding: 0 10px;
+    background: #0a0f1b;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    color: var(--muted-2);
+    font-size: 0.6rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .request-row {
+    width: 100%;
+    min-height: 54px;
+    border: 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    background: transparent;
+    color: var(--text);
+    padding: 8px 10px;
+    text-align: left;
+  }
+
+  .request-row:hover,
+  .request-row:focus-visible {
+    background: rgba(255, 255, 255, 0.045);
+    outline: none;
+  }
+
+  .request-row.active {
+    background: rgba(56, 189, 248, 0.09);
+    box-shadow: inset 3px 0 0 var(--ventrata);
+  }
+
+  .request-row.pending {
+    opacity: 0.42;
+  }
+
+  .method {
+    color: var(--text-strong);
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.66rem;
+    font-weight: 900;
+  }
+
+  .url-cell {
+    min-width: 0;
+  }
+
+  .url-cell strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-strong);
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.68rem;
+  }
+
+  .url-cell span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-2);
+    font-size: 0.62rem;
+    margin-top: 2px;
+  }
+
+  .status-code {
+    justify-self: start;
+    border-radius: 999px;
+    padding: 3px 7px;
+    color: #052e16;
+    background: #86efac;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.64rem;
+    font-weight: 900;
+  }
+
+  .status-code.waiting {
+    color: var(--muted);
+    background: rgba(148, 163, 184, 0.12);
+  }
+
+  .duration {
+    color: var(--muted);
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.64rem;
+  }
+
+  .detail {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .detail-title {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .detail-title h2 {
+    margin: 0;
+    color: var(--text-strong);
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .detail-title p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+
+  .detail-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .detail-tab {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    padding: 5px 9px;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  .detail-tab.active {
+    color: #d9f99d;
+    border-color: rgba(149, 191, 71, 0.34);
+    background: rgba(149, 191, 71, 0.11);
+  }
+
+  .payload {
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+  }
+
+  .payload pre {
+    margin: 0;
+    min-height: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: var(--radius-sm);
+    background: #050814;
+    color: #dbeafe;
+    padding: 12px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .stepbar {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .step-btn {
+    min-height: 56px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-md);
+    background: rgba(17, 24, 39, 0.7);
+    color: var(--muted);
+    padding: 8px 9px;
+    text-align: left;
+  }
+
+  .step-btn:hover,
+  .step-btn:focus-visible {
+    border-color: rgba(148, 163, 184, 0.32);
+    background: rgba(17, 24, 39, 0.94);
+    outline: none;
+  }
+
+  .step-btn.active {
+    border-color: rgba(52, 211, 153, 0.48);
+    background: rgba(52, 211, 153, 0.1);
+  }
+
+  .step-btn span {
+    display: block;
+    color: var(--muted-2);
+    font-size: 0.62rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .step-btn strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 0.76rem;
+    line-height: 1.2;
+    margin-top: 4px;
+  }
+
+  .source-ledger {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .ledger-card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.72);
+    padding: 14px;
+  }
+
+  .ledger-card h3 {
+    margin: 0 0 8px;
+    color: var(--text-strong);
+    font-size: 0.9rem;
+  }
+
+  .ledger-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .ledger-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .ledger-row {
+    display: grid;
+    grid-template-columns: minmax(130px, 0.46fr) minmax(0, 1fr);
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(148, 163, 184, 0.11);
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .ledger-row strong {
+    color: var(--text-strong);
+  }
+
+  @media (max-width: 1180px) {
+    .stage-layout,
+    .source-ledger {
+      grid-template-columns: 1fr;
+    }
+
+    .store-body {
+      grid-template-columns: 0.72fr 1fr;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .topbar-inner,
+    .panel-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .top-actions {
+      justify-content: flex-start;
+    }
+
+    .status-strip,
+    .flow-map,
+    .stepbar {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .store-body,
+    .inspector-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .product-media {
+      min-height: 360px;
+      border-right: 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .store-body,
+    .inspector-body {
+      min-height: auto;
+    }
+
+    .request-list {
+      max-height: 310px;
+      border-right: 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+  }
+
+  @media (max-width: 620px) {
+    .shell,
+    .topbar-inner {
+      width: min(100% - 20px, 1480px);
+    }
+
+    .status-strip,
+    .date-grid,
+    .time-grid,
+    .flow-map,
+    .stepbar {
+      grid-template-columns: 1fr;
+    }
+
+    .request-list-head,
+    .request-row {
+      grid-template-columns: 48px minmax(0, 1fr) 48px;
+    }
+
+    .request-list-head span:nth-child(4),
+    .request-row .duration {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">SH</div>
+        <div>
+          <div class="brand-title">Ventrata Ticketing PDP</div>
+          <div class="brand-subtitle">Shopify storefront selection, middleware validation, Ventrata hold, checkout handoff</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="control-btn" type="button" id="prevBtn">Previous</button>
+        <button class="control-btn primary" type="button" id="playBtn">Run Flow</button>
+        <button class="control-btn" type="button" id="nextBtn">Next</button>
+        <button class="control-btn" type="button" id="resetBtn">Reset</button>
+        <select class="control-select" id="speedSelect" aria-label="Playback speed">
+          <option value="1">1x speed</option>
+          <option value="1.5">1.5x speed</option>
+          <option value="2">2x speed</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="status-strip" aria-label="Integration state">
+      <div class="status-card">
+        <span>Ticket source of truth</span>
+        <strong id="truthState">Ventrata availability cache</strong>
+      </div>
+      <div class="status-card">
+        <span>Shopify state</span>
+        <strong id="shopifyState">PDP product shell loaded</strong>
+      </div>
+      <div class="status-card">
+        <span>Reservation state</span>
+        <strong id="reservationState">No hold yet</strong>
+      </div>
+      <div class="status-card">
+        <span>Checkout readiness</span>
+        <strong id="checkoutState">Selection incomplete</strong>
+      </div>
+    </section>
+
+    <section class="stage-layout" aria-label="Ticketing simulation">
+      <article class="storefront">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">Sample Shopify PDP</div>
+            <div class="panel-title">Empire State Building Tickets</div>
+          </div>
+          <div class="pill" id="pdpPill">Fast cached summary</div>
+        </div>
+
+        <div class="store-body">
+          <div class="product-media" aria-label="Product image simulation">
+            <div class="media-copy">
+              <div class="pill">Observation deck admission</div>
+              <h1>Main Deck Experience</h1>
+              <p>Guests choose a date, timeslot, and ticket mix on Shopify. Ventrata stays authoritative for ticket availability and booking state.</p>
+            </div>
+            <div class="skyline"></div>
+          </div>
+
+          <div class="store-controls">
+            <div class="breadcrumb">Home / New York / Observation Tickets</div>
+            <div class="product-meta">
+              <div class="rating">4.8 stars</div>
+              <div class="meta-text">Timed entry</div>
+              <div class="meta-text">Mobile ticket</div>
+            </div>
+
+            <div class="selector-group">
+              <div class="selector-label">Choose a date <span id="dateHint">Cache-backed calendar</span></div>
+              <div class="date-grid" id="dateGrid"></div>
+            </div>
+
+            <div class="selector-group">
+              <div class="selector-label">Choose a time <span id="timeHint">Refreshed from Ventrata</span></div>
+              <div class="time-grid" id="timeGrid"></div>
+            </div>
+
+            <div class="selector-group">
+              <div class="selector-label">Tickets <span>Unit items sent to Ventrata</span></div>
+              <div class="quantity-card">
+                <div class="qty-row">
+                  <div>
+                    <div class="qty-name">Adult</div>
+                    <div class="qty-price">$48.00 each</div>
+                  </div>
+                  <div class="stepper" aria-label="Adult quantity">
+                    <button type="button" data-qty="adult" data-delta="-1">-</button>
+                    <strong id="adultQty">2</strong>
+                    <button type="button" data-qty="adult" data-delta="1">+</button>
+                  </div>
+                </div>
+                <div class="qty-row">
+                  <div>
+                    <div class="qty-name">Child</div>
+                    <div class="qty-price">$42.00 each</div>
+                  </div>
+                  <div class="stepper" aria-label="Child quantity">
+                    <button type="button" data-qty="child" data-delta="-1">-</button>
+                    <strong id="childQty">1</strong>
+                    <button type="button" data-qty="child" data-delta="1">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="totals">
+              <div class="total-row">
+                <span id="selectionSummary">July 12, 10:00 AM - 3 guests</span>
+                <strong id="totalPrice">$138.00</strong>
+              </div>
+              <button class="checkout-btn" id="checkoutBtn" type="button" disabled>Reserve with Ventrata before checkout</button>
+            </div>
+
+            <div class="state-note" id="stateNote">
+              Cached availability can make the PDP fast, but Ventrata remains the operational source of truth. The hold step prevents a paid Shopify checkout without a reserved ticket.
+            </div>
+
+            <div class="confidence" aria-label="Availability confidence ladder">
+              <div class="confidence-step" data-confidence="0">
+                <div class="confidence-dot">1</div>
+                <div><strong>Cached summary</strong>Fast browsing signal from middleware cache.</div>
+              </div>
+              <div class="confidence-step" data-confidence="1">
+                <div class="confidence-dot">2</div>
+                <div><strong>Fresh date/time refresh</strong>Middleware checks Ventrata availability for the selected date.</div>
+              </div>
+              <div class="confidence-step" data-confidence="2">
+                <div class="confidence-dot">3</div>
+                <div><strong>Live slot validation</strong>Exact date, time, and unit mix are validated.</div>
+              </div>
+              <div class="confidence-step" data-confidence="3">
+                <div class="confidence-dot">4</div>
+                <div><strong>Booking hold</strong>Ventrata returns an on-hold booking before checkout.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="inspector">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">Network inspector</div>
+            <div class="panel-title">Shopify - Middleware - Ventrata exchange</div>
+          </div>
+          <div class="pill" id="inspectorPill">Step 1 of 6</div>
+        </div>
+
+        <div class="inspector-body">
+          <div class="flow-map" id="flowMap"></div>
+
+          <div class="inspector-grid">
+            <div class="request-list">
+              <div class="request-list-head">
+                <span>Method</span>
+                <span>Name</span>
+                <span>Status</span>
+                <span>Time</span>
+              </div>
+              <div id="requestList"></div>
+            </div>
+
+            <div class="detail">
+              <div class="detail-title">
+                <h2 id="detailName">Request detail</h2>
+                <p id="detailDescription">Select a request to inspect payload, source, and response state.</p>
+              </div>
+              <div class="detail-tabs">
+                <button class="detail-tab active" type="button" data-tab="headers">Headers</button>
+                <button class="detail-tab" type="button" data-tab="request">Request</button>
+                <button class="detail-tab" type="button" data-tab="response">Response</button>
+                <button class="detail-tab" type="button" data-tab="source">Source</button>
+              </div>
+              <div class="payload">
+                <pre id="payloadText"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="stepbar" id="stepbar" aria-label="Simulation steps"></section>
+
+    <section class="source-ledger" aria-label="Source and claim ledger">
+      <div class="ledger-card">
+        <h3>Source-backed behavior</h3>
+        <p>This simulation treats Ventrata as ticketing source of truth and Shopify as storefront, cart, checkout, payment, customer, and commercial order layer. Middleware owns translation, caching, hold creation, checkout handoff state, and later order reconciliation.</p>
+        <div class="ledger-list">
+          <div class="ledger-row"><strong>Ventrata Products</strong><span>Used for product, option, and unit mapping. Endpoint label shown as GET /products.</span></div>
+          <div class="ledger-row"><strong>Ventrata Availability</strong><span>Calendar browsing uses POST /availability/calendar. Exact date/time validation uses POST /availability.</span></div>
+          <div class="ledger-row"><strong>Ventrata Bookings</strong><span>Pre-checkout hold uses POST /bookings and displays ON_HOLD as a reservation state.</span></div>
+          <div class="ledger-row"><strong>Shopify Storefront Cart API</strong><span>Checkout handoff is modeled with cartCreate and checkoutUrl, with ticket references carried as cart line attributes.</span></div>
+        </div>
+      </div>
+      <div class="ledger-card">
+        <h3>Explicit non-assumptions</h3>
+        <p>The PDP does not call Ventrata directly. Shopify inventory is not treated as attraction capacity. Cached availability is not final truth. Post-payment confirmation, ticket delivery, cancellation, and refund reconciliation are called out as required follow-up flows, not silently assumed.</p>
+        <div class="ledger-list">
+          <div class="ledger-row"><strong>Pricing</strong><span>Sample prices are illustrative. Final pricing ownership must be verified: Shopify-managed, pre-cached, Ventrata-returned, or exact-price cart pattern.</span></div>
+          <div class="ledger-row"><strong>Hold duration</strong><span>The hold expiry is displayed as an example value. Real duration and extension support must be verified with Ventrata and implementation partner.</span></div>
+          <div class="ledger-row"><strong>After payment</strong><span>A production integration should confirm the Ventrata booking after Shopify payment and write supplier references back to the Shopify order.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const dates = [
+  { id: '2026-07-12', label: 'Jul 12', sub: 'Limited', status: 'LIMITED' },
+  { id: '2026-07-13', label: 'Jul 13', sub: 'Available', status: 'AVAILABLE' },
+  { id: '2026-07-14', label: 'Jul 14', sub: 'Sold out', status: 'SOLD_OUT', disabled: true },
+  { id: '2026-07-15', label: 'Jul 15', sub: 'Available', status: 'AVAILABLE' }
+];
+
+const times = [
+  { id: '09:30', label: '9:30 AM', sub: 'Available', status: 'AVAILABLE' },
+  { id: '10:00', label: '10:00 AM', sub: 'Limited', status: 'LIMITED' },
+  { id: '10:30', label: '10:30 AM', sub: 'Sold out', status: 'SOLD_OUT', disabled: true },
+  { id: '11:00', label: '11:00 AM', sub: 'Available', status: 'AVAILABLE' }
+];
+
+const flowNodes = [
+  { id: 'browser', label: 'Browser', detail: 'PDP selector', color: 'var(--browser)' },
+  { id: 'shopify', label: 'Shopify', detail: 'Storefront and Cart', color: 'var(--shopify)' },
+  { id: 'middleware', label: 'Middleware', detail: 'Cache, mapping, holds', color: 'var(--middleware)' },
+  { id: 'ventrata', label: 'Ventrata', detail: 'Products, availability, bookings', color: 'var(--ventrata)' }
+];
+
+const steps = [
+  {
+    title: 'PDP renders',
+    short: 'Product shell',
+    activeSystems: ['browser', 'shopify'],
+    confidence: 0,
+    truth: 'Ventrata availability cache',
+    shopify: 'PDP product shell loaded',
+    reservation: 'No hold yet',
+    checkout: 'Selection incomplete',
+    pill: 'Fast cached summary',
+    note: 'Shopify renders the sellable experience and product storytelling. The date/time picker is powered by middleware because Ventrata remains authoritative for ticketing state.',
+    requests: [
+      {
+        method: 'GET',
+        name: '/products/empire-state-building-tickets',
+        initiator: 'Browser -> Shopify Online Store',
+        status: 200,
+        duration: '96 ms',
+        description: 'The storefront renders a stable Shopify product shell for the attraction experience.',
+        headers: 'Accept: text/html\nCache-Control: no-cache\nUser-Agent: Browser',
+        request: 'GET /products/empire-state-building-tickets',
+        response: '<html>\n  <product-form data-product-id="gid://shopify/Product/88421001">\n  <ticket-selector data-provider="ventrata"></ticket-selector>\n</html>',
+        source: 'Shopify storefront rendering pattern; product shell is local simulation data. Ventrata remains ticketing source of truth per source Google Doc.'
+      },
+      {
+        method: 'GET',
+        name: '/apps/ventrata/products/esb-general-admission/summary',
+        initiator: 'Browser -> Middleware',
+        status: 200,
+        duration: '42 ms',
+        description: 'The PDP asks middleware for a fast, simplified availability summary instead of calling Ventrata directly.',
+        headers: 'Accept: application/json\nX-Shopify-Shop-Domain: esb-demo.myshopify.com\nX-Cache-Mode: summary',
+        request: '{\n  "shopifyProductId": "gid://shopify/Product/88421001",\n  "experience": "general-admission"\n}',
+        response: '{\n  "dates": [\n    { "localDate": "2026-07-12", "status": "LIMITED" },\n    { "localDate": "2026-07-13", "status": "AVAILABLE" },\n    { "localDate": "2026-07-14", "status": "SOLD_OUT" }\n  ],\n  "cacheAgeSeconds": 31,\n  "source": "middleware-cache"\n}',
+        source: 'Google Doc cached availability guidance: cache accelerates browsing but is not final inventory truth.'
+      }
+    ]
+  },
+  {
+    title: 'Mapping check',
+    short: 'Product mapping',
+    activeSystems: ['middleware', 'ventrata'],
+    confidence: 0,
+    truth: 'Ventrata product mapping',
+    shopify: 'Shopify product maps to Ventrata IDs',
+    reservation: 'No hold yet',
+    checkout: 'Selection incomplete',
+    pill: 'Mapping verified',
+    note: 'Middleware keeps the mapping between Shopify product shell and Ventrata product, option, and unit IDs. That avoids forcing every date, time, and unit combination into Shopify variants.',
+    requests: [
+      {
+        method: 'GET',
+        name: '/products',
+        initiator: 'Middleware -> Ventrata OCTO',
+        status: 200,
+        duration: '184 ms',
+        description: 'Middleware references Ventrata product, option, and unit structures used by the custom PDP selector.',
+        headers: 'Authorization: Bearer ***\nAccept: application/json',
+        request: 'GET /products',
+        response: '{\n  "products": [\n    {\n      "id": "ventrata_product_esb_main_deck",\n      "title": "Main Deck Admission",\n      "options": [{ "id": "option_timed_entry", "title": "Timed Entry" }],\n      "units": [\n        { "id": "unit_adult", "type": "ADULT" },\n        { "id": "unit_child", "type": "CHILD" }\n      ]\n    }\n  ]\n}',
+        source: 'Ventrata docs: Products endpoint. Payload values are simulated IDs for demo use.'
+      }
+    ]
+  },
+  {
+    title: 'Date refresh',
+    short: 'Calendar',
+    activeSystems: ['browser', 'middleware', 'ventrata'],
+    confidence: 1,
+    truth: 'Ventrata calendar availability',
+    shopify: 'Date selected on PDP',
+    reservation: 'No hold yet',
+    checkout: 'Selection incomplete',
+    pill: 'Calendar refreshed',
+    note: 'When the shopper chooses a date, middleware refreshes availability from Ventrata. The storefront can still respond quickly, but the data is closer to operational truth.',
+    requests: [
+      {
+        method: 'POST',
+        name: '/availability/calendar',
+        initiator: 'Middleware -> Ventrata OCTO',
+        status: 200,
+        duration: '218 ms',
+        description: 'Ventrata availability calendar provides date-level availability for a product and option.',
+        headers: 'Authorization: Bearer ***\nContent-Type: application/json\nAccept: application/json',
+        request: '{\n  "productId": "ventrata_product_esb_main_deck",\n  "optionId": "option_timed_entry",\n  "localDateStart": "2026-07-12",\n  "localDateEnd": "2026-07-15",\n  "units": [\n    { "id": "unit_adult", "quantity": 2 },\n    { "id": "unit_child", "quantity": 1 }\n  ]\n}',
+        response: '{\n  "availability": [\n    { "localDate": "2026-07-12", "status": "LIMITED" },\n    { "localDate": "2026-07-13", "status": "AVAILABLE" },\n    { "localDate": "2026-07-14", "status": "SOLD_OUT" }\n  ]\n}',
+        source: 'Ventrata docs: Availability Calendar. Exact request fields should be verified against current implementation and capabilities.'
+      },
+      {
+        method: 'GET',
+        name: '/apps/ventrata/availability?date=2026-07-12',
+        initiator: 'Browser -> Middleware',
+        status: 200,
+        duration: '49 ms',
+        description: 'Middleware returns storefront-friendly timeslot states after refreshing or reading a fresh-enough cache.',
+        headers: 'Accept: application/json\nX-Requested-With: ticket-selector',
+        request: 'date=2026-07-12&product=esb-general-admission',
+        response: '{\n  "localDate": "2026-07-12",\n  "times": [\n    { "localTime": "09:30", "status": "AVAILABLE" },\n    { "localTime": "10:00", "status": "LIMITED" },\n    { "localTime": "10:30", "status": "SOLD_OUT" }\n  ],\n  "refreshedFromVentrata": true\n}',
+        source: 'Middleware response shape is simulated. It intentionally simplifies Ventrata operational data for PDP use.'
+      }
+    ]
+  },
+  {
+    title: 'Slot validation',
+    short: 'Live check',
+    activeSystems: ['browser', 'middleware', 'ventrata'],
+    confidence: 2,
+    truth: 'Live Ventrata availability',
+    shopify: 'Ticket mix selected',
+    reservation: 'Validation passed',
+    checkout: 'Hold still required',
+    pill: 'Live validation',
+    note: 'When the shopper picks a specific time and ticket mix, middleware performs a live Ventrata availability check. This is more authoritative than the cached PDP summary.',
+    requests: [
+      {
+        method: 'POST',
+        name: '/availability',
+        initiator: 'Middleware -> Ventrata OCTO',
+        status: 200,
+        duration: '247 ms',
+        description: 'Ventrata detailed availability returns a bookable availabilityId for the selected date, time, and unit mix.',
+        headers: 'Authorization: Bearer ***\nContent-Type: application/json\nAccept: application/json',
+        request: '{\n  "productId": "ventrata_product_esb_main_deck",\n  "optionId": "option_timed_entry",\n  "localDateStart": "2026-07-12",\n  "localDateEnd": "2026-07-12",\n  "units": [\n    { "id": "unit_adult", "quantity": 2 },\n    { "id": "unit_child", "quantity": 1 }\n  ]\n}',
+        response: '{\n  "availability": [\n    {\n      "id": "availability_20260712_1000",\n      "localDateTimeStart": "2026-07-12T10:00:00-04:00",\n      "status": "LIMITED",\n      "vacancies": 14,\n      "capacity": 120\n    }\n  ]\n}',
+        source: 'Ventrata docs: Availability endpoint. Capacity and vacancies are illustrative sample values.'
+      },
+      {
+        method: 'POST',
+        name: '/apps/ventrata/validate-selection',
+        initiator: 'Browser -> Middleware',
+        status: 200,
+        duration: '61 ms',
+        description: 'The storefront receives a clean validation response and an availabilityId that middleware will use to create the hold.',
+        headers: 'Content-Type: application/json\nX-Selection-Source: PDP',
+        request: '{\n  "date": "2026-07-12",\n  "time": "10:00",\n  "units": { "adult": 2, "child": 1 }\n}',
+        response: '{\n  "valid": true,\n  "availabilityId": "availability_20260712_1000",\n  "status": "LIMITED",\n  "displayPrice": "138.00"\n}',
+        source: 'Middleware response shape is simulated. The concept comes from Google Doc guidance: live lookup for selected slot plus ticket mix.'
+      }
+    ]
+  },
+  {
+    title: 'Booking hold',
+    short: 'Reserve',
+    activeSystems: ['browser', 'middleware', 'ventrata'],
+    confidence: 3,
+    truth: 'Ventrata ON_HOLD booking',
+    shopify: 'Ready for cart create',
+    reservation: 'ON_HOLD until 10:15 AM',
+    checkout: 'Safe to create cart',
+    pill: 'Hold created',
+    note: 'Before the shopper moves into Shopify Checkout, middleware creates a Ventrata booking hold. This is the key guardrail against paid Shopify orders with no valid ticket reservation.',
+    requests: [
+      {
+        method: 'POST',
+        name: '/bookings',
+        initiator: 'Middleware -> Ventrata OCTO',
+        status: 200,
+        duration: '326 ms',
+        description: 'Middleware creates a Ventrata booking reservation using the selected product, option, availabilityId, and unitItems.',
+        headers: 'Authorization: Bearer ***\nContent-Type: application/json\nAccept: application/json',
+        request: '{\n  "productId": "ventrata_product_esb_main_deck",\n  "optionId": "option_timed_entry",\n  "availabilityId": "availability_20260712_1000",\n  "unitItems": [\n    { "unitId": "unit_adult" },\n    { "unitId": "unit_adult" },\n    { "unitId": "unit_child" }\n  ]\n}',
+        response: '{\n  "uuid": "booking_8b751d7a_demo",\n  "status": "ON_HOLD",\n  "utcExpiresAt": "2026-07-12T14:15:00Z",\n  "resellerReference": null\n}',
+        source: 'Ventrata docs: Bookings endpoint and booking reservation flow. Hold duration is illustrative and must be verified.'
+      },
+      {
+        method: 'POST',
+        name: '/apps/ventrata/holds',
+        initiator: 'Browser -> Middleware',
+        status: 200,
+        duration: '67 ms',
+        description: 'Middleware stores the Ventrata booking reference against the shopper session/cart-intent before Shopify checkout.',
+        headers: 'Content-Type: application/json\nX-Shopify-Shop-Domain: esb-demo.myshopify.com',
+        request: '{\n  "availabilityId": "availability_20260712_1000",\n  "units": { "adult": 2, "child": 1 }\n}',
+        response: '{\n  "holdId": "hold_shopify_session_5f31",\n  "ventrataBookingUuid": "booking_8b751d7a_demo",\n  "status": "ON_HOLD",\n  "expiresAt": "10:15 AM"\n}',
+        source: 'Middleware session persistence is implementation-specific. The required behavior comes from Google Doc architecture guidance.'
+      }
+    ]
+  },
+  {
+    title: 'Checkout handoff',
+    short: 'Cart create',
+    activeSystems: ['browser', 'shopify', 'middleware'],
+    confidence: 3,
+    truth: 'Ventrata hold referenced in cart',
+    shopify: 'Storefront cart created',
+    reservation: 'Hold attached to cart line',
+    checkout: 'checkoutUrl returned',
+    pill: 'Ready for Shopify Checkout',
+    note: 'Shopify Checkout handles payment and commercial order creation. The cart line carries Ventrata references so middleware can confirm the booking after payment and write ticket references back to the Shopify order.',
+    requests: [
+      {
+        method: 'POST',
+        name: 'Storefront API cartCreate',
+        initiator: 'Browser -> Shopify Storefront API',
+        status: 200,
+        duration: '154 ms',
+        description: 'The storefront creates a Shopify cart with a ticket line and attributes that preserve the Ventrata hold and selection context.',
+        headers: 'Content-Type: application/json\nX-Shopify-Storefront-Access-Token: ***',
+        request: 'mutation cartCreate($input: CartInput!) {\n  cartCreate(input: $input) {\n    cart { id checkoutUrl }\n    userErrors { field message }\n  }\n}\n\nvariables: {\n  "input": {\n    "lines": [{\n      "merchandiseId": "gid://shopify/ProductVariant/44100201",\n      "quantity": 1,\n      "attributes": [\n        { "key": "ventrata_booking_uuid", "value": "booking_8b751d7a_demo" },\n        { "key": "ventrata_availability_id", "value": "availability_20260712_1000" },\n        { "key": "ticket_units", "value": "adult:2,child:1" },\n        { "key": "local_start", "value": "2026-07-12T10:00:00-04:00" }\n      ]\n    }]\n  }\n}',
+        response: '{\n  "data": {\n    "cartCreate": {\n      "cart": {\n        "id": "gid://shopify/Cart/c1-demo",\n        "checkoutUrl": "https://esb-demo.myshopify.com/checkouts/cn/demo"\n      },\n      "userErrors": []\n    }\n  }\n}',
+        source: 'Shopify Storefront API cartCreate. Attribute names are demo implementation choices; production should validate customer-visible and admin-visible storage requirements.'
+      },
+      {
+        method: 'POST',
+        name: '/apps/ventrata/cart-link',
+        initiator: 'Shopify/Middleware state link',
+        status: 200,
+        duration: '53 ms',
+        description: 'Middleware links Shopify cart and Ventrata hold so a post-payment webhook can confirm the booking.',
+        headers: 'Content-Type: application/json\nX-Integration-Status: checkout-handoff',
+        request: '{\n  "shopifyCartId": "gid://shopify/Cart/c1-demo",\n  "ventrataBookingUuid": "booking_8b751d7a_demo",\n  "nextExpectedEvent": "Shopify order/payment webhook"\n}',
+        response: '{\n  "linked": true,\n  "checkoutReadiness": "READY",\n  "postPaymentAction": "confirm Ventrata booking and store supplierReference on Shopify order"\n}',
+        source: 'Post-payment confirmation is required by architecture but not executed in this pre-checkout simulation.'
+      }
+    ]
+  }
+];
+
+let selectedDate = dates[0].id;
+let selectedTime = times[1].id;
+let quantities = { adult: 2, child: 1 };
+let currentStep = 0;
+let selectedRequestIndex = 0;
+let activeTab = 'headers';
+let playing = false;
+let timers = [];
+
+const dateGrid = document.getElementById('dateGrid');
+const timeGrid = document.getElementById('timeGrid');
+const adultQty = document.getElementById('adultQty');
+const childQty = document.getElementById('childQty');
+const selectionSummary = document.getElementById('selectionSummary');
+const totalPrice = document.getElementById('totalPrice');
+const requestList = document.getElementById('requestList');
+const flowMap = document.getElementById('flowMap');
+const stepbar = document.getElementById('stepbar');
+const payloadText = document.getElementById('payloadText');
+const detailName = document.getElementById('detailName');
+const detailDescription = document.getElementById('detailDescription');
+const playBtn = document.getElementById('playBtn');
+
+function money(value) {
+  return '$' + value.toFixed(2);
+}
+
+function currentDate() {
+  return dates.find(date => date.id === selectedDate) || dates[0];
+}
+
+function currentTime() {
+  return times.find(time => time.id === selectedTime) || times[0];
+}
+
+function totalGuests() {
+  return quantities.adult + quantities.child;
+}
+
+function renderSelectors() {
+  dateGrid.innerHTML = dates.map(date => `
+    <button type="button" class="option-btn${date.id === selectedDate ? ' active' : ''}${date.disabled ? ' disabled' : ''}" data-date="${date.id}" ${date.disabled ? 'disabled' : ''}>
+      <span class="option-top">${date.label}</span>
+      <span class="option-sub">${date.sub}</span>
+    </button>
+  `).join('');
+
+  timeGrid.innerHTML = times.map(time => `
+    <button type="button" class="option-btn${time.id === selectedTime ? ' active' : ''}${time.disabled ? ' disabled' : ''}" data-time="${time.id}" ${time.disabled ? 'disabled' : ''}>
+      <span class="option-top">${time.label}</span>
+      <span class="option-sub">${time.sub}</span>
+    </button>
+  `).join('');
+
+  dateGrid.querySelectorAll('[data-date]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectedDate = button.dataset.date;
+      goToStep(Math.max(currentStep, 2));
+      updateAll();
+    });
+  });
+
+  timeGrid.querySelectorAll('[data-time]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectedTime = button.dataset.time;
+      goToStep(Math.max(currentStep, 3));
+      updateAll();
+    });
+  });
+}
+
+function renderQuantities() {
+  adultQty.textContent = quantities.adult;
+  childQty.textContent = quantities.child;
+
+  const total = quantities.adult * 48 + quantities.child * 42;
+  selectionSummary.textContent = `${currentDate().label}, ${currentTime().label} - ${totalGuests()} guest${totalGuests() === 1 ? '' : 's'}`;
+  totalPrice.textContent = money(total);
+}
+
+function renderFlowMap() {
+  const activeSystems = steps[currentStep].activeSystems;
+  flowMap.innerHTML = flowNodes.map(node => `
+    <div class="flow-node${activeSystems.includes(node.id) ? ' active' : ''}" style="${activeSystems.includes(node.id) ? `border-color:${node.color};` : ''}">
+      <span>${node.label}</span>
+      <strong>${node.detail}</strong>
+    </div>
+  `).join('');
+}
+
+function visibleRequests() {
+  return steps.slice(0, currentStep + 1).flatMap((step, stepIndex) =>
+    step.requests.map((request, requestIndex) => ({ ...request, stepIndex, requestIndex }))
+  );
+}
+
+function renderRequests() {
+  const requests = visibleRequests();
+  if (selectedRequestIndex >= requests.length) selectedRequestIndex = requests.length - 1;
+  if (selectedRequestIndex < 0) selectedRequestIndex = 0;
+
+  requestList.innerHTML = requests.map((request, index) => `
+    <button type="button" class="request-row${index === selectedRequestIndex ? ' active' : ''}" data-request-index="${index}">
+      <span class="method">${request.method}</span>
+      <span class="url-cell">
+        <strong>${escapeHTML(request.name)}</strong>
+        <span>${escapeHTML(request.initiator)}</span>
+      </span>
+      <span class="status-code">${request.status}</span>
+      <span class="duration">${request.duration}</span>
+    </button>
+  `).join('');
+
+  requestList.querySelectorAll('[data-request-index]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectedRequestIndex = Number(button.dataset.requestIndex);
+      renderRequests();
+      renderDetail();
+    });
+  });
+}
+
+function renderDetail() {
+  const request = visibleRequests()[selectedRequestIndex];
+  if (!request) return;
+
+  detailName.textContent = `${request.method} ${request.name}`;
+  detailDescription.textContent = request.description;
+  payloadText.textContent = request[activeTab] || '';
+}
+
+function renderSteps() {
+  stepbar.innerHTML = steps.map((step, index) => `
+    <button type="button" class="step-btn${index === currentStep ? ' active' : ''}" data-step="${index}">
+      <span>Step ${index + 1}</span>
+      <strong>${step.short}</strong>
+    </button>
+  `).join('');
+
+  stepbar.querySelectorAll('[data-step]').forEach(button => {
+    button.addEventListener('click', () => goToStep(Number(button.dataset.step)));
+  });
+}
+
+function renderState() {
+  const step = steps[currentStep];
+  document.getElementById('truthState').textContent = step.truth;
+  document.getElementById('shopifyState').textContent = step.shopify;
+  document.getElementById('reservationState').textContent = step.reservation;
+  document.getElementById('checkoutState').textContent = step.checkout;
+  document.getElementById('pdpPill').textContent = step.pill;
+  document.getElementById('inspectorPill').textContent = `Step ${currentStep + 1} of ${steps.length}`;
+  document.getElementById('stateNote').textContent = step.note;
+  document.getElementById('checkoutBtn').textContent = currentStep >= 5 ? 'Continue to Shopify Checkout' : currentStep >= 4 ? 'Create Shopify cart and checkout URL' : 'Reserve with Ventrata before checkout';
+  document.getElementById('checkoutBtn').disabled = currentStep < 4;
+
+  document.querySelectorAll('.confidence-step').forEach((row, index) => {
+    row.classList.toggle('active', index === step.confidence);
+    row.classList.toggle('done', index < step.confidence);
+  });
+}
+
+function updateAll() {
+  renderSelectors();
+  renderQuantities();
+  renderFlowMap();
+  renderRequests();
+  renderDetail();
+  renderSteps();
+  renderState();
+}
+
+function goToStep(index) {
+  currentStep = Math.max(0, Math.min(steps.length - 1, index));
+  selectedRequestIndex = visibleRequests().length - 1;
+  updateAll();
+}
+
+function clearTimers() {
+  timers.forEach(timer => clearTimeout(timer));
+  timers = [];
+}
+
+function resetFlow() {
+  clearTimers();
+  playing = false;
+  playBtn.textContent = 'Run Flow';
+  selectedDate = dates[0].id;
+  selectedTime = times[1].id;
+  quantities = { adult: 2, child: 1 };
+  currentStep = 0;
+  selectedRequestIndex = 0;
+  activeTab = 'headers';
+  document.querySelectorAll('.detail-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === activeTab);
+  });
+  updateAll();
+}
+
+function playFlow() {
+  if (playing) {
+    clearTimers();
+    playing = false;
+    playBtn.textContent = 'Run Flow';
+    return;
+  }
+
+  clearTimers();
+  playing = true;
+  playBtn.textContent = 'Pause';
+  const speed = Number(document.getElementById('speedSelect').value || 1);
+  const baseDelay = 1450 / speed;
+  goToStep(0);
+
+  for (let i = 1; i < steps.length; i += 1) {
+    timers.push(setTimeout(() => goToStep(i), baseDelay * i));
+  }
+
+  timers.push(setTimeout(() => {
+    playing = false;
+    playBtn.textContent = 'Run Flow';
+  }, baseDelay * steps.length + 80));
+}
+
+function escapeHTML(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+document.querySelectorAll('[data-qty]').forEach(button => {
+  button.addEventListener('click', () => {
+    const key = button.dataset.qty;
+    const delta = Number(button.dataset.delta);
+    quantities[key] = Math.max(key === 'adult' ? 1 : 0, Math.min(9, quantities[key] + delta));
+    goToStep(Math.max(currentStep, 3));
+    updateAll();
+  });
+});
+
+document.querySelectorAll('.detail-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    activeTab = tab.dataset.tab;
+    document.querySelectorAll('.detail-tab').forEach(item => item.classList.toggle('active', item === tab));
+    renderDetail();
+  });
+});
+
+document.getElementById('prevBtn').addEventListener('click', () => goToStep(currentStep - 1));
+document.getElementById('nextBtn').addEventListener('click', () => goToStep(currentStep + 1));
+document.getElementById('resetBtn').addEventListener('click', resetFlow);
+document.getElementById('playBtn').addEventListener('click', playFlow);
+document.getElementById('checkoutBtn').addEventListener('click', () => goToStep(5));
+
+updateAll();
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>

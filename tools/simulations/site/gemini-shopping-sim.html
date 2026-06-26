@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Gemini Shopping — Agentic Commerce Simulation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --gemini-blue: #4285F4;
+    --gemini-red: #EA4335;
+    --gemini-yellow: #FBBC04;
+    --gemini-green: #34A853;
+    --text: #e8eaed;
+    --text-muted: #9aa0a6;
+    --shopify-green: #96bf48;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ────────────────────────────── */
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(22,33,62,0.95);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+  }
+  .back-link { display: flex; align-items: center; gap: 6px; color: var(--text-muted); text-decoration: none; font-size: 0.8rem; font-weight: 500; transition: color 0.2s; }
+  .back-link:hover { color: var(--text); }
+  .sim-badge {
+    background: linear-gradient(135deg, rgba(66,133,244,0.15), rgba(234,67,53,0.1), rgba(251,188,4,0.1), rgba(52,168,83,0.1));
+    border: 1px solid rgba(66,133,244,0.25); color: var(--gemini-blue);
+    padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+  }
+  .controls-bar { display: flex; align-items: center; gap: 10px; }
+  .replay-btn {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text-muted);
+    padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .replay-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+  .speed-toggle { display: flex; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .speed-opt { padding: 5px 10px; font-size: 0.7rem; font-weight: 500; color: var(--text-muted); cursor: pointer; border: none; background: none; font-family: inherit; transition: all 0.2s; }
+  .speed-opt.active { background: rgba(66,133,244,0.2); color: var(--gemini-blue); }
+  .speed-opt:hover:not(.active) { color: var(--text); }
+  .info-toggle {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text-muted);
+    width: 30px; height: 30px; border-radius: 50%; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+  }
+  .info-toggle:hover { background: rgba(66,133,244,0.15); color: var(--gemini-blue); border-color: rgba(66,133,244,0.3); }
+
+  /* ── Scenario bar ───────────────────────── */
+  .scenario-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 24px; background: rgba(15,17,35,0.6); border-bottom: 1px solid var(--border); overflow-x: auto;
+  }
+  .scenario-bar label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .scenario-pill {
+    padding: 5px 14px; border-radius: 16px; font-size: 0.74rem; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    color: var(--text-muted); transition: all 0.2s; font-family: inherit; white-space: nowrap;
+  }
+  .scenario-pill.active { background: rgba(66,133,244,0.12); border-color: rgba(66,133,244,0.3); color: var(--gemini-blue); }
+  .scenario-pill:hover:not(.active) { border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+  .sim-progress { height: 2px; background: var(--border); position: relative; overflow: hidden; }
+  .sim-progress-fill { height: 100%; background: linear-gradient(90deg, #4285F4, #34A853); width: 0%; transition: width 0.5s ease; }
+
+  /* ── Main layout ────────────────────────── */
+  .main-layout { flex: 1; display: grid; grid-template-columns: 1fr 420px; overflow: hidden; }
+
+  /* ── LEFT: Gemini Chat ──────────────────── */
+  .gemini-chat { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: linear-gradient(180deg, #1a1a2e 0%, #0f1123 100%); }
+  .gemini-header {
+    display: flex; align-items: center; gap: 12px; padding: 14px 24px;
+    border-bottom: 1px solid var(--border); background: rgba(22,33,62,0.6);
+  }
+  .gemini-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: conic-gradient(from 0deg, #4285F4 0deg 90deg, #EA4335 90deg 180deg, #FBBC04 180deg 270deg, #34A853 270deg 360deg);
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .gemini-icon::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: #1a1a2e; position: absolute; }
+  .gemini-icon-sparkle { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: white; z-index: 1; animation: sparkle 3s ease-in-out infinite; }
+  @keyframes sparkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+
+  .gemini-title-area h2 { font-size: 1rem; font-weight: 600; }
+  .gemini-title-area span { font-size: 0.72rem; color: var(--text-muted); }
+  .ai-mode-pill {
+    margin-left: auto;
+    background: linear-gradient(135deg, rgba(66,133,244,0.15), rgba(167,139,250,0.12));
+    border: 1px solid rgba(66,133,244,0.3); color: #93bbfc;
+    padding: 4px 12px; border-radius: 16px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;
+  }
+
+  .chat-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+  .chat-body::-webkit-scrollbar { width: 4px; }
+  .chat-body::-webkit-scrollbar-track { background: transparent; }
+  .chat-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  /* Chat messages */
+  .msg { display: flex; gap: 12px; opacity: 0; transform: translateY(12px); transition: opacity 0.5s ease, transform 0.5s ease; max-width: 88%; }
+  .msg.visible { opacity: 1; transform: translateY(0); }
+  .msg.user { margin-left: auto; flex-direction: row-reverse; }
+
+  .avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white; margin-top: 2px; }
+  .avatar.user-av { background: linear-gradient(135deg, #6366f1, #a78bfa); }
+  .avatar.gemini-av { background: conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853); }
+  .avatar.shopify-av { background: linear-gradient(135deg, #96bf48, #5e8e3e); }
+
+  .bubble { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px 18px; line-height: 1.55; }
+  .bubble.user-bubble { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.2); border-radius: 16px 16px 4px 16px; }
+  .bubble.gemini-bubble { border-radius: 16px 16px 16px 4px; }
+  .bubble p { font-size: 0.86rem; color: #c8ccd4; margin: 0; }
+  .bubble .meta { font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .bubble .label { font-size: 0.66rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+
+  .ucp-tag { background: rgba(150,191,72,0.12); border: 1px solid rgba(150,191,72,0.25); color: var(--shopify-green); padding: 1px 7px; border-radius: 4px; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.04em; }
+
+  /* Typing indicator */
+  .typing-indicator { display: flex; gap: 12px; opacity: 0; transform: translateY(12px); transition: opacity 0.3s, transform 0.3s; max-width: 85%; }
+  .typing-indicator.visible { opacity: 1; transform: translateY(0); }
+  .typing-dots { display: flex; gap: 4px; padding: 14px 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px 16px 16px 4px; }
+  .typing-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.4s ease-in-out infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.16s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.4; } 40% { transform: translateY(-6px); opacity: 1; } }
+
+  /* Chat input */
+  .chat-input-area { padding: 14px 24px; border-top: 1px solid var(--border); background: rgba(22,33,62,0.6); }
+  .chat-input-box { display: flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 10px 18px; gap: 10px; }
+  .chat-input-box input { flex: 1; background: none; border: none; color: var(--text); font-size: 0.86rem; font-family: inherit; outline: none; }
+  .chat-input-box input::placeholder { color: #5f6368; }
+  .send-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--gemini-blue); border: none; color: white; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.5; }
+
+  /* ── RIGHT: Product & Checkout ──────────── */
+  .right-panel { display: flex; flex-direction: column; background: linear-gradient(180deg, #0f1123 0%, #0a0d1a 100%); overflow: hidden; }
+  .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: rgba(15,17,35,0.8); }
+  .panel-header h3 { font-size: 0.82rem; font-weight: 600; }
+  .panel-header .panel-count { margin-left: auto; background: rgba(66,133,244,0.12); color: var(--gemini-blue); padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; opacity: 0; transition: opacity 0.3s; }
+  .panel-header .panel-count.visible { opacity: 1; }
+
+  .panel-body { flex: 1; overflow-y: auto; padding: 16px; position: relative; }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  .panel-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--text-muted); gap: 12px; padding: 40px; }
+  .panel-empty .empty-icon { font-size: 2.5rem; opacity: 0.3; }
+  .panel-empty p { font-size: 0.82rem; line-height: 1.5; }
+
+  /* Product cards */
+  .product-grid { display: flex; flex-direction: column; gap: 10px; opacity: 0; transform: translateY(20px); transition: opacity 0.6s, transform 0.6s; }
+  .product-grid.visible { opacity: 1; transform: translateY(0); }
+
+  .product-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px; padding: 14px; display: flex; gap: 14px;
+    cursor: pointer; transition: all 0.3s; opacity: 0; transform: translateX(20px);
+  }
+  .product-card.visible { opacity: 1; transform: translateX(0); }
+  .product-card:hover { border-color: rgba(66,133,244,0.25); background: rgba(255,255,255,0.05); }
+  .product-card.selected { border-color: rgba(66,133,244,0.5); background: rgba(66,133,244,0.06); box-shadow: 0 0 20px rgba(66,133,244,0.08); }
+
+  .product-img { width: 80px; height: 80px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; position: relative; overflow: hidden; }
+  .product-img .img-bg { position: absolute; inset: 0; border-radius: 10px; }
+  .product-img span { position: relative; z-index: 1; }
+
+  .product-info { flex: 1; min-width: 0; }
+  .product-info .store-name { font-size: 0.64rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 3px; }
+  .product-info h4 { font-size: 0.84rem; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+  .product-info .price-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .product-info .price { font-size: 0.88rem; font-weight: 700; color: #6ee7b7; }
+  .product-info .original-price { font-size: 0.74rem; color: var(--text-muted); text-decoration: line-through; }
+  .product-info .rating { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .product-info .rating .stars { color: #FBBC04; }
+  .product-info .badges { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+  .product-info .badge-tag { font-size: 0.58rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.02em; }
+  .badge-shopify { background: rgba(150,191,72,0.1); border: 1px solid rgba(150,191,72,0.2); color: var(--shopify-green); }
+  .badge-tryon { background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); color: #a78bfa; }
+  .badge-subscribe { background: rgba(66,133,244,0.1); border: 1px solid rgba(66,133,244,0.2); color: #93bbfc; }
+
+  .buy-btn-wrap { display: none; margin-top: 10px; }
+  .product-card.selected .buy-btn-wrap { display: block; }
+  .buy-for-me {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    background: linear-gradient(135deg, #4285F4, #1a73e8); color: white; border: none; border-radius: 24px;
+    padding: 10px 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: all 0.2s; animation: buyPulse 2.5s ease-in-out infinite;
+  }
+  .buy-for-me:hover { box-shadow: 0 4px 20px rgba(66,133,244,0.4); transform: translateY(-1px); }
+  @keyframes buyPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(66,133,244,0.3); } 50% { box-shadow: 0 0 12px 4px rgba(66,133,244,0.15); } }
+
+  /* ── Checkout overlay ───────────────────── */
+  .checkout-overlay {
+    position: absolute; inset: 0; background: rgba(5,8,18,0.95); backdrop-filter: blur(20px);
+    z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: 20px 16px; opacity: 0; pointer-events: none; transition: opacity 0.4s; overflow-y: auto;
+  }
+  .checkout-overlay.active { opacity: 1; pointer-events: auto; }
+
+  .checkout-card {
+    background: rgba(30,35,60,0.95); border: 1px solid rgba(66,133,244,0.2);
+    border-radius: 20px; padding: 24px; max-width: 360px; width: 100%;
+  }
+  .checkout-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; text-align: center; }
+
+  .checkout-item { display: flex; gap: 12px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .checkout-item-img { width: 52px; height: 52px; border-radius: 10px; background: linear-gradient(135deg, rgba(66,133,244,0.15), rgba(167,139,250,0.1)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+  .checkout-item-info h4 { font-size: 0.8rem; margin-bottom: 2px; }
+  .checkout-item-info p { font-size: 0.7rem; color: var(--text-muted); }
+
+  .checkout-lines { margin-bottom: 12px; }
+  .checkout-line { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.78rem; color: var(--text-muted); }
+  .checkout-line .val { color: var(--text); font-weight: 500; }
+  .checkout-line.discount .val { color: #6ee7b7; }
+  .checkout-line.total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; }
+  .checkout-line.total span { color: #6ee7b7; font-weight: 700; font-size: 0.92rem; }
+
+  /* Checkout fields */
+  .checkout-section { margin-bottom: 12px; }
+  .checkout-section-label { font-size: 0.66rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 6px; }
+
+  .checkout-field {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 12px; font-size: 0.76rem; color: var(--text-muted); transition: all 0.2s;
+    cursor: pointer;
+  }
+  .checkout-field:hover { border-color: rgba(66,133,244,0.3); }
+  .checkout-field .field-icon { font-size: 0.85rem; }
+  .checkout-field .field-val { color: var(--text); font-weight: 500; }
+  .checkout-field.applied { border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.04); }
+  .checkout-field.applied .field-val { color: #6ee7b7; }
+
+  .sub-options { display: flex; gap: 6px; }
+  .sub-opt {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03); text-align: center; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .sub-opt .sub-freq { font-size: 0.72rem; font-weight: 600; color: var(--text); display: block; }
+  .sub-opt .sub-save { font-size: 0.62rem; color: #6ee7b7; display: block; margin-top: 2px; }
+  .sub-opt:hover { border-color: rgba(66,133,244,0.3); }
+  .sub-opt.selected { border-color: rgba(66,133,244,0.5); background: rgba(66,133,244,0.08); }
+
+  .checkout-address { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+  .checkout-payment-options { display: flex; gap: 6px; margin-bottom: 12px; }
+  .pay-option {
+    flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03); text-align: center; cursor: pointer;
+    font-size: 0.72rem; font-weight: 600; color: var(--text-muted); transition: all 0.2s; font-family: inherit;
+  }
+  .pay-option.active { border-color: rgba(66,133,244,0.4); background: rgba(66,133,244,0.08); color: var(--text); }
+  .pay-option:hover:not(.active) { border-color: rgba(255,255,255,0.15); }
+  .pay-option .pay-soon { font-size: 0.58rem; color: var(--text-muted); font-weight: 400; display: block; }
+
+  .gpay-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    background: #000; color: white; border: 1px solid #333; border-radius: 24px;
+    padding: 11px 24px; font-size: 0.86rem; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .gpay-btn:hover { background: #1a1a1a; border-color: #555; }
+  .gpay-btn .g-icon { font-weight: 700; font-size: 1rem; background: linear-gradient(135deg, #4285F4, #EA4335, #FBBC04, #34A853); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .checkout-success { text-align: center; display: none; max-width: 360px; width: 100%; }
+  .checkout-success.active { display: block; }
+  .success-check { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #34d399, #059669); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 14px; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+  .checkout-success h3 { color: #6ee7b7; font-size: 1.05rem; margin-bottom: 6px; }
+  .checkout-success .order-id { color: var(--text-muted); font-size: 0.76rem; margin-bottom: 4px; }
+  .checkout-success .delivery { color: var(--text); font-size: 0.8rem; margin-bottom: 12px; }
+  .checkout-success .my-orders { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.74rem; color: var(--text-muted); cursor: pointer; margin-top: 8px; transition: all 0.2s; }
+  .checkout-success .my-orders:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+  .checkout-success .powered-by { font-size: 0.66rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; }
+  .checkout-success .shopify-tag { color: var(--shopify-green); font-weight: 600; }
+
+  .order-confirmed { background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.15); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .order-confirmed .check-icon { width: 28px; height: 28px; border-radius: 50%; background: rgba(52,211,153,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85rem; }
+  .order-confirmed .order-text { font-size: 0.78rem; color: #a7f3d0; line-height: 1.4; }
+
+  /* ── UCP / Stats banners ────────────────── */
+  .ucp-banner {
+    padding: 10px 20px; background: linear-gradient(135deg, rgba(150,191,72,0.06), rgba(66,133,244,0.04));
+    border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+    font-size: 0.68rem; color: var(--text-muted); opacity: 0; transition: opacity 0.5s;
+  }
+  .ucp-banner.visible { opacity: 1; }
+  .ucp-logo { background: rgba(150,191,72,0.12); border: 1px solid rgba(150,191,72,0.2); color: var(--shopify-green); padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.64rem; letter-spacing: 0.04em; }
+
+  /* ── Info drawer ────────────────────────── */
+  .info-drawer {
+    position: fixed; top: 0; right: -460px; width: 440px; height: 100vh; z-index: 200;
+    background: rgba(15,17,35,0.98); backdrop-filter: blur(30px);
+    border-left: 1px solid var(--border); transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto; padding: 24px;
+  }
+  .info-drawer.open { right: 0; }
+  .info-drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .info-drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .drawer-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 4px; }
+  .drawer-close:hover { color: var(--text); }
+
+  .drawer-section { margin-bottom: 24px; }
+  .drawer-section h3 { font-size: 0.82rem; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .drawer-section p { font-size: 0.78rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 8px; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+  .stat-card .stat-val { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, var(--gemini-blue), var(--gemini-green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-card .stat-label { font-size: 0.66rem; color: var(--text-muted); margin-top: 4px; }
+
+  .partner-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .partner-pill { padding: 4px 10px; border-radius: 6px; font-size: 0.68rem; font-weight: 500; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-muted); }
+
+  .feature-list { list-style: none; }
+  .feature-list li { padding: 6px 0; font-size: 0.76rem; color: var(--text-muted); display: flex; align-items: flex-start; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .feat-icon { flex-shrink: 0; width: 20px; text-align: center; }
+
+  .merchant-note { background: rgba(150,191,72,0.06); border: 1px solid rgba(150,191,72,0.12); border-radius: 10px; padding: 12px 14px; }
+  .merchant-note p { font-size: 0.74rem; color: #b8d491; margin: 0; }
+
+  @media (max-width: 900px) {
+    .main-layout { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .gemini-chat { border-right: none; border-bottom: 1px solid var(--border); }
+    .info-drawer { width: 100%; right: -100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="index.html" class="back-link">&larr; All Simulations</a>
+  <span class="sim-badge">AGENTIC COMMERCE</span>
+  <div class="controls-bar">
+    <div class="speed-toggle">
+      <button class="speed-opt" data-speed="0.5" onclick="setSpeed(0.5,this)">0.5x</button>
+      <button class="speed-opt active" data-speed="1" onclick="setSpeed(1,this)">1x</button>
+      <button class="speed-opt" data-speed="2" onclick="setSpeed(2,this)">2x</button>
+      <button class="speed-opt" data-speed="0" onclick="setSpeed(0,this)">Skip</button>
+    </div>
+    <button class="replay-btn" onclick="restartSim()">&#8635; Replay</button>
+    <button class="info-toggle" onclick="toggleDrawer()" title="How it works">i</button>
+  </div>
+</div>
+
+<div class="scenario-bar">
+  <label>Scenario:</label>
+  <button class="scenario-pill active" onclick="loadScenario(0,this)">Weekend Bag</button>
+  <button class="scenario-pill" onclick="loadScenario(1,this)">Running Shoes</button>
+  <button class="scenario-pill" onclick="loadScenario(2,this)">Skincare Set</button>
+</div>
+
+<div class="sim-progress"><div class="sim-progress-fill" id="progress-fill"></div></div>
+
+<div class="main-layout">
+  <div class="gemini-chat">
+    <div class="gemini-header">
+      <div class="gemini-icon"><div class="gemini-icon-sparkle"></div></div>
+      <div class="gemini-title-area"><h2>Gemini</h2><span>Google AI assistant</span></div>
+      <div class="ai-mode-pill">&#10024; AI MODE</div>
+    </div>
+    <div class="chat-body" id="chat-body"></div>
+    <div class="ucp-banner" id="ucp-banner">
+      <span class="ucp-logo">UCP</span>
+      Shopping powered by the Universal Commerce Protocol &mdash; Shopify merchant checkout, never leaves the conversation
+    </div>
+    <div class="chat-input-area">
+      <div class="chat-input-box">
+        <input type="text" placeholder="Ask Gemini anything..." readonly id="chat-input">
+        <button class="send-btn" id="send-btn">&#10148;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-header">
+      <span style="font-size:1rem">&#128722;</span>
+      <h3>Shopping Results</h3>
+      <span class="panel-count" id="panel-count">4 products</span>
+    </div>
+    <div class="panel-body" id="panel-body">
+      <div class="panel-empty" id="panel-empty">
+        <div class="empty-icon">&#128269;</div>
+        <p>Product recommendations will appear here as the conversation starts.<br><br>
+        <span style="font-size:0.72rem;">Powered by Google Shopping Graph &mdash; 50B+ product listings</span></p>
+      </div>
+      <div class="product-grid" id="product-grid"></div>
+      <div class="checkout-overlay" id="checkout-overlay">
+        <div class="checkout-card" id="checkout-form"></div>
+        <div class="checkout-success" id="checkout-success"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info drawer -->
+<div class="info-drawer-backdrop" id="drawer-backdrop" onclick="toggleDrawer()"></div>
+<div class="info-drawer" id="info-drawer">
+  <button class="drawer-close" onclick="toggleDrawer()">&times;</button>
+
+  <div class="drawer-section">
+    <h3>&#128640; How It Works</h3>
+    <p>Shopify merchants can sell directly inside <strong>Google AI Mode</strong> (Search) and the <strong>Gemini app</strong>. Customers discover products through natural conversation, get AI-curated recommendations, and complete checkout &mdash; all without leaving the chat.</p>
+    <p>This is powered by the <strong>Universal Commerce Protocol (UCP)</strong>, an open standard co-developed by Shopify and Google.</p>
+  </div>
+
+  <div class="drawer-section">
+    <h3>&#128200; Key Metrics</h3>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-val">8x</div><div class="stat-label">AI traffic to Shopify stores YoY</div></div>
+      <div class="stat-card"><div class="stat-val">15x</div><div class="stat-label">Orders from AI searches YoY</div></div>
+      <div class="stat-card"><div class="stat-val">+30%</div><div class="stat-label">Higher AOV on AI orders</div></div>
+      <div class="stat-card"><div class="stat-val">2x</div><div class="stat-label">More new customers from AI</div></div>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <h3>&#128101; UCP Ecosystem Partners (20+)</h3>
+    <div class="partner-pills">
+      <span class="partner-pill">Google</span>
+      <span class="partner-pill">Shopify</span>
+      <span class="partner-pill">Walmart</span>
+      <span class="partner-pill">Target</span>
+      <span class="partner-pill">Etsy</span>
+      <span class="partner-pill">Wayfair</span>
+      <span class="partner-pill">Visa</span>
+      <span class="partner-pill">Mastercard</span>
+      <span class="partner-pill">Stripe</span>
+      <span class="partner-pill">American Express</span>
+      <span class="partner-pill">PayPal</span>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <h3>&#127380; Checkout Capabilities</h3>
+    <ul class="feature-list">
+      <li><span class="feat-icon">&#128179;</span> Google Pay (primary) &mdash; pre-filled with saved payment &amp; address</li>
+      <li><span class="feat-icon">&#128184;</span> PayPal support (coming soon)</li>
+      <li><span class="feat-icon">&#127991;</span> Discount &amp; promo code entry</li>
+      <li><span class="feat-icon">&#127942;</span> Loyalty program credentials</li>
+      <li><span class="feat-icon">&#128260;</span> Subscription billing cadence selection</li>
+      <li><span class="feat-icon">&#128722;</span> Multi-item cart support</li>
+      <li><span class="feat-icon">&#128083;</span> Virtual try-on (apparel &amp; home goods)</li>
+      <li><span class="feat-icon">&#128230;</span> "My Orders" via Menu &gt; My stuff in Gemini</li>
+      <li><span class="feat-icon">&#127968;</span> Merchant remains seller of record</li>
+      <li><span class="feat-icon">&#128274;</span> Works with any payment processor &mdash; Shopify Payments NOT required</li>
+    </ul>
+  </div>
+
+  <div class="drawer-section">
+    <h3>&#9881; UCP Technical Architecture</h3>
+    <ul class="feature-list">
+      <li><span class="feat-icon">&#128279;</span> REST (HTTPS+JSON) &mdash; primary transport binding</li>
+      <li><span class="feat-icon">&#129302;</span> MCP (Model Context Protocol) &mdash; LLM agents invoke UCP tools directly</li>
+      <li><span class="feat-icon">&#128257;</span> A2A (Agent-to-Agent) &mdash; direct agent communication</li>
+      <li><span class="feat-icon">&#128196;</span> Capability negotiation via <code>/.well-known/ucp</code></li>
+    </ul>
+  </div>
+
+  <div class="drawer-section">
+    <h3>&#128717; For Shopify Merchants</h3>
+    <div class="merchant-note">
+      <p><strong>No setup required.</strong> Shopify merchants are UCP-enabled by default. Manage from <strong>Shopify Admin &gt; Settings &gt; Sales Channels &gt; Agentic Storefronts</strong>. Toggle Google AI Mode / Gemini on or off independently of other channels (ChatGPT, Copilot). Product data syncs automatically via the Google &amp; YouTube sales channel to Google Merchant Center.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Scenario Data ─────────────────────────────────────
+const SCENARIOS = [
+  {
+    name: "Weekend Bag",
+    userQuery: "I'm looking for a cute travel bag for a weekend trip \u2014 something stylish but practical, under $150.",
+    aiResponse: "I found some great weekend bags from Shopify-powered stores! Here are 4 options that match your style and budget \u2014 I've pulled real-time pricing and availability via UCP:",
+    refinement: "The Lark & Ives one is gorgeous. Can I buy it right here?",
+    aiCheckoutPrompt: "Absolutely! I've selected the Lark & Ives Weekender for you. Tap <strong>\"Buy for me\"</strong> and I'll process checkout with your saved Google Pay \u2014 you won't leave this conversation. You can also apply a discount code or connect loyalty points at checkout.",
+    products: [
+      { store: "Lark & Ives", name: "The Weekender Duffle \u2014 Sage", price: "$128.00", originalPrice: null, rating: "4.8", reviews: "2,847", emoji: "\uD83D\uDC5C", color: "linear-gradient(135deg, rgba(134,179,132,0.25), rgba(88,130,86,0.15))", features: "Vegan leather \u00b7 Laptop sleeve \u00b7 Detachable strap", badges: ["shopify"] },
+      { store: "BEIS", name: "The Mini Weekender", price: "$98.00", originalPrice: null, rating: "4.7", reviews: "5,120", emoji: "\uD83E\uDDF3", color: "linear-gradient(135deg, rgba(200,175,150,0.25), rgba(160,130,100,0.15))", features: "Expandable \u00b7 Trolley sleeve \u00b7 Water-resistant", badges: ["shopify"] },
+      { store: "Dagne Dover", name: "Landon Carryall \u2014 Medium", price: "$145.00", originalPrice: "$185.00", rating: "4.9", reviews: "3,680", emoji: "\uD83D\uDCBC", color: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.12))", features: "Neoprene \u00b7 Machine washable \u00b7 Shoe pocket", badges: ["shopify","tryon"] },
+      { store: "Paravel", name: "Main Line Duffle", price: "$135.00", originalPrice: null, rating: "4.6", reviews: "1,290", emoji: "\u2708\uFE0F", color: "linear-gradient(135deg, rgba(66,133,244,0.2), rgba(37,99,235,0.12))", features: "Recycled materials \u00b7 Lightweight \u00b7 Packable", badges: ["shopify"] }
+    ],
+    selectedIdx: 0,
+    checkout: { item: "The Weekender Duffle \u2014 Sage", store: "Lark & Ives", price: "$128.00", shipping: "Free", tax: "$10.50", total: "$138.50", discountedTotal: "$124.65", emoji: "\uD83D\uDC5C", address: "Sarah J. \u00b7 142 Oak Ave, Austin TX 78704", orderId: "LI-84291", delivery: "Apr 19\u201322", hasDiscount: true, discountCode: "WELCOME10", discountAmt: "-$13.85", hasSubscription: false, hasLoyalty: true, loyaltyName: "Lark Rewards" }
+  },
+  {
+    name: "Running Shoes",
+    userQuery: "I need lightweight running shoes for road running, under $200. I pronate slightly and prefer good cushioning.",
+    aiResponse: "Great picks for a mild pronator! I searched across running stores via UCP and found these top-rated options with stability features:",
+    refinement: "The Allbirds look perfect for what I need. Let me get those.",
+    aiCheckoutPrompt: "Great choice! The Tree Flyers are a fan favorite. Tap <strong>\"Buy for me\"</strong> below and I'll use your Google Pay to complete the purchase. You can choose a subscription to auto-reorder when they wear out.",
+    products: [
+      { store: "Allbirds", name: "Tree Flyer 2 \u2014 Natural Black", price: "$160.00", originalPrice: null, rating: "4.7", reviews: "4,210", emoji: "\uD83D\uDC5F", color: "linear-gradient(135deg, rgba(50,50,50,0.3), rgba(80,80,80,0.15))", features: "Carbon-neutral \u00b7 SwiftFoam\u2122 \u00b7 8.8 oz", badges: ["shopify","subscribe"] },
+      { store: "On Running", name: "Cloudmonster 2", price: "$169.99", originalPrice: null, rating: "4.8", reviews: "6,340", emoji: "\uD83C\uDFC3", color: "linear-gradient(135deg, rgba(200,60,60,0.2), rgba(180,40,40,0.12))", features: "CloudTec\u00ae \u00b7 Helion\u2122 superfoam \u00b7 10.2 oz", badges: ["shopify","tryon"] },
+      { store: "HOKA", name: "Clifton 9 \u2014 Wide", price: "$145.00", originalPrice: "$150.00", rating: "4.9", reviews: "12,800", emoji: "\u26A1", color: "linear-gradient(135deg, rgba(66,133,244,0.2), rgba(37,99,235,0.12))", features: "Award winner \u00b7 Meta-Rocker \u00b7 7.8 oz", badges: ["shopify","tryon"] },
+      { store: "Brooks", name: "Ghost 16 \u2014 Neutral", price: "$139.95", originalPrice: null, rating: "4.8", reviews: "8,920", emoji: "\uD83D\uDCA8", color: "linear-gradient(135deg, rgba(100,200,150,0.2), rgba(60,160,100,0.12))", features: "DNA LOFT v2 \u00b7 Smooth transitions \u00b7 9.5 oz", badges: ["shopify"] }
+    ],
+    selectedIdx: 0,
+    checkout: { item: "Tree Flyer 2 \u2014 Natural Black", store: "Allbirds", price: "$160.00", shipping: "Free", tax: "$13.12", total: "$173.12", discountedTotal: null, emoji: "\uD83D\uDC5F", address: "Sarah J. \u00b7 142 Oak Ave, Austin TX 78704", orderId: "AB-67342", delivery: "Apr 18\u201320", hasDiscount: false, discountCode: null, discountAmt: null, hasSubscription: true, subFreqs: [{label:"Every 4 months", save:"Save 10%"},{label:"Every 6 months", save:"Save 5%"},{label:"One-time", save:""}], hasLoyalty: false, loyaltyName: null }
+  },
+  {
+    name: "Skincare Set",
+    userQuery: "I want to start a simple skincare routine \u2014 cleanser, moisturizer, and SPF. Clean beauty brands, budget around $40\u201360 per product.",
+    aiResponse: "Love the minimalist approach! Here are my top picks from clean beauty Shopify brands \u2014 each well-reviewed and within your budget:",
+    refinement: "The Herbivore bundle is exactly what I wanted. I'll take it!",
+    aiCheckoutPrompt: "Excellent taste! Tap <strong>\"Buy for me\"</strong> on the Herbivore card. I see they have a promo running \u2014 you can apply it at checkout. I'll also connect your loyalty account if you have one.",
+    products: [
+      { store: "Herbivore", name: "The Routine \u2014 3-Step Bundle", price: "$58.00", originalPrice: "$72.00", rating: "4.8", reviews: "3,450", emoji: "\uD83C\uDF3F", color: "linear-gradient(135deg, rgba(134,179,132,0.25), rgba(88,130,86,0.15))", features: "Cleanser + Moisturizer + SPF \u00b7 Vegan \u00b7 Clean", badges: ["shopify"] },
+      { store: "Youth To The People", name: "Superfood Cleanser", price: "$42.00", originalPrice: null, rating: "4.7", reviews: "8,100", emoji: "\uD83E\uDD5D", color: "linear-gradient(135deg, rgba(120,180,90,0.2), rgba(80,140,50,0.12))", features: "Kale + Green tea + Spinach \u00b7 pH balanced", badges: ["shopify"] },
+      { store: "Cocokind", name: "Daily SPF 32 Moisturizer", price: "$24.00", originalPrice: null, rating: "4.6", reviews: "2,890", emoji: "\u2600\uFE0F", color: "linear-gradient(135deg, rgba(251,188,4,0.2), rgba(200,150,4,0.12))", features: "Mineral SPF \u00b7 Lightweight \u00b7 No white cast", badges: ["shopify","tryon"] },
+      { store: "Versed", name: "Dew Point Moisturizing Gel", price: "$19.99", originalPrice: null, rating: "4.5", reviews: "5,600", emoji: "\uD83D\uDCA7", color: "linear-gradient(135deg, rgba(100,180,220,0.2), rgba(60,140,180,0.12))", features: "Oil-free \u00b7 Hyaluronic acid \u00b7 Aloe", badges: ["shopify","subscribe"] }
+    ],
+    selectedIdx: 0,
+    checkout: { item: "The Routine \u2014 3-Step Bundle", store: "Herbivore", price: "$58.00", shipping: "Free", tax: "$4.76", total: "$62.76", discountedTotal: "$56.48", emoji: "\uD83C\uDF3F", address: "Sarah J. \u00b7 142 Oak Ave, Austin TX 78704", orderId: "HB-23491", delivery: "Apr 20\u201323", hasDiscount: true, discountCode: "GLOW20", discountAmt: "-$6.28", hasSubscription: false, hasLoyalty: true, loyaltyName: "Herbivore Rewards" }
+  }
+];
+
+// ── State ──────────────────────────────────────────────
+let currentScenario = 0, speedMultiplier = 1, simRunning = false, simAbort = null;
+const chatBody = document.getElementById('chat-body');
+const productGrid = document.getElementById('product-grid');
+const panelEmpty = document.getElementById('panel-empty');
+const panelCount = document.getElementById('panel-count');
+const checkoutOverlay = document.getElementById('checkout-overlay');
+const checkoutForm = document.getElementById('checkout-form');
+const checkoutSuccess = document.getElementById('checkout-success');
+const progressFill = document.getElementById('progress-fill');
+const ucpBanner = document.getElementById('ucp-banner');
+
+// ── Helpers ────────────────────────────────────────────
+function delay(ms) {
+  if (speedMultiplier === 0) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const t = setTimeout(res, ms / (speedMultiplier || 1));
+    if (simAbort) simAbort.signal.addEventListener('abort', () => { clearTimeout(t); rej(new DOMException('','AbortError')); });
+  });
+}
+
+function setProgress(p) { progressFill.style.width = p + '%'; }
+
+function addMessage(type, content) {
+  const msg = document.createElement('div');
+  msg.className = `msg ${type}`;
+  const avMap = { user: ['user-av','U'], gemini: ['gemini-av','G'], shopify: ['shopify-av','S'] };
+  const [ac, at] = avMap[type] || avMap.gemini;
+  msg.innerHTML = `<div class="avatar ${ac}">${at}</div><div class="bubble ${type === 'user' ? 'user-bubble' : 'gemini-bubble'}">${content}</div>`;
+  chatBody.appendChild(msg);
+  requestAnimationFrame(() => { msg.classList.add('visible'); chatBody.scrollTop = chatBody.scrollHeight; });
+  return msg;
+}
+
+function showTyping() {
+  const el = document.createElement('div');
+  el.className = 'typing-indicator'; el.id = 'typing';
+  el.innerHTML = `<div class="avatar gemini-av">G</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
+  chatBody.appendChild(el);
+  requestAnimationFrame(() => { el.classList.add('visible'); chatBody.scrollTop = chatBody.scrollHeight; });
+}
+function hideTyping() { const el = document.getElementById('typing'); if (el) el.remove(); }
+
+function renderProducts(products) {
+  panelEmpty.style.display = 'none';
+  productGrid.innerHTML = '';
+  products.forEach((p, i) => {
+    const badges = (p.badges || []).map(b => {
+      if (b === 'shopify') return '<span class="badge-tag badge-shopify">Shopify</span>';
+      if (b === 'tryon') return '<span class="badge-tag badge-tryon">Virtual Try-on</span>';
+      if (b === 'subscribe') return '<span class="badge-tag badge-subscribe">Subscribe & Save</span>';
+      return '';
+    }).join('');
+
+    const card = document.createElement('div');
+    card.className = 'product-card'; card.setAttribute('data-idx', i);
+    card.onclick = () => selectProduct(i);
+    card.innerHTML = `
+      <div class="product-img"><div class="img-bg" style="background:${p.color}"></div><span>${p.emoji}</span></div>
+      <div class="product-info">
+        <div class="store-name">${p.store}</div>
+        <h4>${p.name}</h4>
+        <div class="price-row"><span class="price">${p.price}</span>${p.originalPrice ? `<span class="original-price">${p.originalPrice}</span>` : ''}</div>
+        <div class="rating"><span class="stars">&#9733;</span> ${p.rating} (${p.reviews})</div>
+        <div style="font-size:0.68rem;color:#8899af;margin-top:3px">${p.features}</div>
+        <div class="badges">${badges}</div>
+        <div class="buy-btn-wrap"><button class="buy-for-me" onclick="event.stopPropagation();buyForMe()">Buy for me</button></div>
+      </div>`;
+    productGrid.appendChild(card);
+  });
+  productGrid.classList.add('visible');
+  panelCount.textContent = products.length + ' products';
+  panelCount.classList.add('visible');
+  productGrid.querySelectorAll('.product-card').forEach((c, i) => setTimeout(() => c.classList.add('visible'), i * 150));
+}
+
+function selectProduct(idx) {
+  document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`.product-card[data-idx="${idx}"]`);
+  if (card) { card.classList.add('selected'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+// ── Checkout ───────────────────────────────────────────
+function buildCheckoutForm(c) {
+  let discountHTML = '', loyaltyHTML = '', subHTML = '';
+
+  if (c.hasDiscount) {
+    discountHTML = `
+      <div class="checkout-section">
+        <div class="checkout-section-label">Discount Code</div>
+        <div class="checkout-field applied" id="discount-field">
+          <span class="field-icon">&#127991;</span>
+          <span class="field-val">${c.discountCode} applied</span>
+          <span style="margin-left:auto;font-size:0.7rem;color:#6ee7b7">${c.discountAmt}</span>
+        </div>
+      </div>`;
+  } else {
+    discountHTML = `
+      <div class="checkout-section">
+        <div class="checkout-section-label">Discount Code</div>
+        <div class="checkout-field" onclick="this.innerHTML='<span class=field-icon>&#127991;</span><span style=color:var(--text-muted);font-size:0.74rem>No code applied</span>'">
+          <span class="field-icon">&#127991;</span>
+          <span style="font-size:0.74rem">Add discount code</span>
+        </div>
+      </div>`;
+  }
+
+  if (c.hasLoyalty) {
+    loyaltyHTML = `
+      <div class="checkout-section">
+        <div class="checkout-section-label">Loyalty Program</div>
+        <div class="checkout-field applied">
+          <span class="field-icon">&#127942;</span>
+          <span class="field-val">${c.loyaltyName} connected</span>
+          <span style="margin-left:auto;font-size:0.65rem;color:#93bbfc">+128 pts</span>
+        </div>
+      </div>`;
+  }
+
+  if (c.hasSubscription) {
+    subHTML = `
+      <div class="checkout-section">
+        <div class="checkout-section-label">Subscription</div>
+        <div class="sub-options">
+          ${c.subFreqs.map((f, i) => `<button class="sub-opt${i===0?' selected':''}" onclick="document.querySelectorAll('.sub-opt').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"><span class="sub-freq">${f.label}</span>${f.save ? `<span class="sub-save">${f.save}</span>` : ''}</button>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  const finalTotal = c.discountedTotal || c.total;
+  const discountLine = c.hasDiscount ? `<div class="checkout-line discount"><span>Discount (${c.discountCode})</span><span class="val">${c.discountAmt}</span></div>` : '';
+
+  checkoutForm.innerHTML = `
+    <h3>Review your order</h3>
+    <div class="checkout-item">
+      <div class="checkout-item-img">${c.emoji}</div>
+      <div class="checkout-item-info"><h4>${c.item}</h4><p>${c.store}</p></div>
+    </div>
+    ${discountHTML}${loyaltyHTML}${subHTML}
+    <div class="checkout-lines">
+      <div class="checkout-line"><span>Subtotal</span><span class="val">${c.price}</span></div>
+      ${discountLine}
+      <div class="checkout-line"><span>Shipping</span><span class="val">${c.shipping}</span></div>
+      <div class="checkout-line"><span>Tax</span><span class="val">${c.tax}</span></div>
+      <div class="checkout-line total"><span>Total</span><span>${finalTotal}</span></div>
+    </div>
+    <div class="checkout-address">&#128205; ${c.address}</div>
+    <div class="checkout-payment-options">
+      <button class="pay-option active" onclick="document.querySelectorAll('.pay-option').forEach(p=>p.classList.remove('active'));this.classList.add('active')"><span class="g-icon" style="font-weight:700;background:linear-gradient(135deg,#4285F4,#EA4335,#FBBC04,#34A853);-webkit-background-clip:text;-webkit-text-fill-color:transparent">G</span> Pay</button>
+      <button class="pay-option" onclick="document.querySelectorAll('.pay-option').forEach(p=>p.classList.remove('active'));this.classList.add('active')">PayPal<span class="pay-soon">Coming soon</span></button>
+    </div>
+    <button class="gpay-btn" onclick="completePurchase()"><span class="g-icon">G</span> Pay \u2014 ${finalTotal}</button>
+  `;
+  checkoutForm.style.display = 'block';
+
+  checkoutSuccess.innerHTML = `
+    <div class="success-check">&#10003;</div>
+    <h3>Order placed!</h3>
+    <p class="order-id">Order #${c.orderId}</p>
+    <p class="delivery">Est. delivery ${c.delivery}</p>
+    <p style="font-size:0.78rem;color:#c8ccd4;margin-top:4px">${c.item}</p>
+    ${c.hasLoyalty ? `<p style="font-size:0.7rem;color:#93bbfc;margin-top:6px">&#127942; +128 ${c.loyaltyName} points earned</p>` : ''}
+    <div class="my-orders">&#128230; View in My Orders (Menu > My stuff)</div>
+    <div class="powered-by">Checkout powered by <span class="shopify-tag">Shopify</span> via <span class="ucp-logo" style="font-size:0.6rem">UCP</span></div>
+  `;
+  checkoutSuccess.classList.remove('active');
+}
+
+function buyForMe() {
+  const s = SCENARIOS[currentScenario];
+  buildCheckoutForm(s.checkout);
+  checkoutOverlay.classList.add('active');
+  setProgress(75);
+}
+
+function completePurchase() {
+  const btn = checkoutForm.querySelector('.gpay-btn');
+  btn.textContent = 'Processing...'; btn.style.opacity = '0.5'; btn.style.cursor = 'default';
+  const d = speedMultiplier === 0 ? 0 : 1;
+  setTimeout(() => {
+    checkoutForm.style.display = 'none';
+    checkoutSuccess.classList.add('active');
+    setProgress(90);
+    setTimeout(() => {
+      checkoutOverlay.classList.remove('active');
+      const s = SCENARIOS[currentScenario];
+      addMessage('shopify', `
+        <div class="label"><span class="ucp-tag">Shopify</span> Order Confirmed</div>
+        <div class="order-confirmed">
+          <div class="check-icon">&#10003;</div>
+          <div class="order-text"><strong>Order #${s.checkout.orderId}</strong> \u2014 ${s.checkout.item}<br>
+          Est. delivery ${s.checkout.delivery} \u2022 Tracking sent to your email${s.checkout.hasLoyalty ? `<br>&#127942; +128 ${s.checkout.loyaltyName} points earned` : ''}</div>
+        </div>
+      `);
+      setTimeout(() => {
+        addMessage('gemini', `
+          <div class="label">Gemini</div>
+          <p>Your order is confirmed! ${s.checkout.store} will send tracking once it ships. You can view your order anytime in <strong>Menu > My stuff > My orders</strong>.</p>
+          <p style="margin-top:6px">Is there anything else I can help you find?</p>
+          <div class="meta">Merchant is seller of record \u2022 Returns handled by ${s.checkout.store} \u2022 ${s.checkout.store} is UCP-enabled by default via Shopify</div>
+        `);
+        setProgress(100);
+        ucpBanner.classList.add('visible');
+      }, 800 * d / (speedMultiplier || 1));
+    }, 2000 * d / (speedMultiplier || 1));
+  }, 1500 * d / (speedMultiplier || 1));
+}
+
+// ── Simulation Runner ──────────────────────────────────
+async function runSimulation() {
+  if (simRunning) return;
+  simRunning = true; simAbort = new AbortController();
+  const s = SCENARIOS[currentScenario];
+
+  chatBody.innerHTML = ''; productGrid.innerHTML = ''; productGrid.classList.remove('visible');
+  panelEmpty.style.display = 'flex'; panelCount.classList.remove('visible');
+  checkoutOverlay.classList.remove('active'); checkoutSuccess.classList.remove('active');
+  ucpBanner.classList.remove('visible'); setProgress(0);
+
+  try {
+    await delay(600);
+    setProgress(10);
+    addMessage('user', `<p>${s.userQuery}</p>`);
+    await delay(1200);
+
+    setProgress(20);
+    showTyping();
+    await delay(2000);
+    hideTyping();
+
+    setProgress(35);
+    addMessage('gemini', `
+      <div class="label">Gemini <span class="ucp-tag">UCP</span></div>
+      <p>${s.aiResponse}</p>
+      <div class="meta">Queried via Universal Commerce Protocol \u2022 ${s.products.length} Shopify merchants \u2022 Real-time pricing from Google Shopping Graph (50B+ listings)</div>
+    `);
+    await delay(600);
+
+    setProgress(45);
+    renderProducts(s.products);
+    await delay(2500);
+
+    setProgress(55);
+    addMessage('user', `<p>${s.refinement}</p>`);
+    await delay(1000);
+
+    showTyping();
+    await delay(1200);
+    hideTyping();
+
+    setProgress(65);
+    addMessage('gemini', `<div class="label">Gemini</div><p>${s.aiCheckoutPrompt}</p>`);
+    selectProduct(s.selectedIdx);
+
+    simRunning = false;
+  } catch (e) { if (e.name !== 'AbortError') throw e; simRunning = false; }
+}
+
+// ── Controls ───────────────────────────────────────────
+function setSpeed(s, btn) { speedMultiplier = s; document.querySelectorAll('.speed-opt').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+function loadScenario(idx, btn) { if (simRunning) { simAbort.abort(); simRunning = false; } currentScenario = idx; document.querySelectorAll('.scenario-pill').forEach(b => b.classList.remove('active')); btn.classList.add('active'); setTimeout(runSimulation, 100); }
+function restartSim() { if (simRunning) { simAbort.abort(); simRunning = false; } setTimeout(runSimulation, 100); }
+function toggleDrawer() { document.getElementById('info-drawer').classList.toggle('open'); document.getElementById('drawer-backdrop').classList.toggle('open'); }
+
+runSimulation();
+</script>
+<script src="se-guide-content.js"></script>
+<script src="se-guide.js"></script>
+<script src="source-viewer.js"></script>
+</body>
+</html>
