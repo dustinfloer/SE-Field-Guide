@@ -6,7 +6,10 @@
     "url": "https://b2b-acceleration-se.quick.shopify.io/shopify-ai-hatley.html",
     "industry": "Apparel",
     "author": "Terry Kealey",
-    "tags": ["apparel", "foundational"]
+    "tags": [
+      "apparel",
+      "foundational"
+    ]
   },
   {
     "id": "arlington",
@@ -33,7 +36,9 @@
     "url": "https://feniex.quick.shopify.io/",
     "industry": "Automotive / Emergency Lighting",
     "author": "Jordan Murphy",
-    "tags": ["automotive"]
+    "tags": [
+      "automotive"
+    ]
   },
   {
     "id": "taylor-guitars",
@@ -42,6 +47,152 @@
     "url": "https://taylor-guitars-demo-deck.quick.shopify.io/",
     "industry": "Musical Instruments / Premium Goods",
     "author": "Terry Kealey",
-    "tags": ["b2b", "premium", "dealer-network"]
+    "tags": [
+      "b2b",
+      "premium",
+      "dealer-network"
+    ]
+  },
+  {
+    "id": "lennox",
+    "name": "Lennox",
+    "description": "B2B demo deck for a corporate / bulk-gifting use case.",
+    "url": "https://fixed-atlasaurus.quick.shopify.io/",
+    "industry": "Corporate Gifting / B2B",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b",
+      "gifting"
+    ]
+  },
+  {
+    "id": "monk-office",
+    "name": "Monk Office",
+    "description": "B2B demo deck for an office-supplies distributor, with a focus on validating partner integrations to a Sage X3 ERP.",
+    "url": "https://relieved-meeting.quick.shopify.io/",
+    "industry": "Office Supplies / B2B Distribution",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b",
+      "erp",
+      "sage-x3"
+    ]
+  },
+  {
+    "id": "washington-floral",
+    "name": "Washington Floral Service",
+    "description": "B2B demo deck for a floral wholesale distributor.",
+    "url": "https://pricey-brass.quick.shopify.io/",
+    "industry": "Floral / Wholesale Distribution",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b",
+      "wholesale"
+    ]
+  },
+  {
+    "id": "tacoma-screw",
+    "name": "Tacoma Screw Products",
+    "description": "B2B demo deck for an industrial fastener / MRO distributor.",
+    "url": "https://puzzled-tank.quick.shopify.io/",
+    "industry": "Industrial Supply / MRO",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b",
+      "distribution"
+    ]
+  },
+  {
+    "id": "sanguine-bio",
+    "name": "Sanguine Bio",
+    "description": "B2B demo deck for a life-sciences / biotech supplier.",
+    "url": "https://willing-pony.quick.shopify.io/",
+    "industry": "Life Sciences / Biotech",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b"
+    ]
+  },
+  {
+    "id": "powerpak",
+    "name": "Powerpak",
+    "description": "AI-generated B2B demo deck for Powerpak.",
+    "url": "https://worthy-band.quick.shopify.io/",
+    "industry": "",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b"
+    ]
+  },
+  {
+    "id": "lipman-brothers",
+    "name": "Lipman Brothers",
+    "description": "B2B demo deck for a beverage / alcohol distributor, framed around displacing the Provi marketplace and owning the customer relationship.",
+    "url": "https://sparse-hockey.quick.shopify.io/",
+    "industry": "Beverage / Alcohol Distribution",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b",
+      "wholesale",
+      "marketplace-displacement"
+    ]
+  },
+  {
+    "id": "ohio-power-tool",
+    "name": "Ohio Power Tool",
+    "description": "B2B demo deck for a tools & equipment retailer / distributor.",
+    "url": "https://gargantuan-eggplant.quick.shopify.io/",
+    "industry": "Tools & Equipment",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b"
+    ]
+  },
+  {
+    "id": "vault-cps",
+    "name": "Vault CPS",
+    "description": "AI-generated B2B demo deck for Vault CPS.",
+    "url": "https://dapper-slider.quick.shopify.io/",
+    "industry": "",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b"
+    ]
+  },
+  {
+    "id": "bulldog-tools",
+    "name": "Bulldog Tools",
+    "description": "B2B demo deck for a garden-tools brand (partner-referral deal).",
+    "url": "https://authentic-canary.quick.shopify.io/",
+    "industry": "Tools / Manufacturing",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b"
+    ]
+  },
+  {
+    "id": "publisher-services",
+    "name": "Publisher Services",
+    "description": "B2B demo deck for a publishing / distribution merchant, featuring pre-order positioning.",
+    "url": "https://unfit-coral.quick.shopify.io/",
+    "industry": "Publishing / Distribution",
+    "author": "Kevin Zaw",
+    "tags": [
+      "b2b",
+      "pre-order"
+    ]
+  },
+  {
+    "id": "lt-apparel",
+    "name": "LT Apparel",
+    "description": "Merchant walkthrough deck for LT Apparel.",
+    "url": "https://lt-apparel-walkthrough.quick.shopify.io/",
+    "industry": "Apparel",
+    "author": "Dustin Floer",
+    "tags": [
+      "apparel",
+      "b2b",
+      "walkthrough"
+    ]
   }
 ]
